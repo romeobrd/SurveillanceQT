@@ -6,6 +6,17 @@
 #include <QHostInfo>
 #include <QRandomGenerator>
 
+const QVector<KnownRaspberryPi> ArpScanner::KNOWN_RASPBERRY_PI = {
+    { QStringLiteral("200.26.16.10"), QStringLiteral("Raspberry 1 Température"),
+      QStringLiteral("Capteurs DHT22 - Température et Humidité"), QStringLiteral("Temperature") },
+    { QStringLiteral("200.26.16.20"), QStringLiteral("Raspberry 2 Caméra"),
+      QStringLiteral("Caméra de surveillance"), QStringLiteral("Camera") },
+    { QStringLiteral("200.26.16.30"), QStringLiteral("Raspberry 3 CO2 et Fumée"),
+      QStringLiteral("Capteurs MQ-2 et PIM480 - Fumée et Qualité d'air"), QStringLiteral("AirQuality") },
+    { QStringLiteral("200.26.16.40"), QStringLiteral("Raspberry 4 Visualisation"),
+      QStringLiteral("Écran d'affichage local"), QStringLiteral("Display") }
+};
+
 const QVector<QString> ArpScanner::SURVEILLANCE_MAC_PREFIXES = {
     QStringLiteral("00:0C:43"),
     QStringLiteral("00:13:10"),
@@ -76,6 +87,7 @@ ArpScanner::ArpScanner(QObject *parent)
     , m_currentProgress(0)
     , m_totalHosts(0)
     , m_isScanning(false)
+    , m_scanningKnownDevicesOnly(false)
 {
     m_scanTimer->setSingleShot(true);
     connect(m_scanTimer, &QTimer::timeout, this, &ArpScanner::performArpScan);
@@ -146,6 +158,118 @@ QVector<NetworkDevice> ArpScanner::surveillanceModules() const
         }
     }
     return modules;
+}
+
+QVector<NetworkDevice> ArpScanner::knownRaspberryPiDevices() const
+{
+    QVector<NetworkDevice> raspberryDevices;
+    for (const auto &device : m_devices) {
+        if (isKnownRaspberryPi(device.ipAddress)) {
+            raspberryDevices.append(device);
+        }
+    }
+    return raspberryDevices;
+}
+
+void ArpScanner::startScanKnownDevices()
+{
+    if (m_isScanning) {
+        return;
+    }
+
+    m_isScanning = true;
+    m_scanningKnownDevicesOnly = true;
+    m_devices.clear();
+    m_currentProgress = 0;
+    m_totalHosts = KNOWN_RASPBERRY_PI.size();
+
+    emit scanStarted();
+    m_progressTimer->start();
+
+    QVector<QString> knownIps;
+    for (const auto &rpi : KNOWN_RASPBERRY_PI) {
+        knownIps.append(rpi.ipAddress);
+    }
+
+    pingSpecificHosts(knownIps);
+    m_scanTimer->start(2000);
+}
+
+QVector<KnownRaspberryPi> ArpScanner::getKnownRaspberryPiList()
+{
+    return KNOWN_RASPBERRY_PI;
+}
+
+QMap<QString, QString> ArpScanner::getRaspberryPiDescriptions()
+{
+    QMap<QString, QString> descriptions;
+    for (const auto &rpi : KNOWN_RASPBERRY_PI) {
+        descriptions[rpi.ipAddress] = QStringLiteral("%1 - %2").arg(rpi.name, rpi.description);
+    }
+    return descriptions;
+}
+
+bool ArpScanner::isKnownRaspberryPi(const QString &ipAddress) const
+{
+    for (const auto &rpi : KNOWN_RASPBERRY_PI) {
+        if (rpi.ipAddress == ipAddress) {
+            return true;
+        }
+    }
+    return false;
+}
+
+KnownRaspberryPi ArpScanner::getRaspberryPiInfo(const QString &ipAddress) const
+{
+    for (const auto &rpi : KNOWN_RASPBERRY_PI) {
+        if (rpi.ipAddress == ipAddress) {
+            return rpi;
+        }
+    }
+    return KnownRaspberryPi();
+}
+
+void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
+{
+    m_pendingHosts = hosts;
+
+    for (const QString &ip : hosts) {
+        QProcess *pingProcess = new QProcess(this);
+        pingProcess->setProperty("ip", ip);
+
+#ifdef Q_OS_WIN
+        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "1000" << ip);
+#else
+        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "2" << ip);
+#endif
+
+        connect(pingProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, [this, pingProcess](int exitCode, QProcess::ExitStatus) {
+            QString ip = pingProcess->property("ip").toString();
+            pingProcess->deleteLater();
+
+            m_currentProgress++;
+
+            if (exitCode == 0) {
+                KnownRaspberryPi rpiInfo = getRaspberryPiInfo(ip);
+
+                NetworkDevice device;
+                device.ipAddress = ip;
+                device.macAddress = QStringLiteral("En attente ARP...");
+                device.hostname = rpiInfo.name;
+                device.deviceType = QStringLiteral("🍓 %1").arg(rpiInfo.expectedType);
+                device.description = rpiInfo.description;
+                device.isOnline = true;
+                device.rssi = -50;
+
+                if (!m_devices.contains(device)) {
+                    m_devices.append(device);
+                    emit deviceFound(device);
+                    emit raspberryPiFound(device, rpiInfo);
+                }
+            }
+        });
+    }
 }
 
 QString ArpScanner::getLocalSubnet()

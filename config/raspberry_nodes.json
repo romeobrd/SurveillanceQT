@@ -1,0 +1,121 @@
+{
+  "network": {
+    "subnet": "200.26.16.0/24",
+    "gateway": "200.26.16.200"
+  },
+  "raspberry_nodes": [
+    {
+      "id": "rpi-001",
+      "name": "Raspberry 1 Température",
+      "ip_address": "200.26.16.10",
+      "mac_address": "",
+      "description": "Capteurs de température et humidité",
+      "sensors": [
+        {
+          "id": "temp-001",
+          "name": "Température DHT22",
+          "type": "temperature_dht22",
+          "topic": "rpi-001/sensors/temperature",
+          "unit": "°C",
+          "warning_threshold": 35,
+          "alarm_threshold": 45,
+          "pin": 4
+        },
+        {
+          "id": "hum-001",
+          "name": "Humidité DHT22",
+          "type": "humidity_dht22",
+          "topic": "rpi-001/sensors/humidity",
+          "unit": "%",
+          "warning_threshold": 70,
+          "alarm_threshold": 85,
+          "pin": 4
+        }
+      ]
+    },
+    {
+      "id": "rpi-002",
+      "name": "Raspberry 2 Caméra",
+      "ip_address": "200.26.16.20",
+      "mac_address": "",
+      "description": "Caméra de surveillance",
+      "sensors": [
+        {
+          "id": "cam-001",
+          "name": "Caméra Salle Serveur",
+          "type": "camera",
+          "topic": "rpi-002/camera/stream",
+          "stream_url": "http://200.26.16.20:8080/stream",
+          "snapshot_url": "http://200.26.16.20:8080/snapshot",
+          "resolution": "1920x1080",
+          "fps": 30
+        }
+      ]
+    },
+    {
+      "id": "rpi-003",
+      "name": "Raspberry 3 CO2 et Fumée",
+      "ip_address": "200.26.16.30",
+      "mac_address": "",
+      "description": "Capteurs qualité d'air et détection fumée",
+      "sensors": [
+        {
+          "id": "smoke-001",
+          "name": "Fumée MQ-2",
+          "type": "smoke_mq2",
+          "topic": "rpi-003/sensors/smoke",
+          "unit": "ppm",
+          "warning_threshold": 300,
+          "alarm_threshold": 500,
+          "pin": 0
+        },
+        {
+          "id": "co2-001",
+          "name": "CO2 PIM480",
+          "type": "air_quality_pim480",
+          "topic": "rpi-003/sensors/co2",
+          "unit": "ppm",
+          "warning_threshold": 1000,
+          "alarm_threshold": 2000,
+          "i2c_address": "0x5A"
+        },
+        {
+          "id": "voc-001",
+          "name": "VOC PIM480",
+          "type": "voc_pim480",
+          "topic": "rpi-003/sensors/voc",
+          "unit": "ppb",
+          "warning_threshold": 500,
+          "alarm_threshold": 1000,
+          "i2c_address": "0x5A"
+        }
+      ]
+    },
+    {
+      "id": "rpi-004",
+      "name": "Raspberry 4 Visualisation",
+      "ip_address": "200.26.16.40",
+      "mac_address": "",
+      "description": "Écran d'affichage et interface locale",
+      "sensors": [],
+      "display": {
+        "enabled": true,
+        "resolution": "1920x1080",
+        "refresh_rate": 60
+      }
+    }
+  ],
+  "broker": {
+    "host": "200.26.16.200",
+    "port": 1883,
+    "protocol": "mqtt",
+    "username": "",
+    "password": ""
+  },
+  "application": {
+    "auto_connect_on_startup": true,
+    "reconnect_interval_ms": 5000,
+    "heartbeat_interval_ms": 30000,
+    "log_level": "info"
+  }
+}

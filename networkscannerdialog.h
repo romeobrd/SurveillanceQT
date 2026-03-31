@@ -34,6 +34,8 @@ private slots:
 
 private:
     void setupUi();
+    void displayKnownRaspberryPiList();
+    void updateRaspberryPiInList(const NetworkDevice &device);
     void addDeviceToList(const NetworkDevice &device);
     QString formatDeviceInfo(const NetworkDevice &device) const;
     QString getSignalIcon(int rssi) const;
