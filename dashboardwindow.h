@@ -1,5 +1,7 @@
 #pragma once
 
+#include "arpscanner.h"
+
 #include <QPoint>
 #include <QWidget>
 
@@ -10,9 +12,12 @@ class QTimer;
 class SmokeSensorWidget;
 class TemperatureWidget;
 class CameraWidget;
+class QPushButton;
 
 class DashboardWindow : public QWidget
 {
+    Q_OBJECT
+
 public:
     explicit DashboardWindow(QWidget *parent = nullptr);
 
@@ -21,6 +26,11 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
+private slots:
+    void openNetworkScanner();
+    void onDevicesConnected(const QVector<NetworkDevice> &devices);
+    void updateConnectedDevicesStatus();
+
 private:
     QWidget *createTitleBar();
     QWidget *createBottomBar();
@@ -28,6 +38,7 @@ private:
     void handleLogin();
     void updateBottomStatus();
     void showCameraFullscreen();
+    void setupNetworkFeatures();
 
     LoginWidget *m_loginWidget;
     SmokeSensorWidget *m_smokeWidget;
@@ -41,7 +52,12 @@ private:
     QLabel *m_warningValueLabel;
     QLabel *m_defaultValueLabel;
 
+    QLabel *m_networkStatusLabel;
+    QPushButton *m_scanNetworkButton;
+
     QTimer *m_statusTimer;
     bool m_dragging;
     QPoint m_dragOffset;
+
+    QVector<NetworkDevice> m_connectedDevices;
 };

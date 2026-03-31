@@ -2,6 +2,7 @@
 
 #include "camerawidget.h"
 #include "loginwidget.h"
+#include "networkscannerdialog.h"
 #include "smokesensorwidget.h"
 #include "temperaturewidget.h"
 
@@ -13,6 +14,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QNetworkInterface>
 #include <QPixmap>
 #include <QPushButton>
 #include <QTimer>
@@ -72,6 +74,8 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     , m_alarmValueLabel(nullptr)
     , m_warningValueLabel(nullptr)
     , m_defaultValueLabel(nullptr)
+    , m_networkStatusLabel(nullptr)
+    , m_scanNetworkButton(nullptr)
     , m_statusTimer(new QTimer(this))
     , m_dragging(false)
 {
@@ -235,6 +239,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     });
     m_statusTimer->start(1200);
 
+    setupNetworkFeatures();
     updateBottomStatus();
 }
 
@@ -407,6 +412,30 @@ QWidget *DashboardWindow::createBottomBar()
     auto *account = new QLabel(QStringLiteral("◌"), bottomBar);
     account->setStyleSheet("font-size:18px;");
 
+    auto *pipe4 = new QLabel(QStringLiteral("|"), bottomBar);
+    pipe4->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
+
+    m_networkStatusLabel = new QLabel(QStringLiteral("🌐 Scanning..."), bottomBar);
+    m_networkStatusLabel->setStyleSheet("font-size:14px;color:#7ec8e3;");
+
+    m_scanNetworkButton = new QPushButton(QStringLiteral("🔍 Scanner"), bottomBar);
+    m_scanNetworkButton->setFixedSize(90, 28);
+    m_scanNetworkButton->setStyleSheet(
+        "QPushButton {"
+        "  background: rgba(74, 144, 217, 0.25);"
+        "  color: #7ec8e3;"
+        "  border: 1px solid rgba(126, 200, 227, 0.4);"
+        "  border-radius: 6px;"
+        "  font-size: 12px;"
+        "  font-weight: 600;"
+        "}"
+        "QPushButton:hover {"
+        "  background: rgba(74, 144, 217, 0.4);"
+        "}"
+        );
+    connect(m_scanNetworkButton, &QPushButton::clicked,
+            this, &DashboardWindow::openNetworkScanner);
+
     layout->addWidget(activeLabel);
     layout->addWidget(m_activeValueLabel);
     layout->addWidget(pipe1);
@@ -415,6 +444,10 @@ QWidget *DashboardWindow::createBottomBar()
     layout->addWidget(m_warningValueLabel);
     layout->addWidget(pipe3);
     layout->addWidget(m_defaultValueLabel);
+    layout->addWidget(pipe4);
+    layout->addWidget(m_networkStatusLabel);
+    layout->addSpacing(8);
+    layout->addWidget(m_scanNetworkButton);
     layout->addStretch();
     layout->addWidget(userIcon);
     layout->addWidget(m_userStatusLabel);
@@ -528,4 +561,66 @@ void DashboardWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     m_dragging = false;
     QWidget::mouseReleaseEvent(event);
+}
+
+void DashboardWindow::setupNetworkFeatures()
+{
+    QString localIp = ArpScanner::getLocalIpAddress();
+    QString subnet = ArpScanner::getLocalSubnet();
+
+    if (!subnet.isEmpty()) {
+        m_networkStatusLabel->setText(
+            QStringLiteral("🌐 %1 | %2").arg(localIp, subnet));
+    } else {
+        m_networkStatusLabel->setText(QStringLiteral("🌐 Réseau non détecté"));
+    }
+}
+
+void DashboardWindow::openNetworkScanner()
+{
+    NetworkScannerDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QVector<NetworkDevice> selectedDevices = dialog.selectedDevices();
+        onDevicesConnected(selectedDevices);
+    }
+}
+
+void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
+{
+    m_connectedDevices = devices;
+
+    QStringList deviceNames;
+    for (const auto &device : devices) {
+        deviceNames.append(QStringLiteral("%1 (%2)")
+                           .arg(device.ipAddress, device.deviceType));
+    }
+
+    if (!devices.isEmpty()) {
+        QMessageBox::information(this,
+                                 QStringLiteral("Modules Connectés"),
+                                 QStringLiteral("%1 module(s) connecté(s):\n\n%2")
+                                 .arg(devices.size())
+                                 .arg(deviceNames.join(QStringLiteral("\n"))));
+
+        updateConnectedDevicesStatus();
+    }
+}
+
+void DashboardWindow::updateConnectedDevicesStatus()
+{
+    int moduleCount = m_connectedDevices.size();
+
+    if (m_networkStatusLabel) {
+        QString localIp = ArpScanner::getLocalIpAddress();
+        QString subnet = ArpScanner::getLocalSubnet();
+
+        if (moduleCount > 0) {
+            m_networkStatusLabel->setText(
+                QStringLiteral("🌐 %1 | %2 | ✅ %3 module(s)")
+                .arg(localIp, subnet).arg(moduleCount));
+        } else {
+            m_networkStatusLabel->setText(
+                QStringLiteral("🌐 %1 | %2").arg(localIp, subnet));
+        }
+    }
 }
