@@ -30,6 +30,12 @@ private slots:
     void openNetworkScanner();
     void onDevicesConnected(const QVector<NetworkDevice> &devices);
     void updateConnectedDevicesStatus();
+    void openModuleManager();
+    void openWidgetEditor(QWidget *widget);
+    void onSmokeWidgetEdit();
+    void onTempWidgetEdit();
+    void onCameraWidgetEdit();
+    void onRadiationPanelEdit();
 
 private:
     QWidget *createTitleBar();
@@ -39,6 +45,7 @@ private:
     void updateBottomStatus();
     void showCameraFullscreen();
     void setupNetworkFeatures();
+    void setupWidgetEditButtons();
 
     LoginWidget *m_loginWidget;
     SmokeSensorWidget *m_smokeWidget;

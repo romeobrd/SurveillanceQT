@@ -2,9 +2,11 @@
 
 #include "camerawidget.h"
 #include "loginwidget.h"
+#include "modulemanager.h"
 #include "networkscannerdialog.h"
 #include "smokesensorwidget.h"
 #include "temperaturewidget.h"
+#include "widgeteditor.h"
 
 #include <QDialog>
 #include <QFileDialog>
@@ -181,29 +183,18 @@ DashboardWindow::DashboardWindow(QWidget *parent)
         handleLogin();
     });
 
-    connect(m_smokeWidget->editButton(), &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Capteur Fumée"), m_smokeWidget->currentSummary());
-    });
+    setupWidgetEditButtons();
+
     connect(m_smokeWidget->closeButton(), &QPushButton::clicked, this, [this]() {
         m_smokeWidget->hide();
         updateBottomStatus();
     });
 
-    connect(m_temperatureWidget->editButton(), &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Température"), m_temperatureWidget->currentSummary());
-    });
     connect(m_temperatureWidget->closeButton(), &QPushButton::clicked, this, [this]() {
         m_temperatureWidget->hide();
         updateBottomStatus();
     });
 
-    connect(m_cameraWidget->editButton(), &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Caméra"), QStringLiteral("Paramètres caméra bientôt disponibles."));
-    });
-    connect(m_cameraWidget->closeButton(), &QPushButton::clicked, this, [this]() {
-        m_cameraWidget->hide();
-        updateBottomStatus();
-    });
     connect(m_cameraWidget->reloadButton(), &QPushButton::clicked, this, [this]() {
         if (!m_cameraWidget->reloadFrame()) {
             QMessageBox::warning(this, QStringLiteral("Caméra"), QStringLiteral("Impossible de recharger l'image."));
@@ -406,8 +397,23 @@ QWidget *DashboardWindow::createBottomBar()
     m_defaultValueLabel = new QLabel(QStringLiteral("0  Défaut"), bottomBar);
     m_defaultValueLabel->setStyleSheet("color:#a6d94d;font-size:16px;font-weight:700;");
 
-    auto *userIcon = new QLabel(QStringLiteral("⚙"), bottomBar);
-    userIcon->setStyleSheet("font-size:18px;");
+    auto *settingsButton = new QPushButton(QStringLiteral("⚙"), bottomBar);
+    settingsButton->setFixedSize(32, 32);
+    settingsButton->setStyleSheet(
+        "QPushButton {"
+        "  background: rgba(126, 200, 227, 0.2);"
+        "  color: #7ec8e3;"
+        "  border: 1px solid rgba(126, 200, 227, 0.4);"
+        "  border-radius: 16px;"
+        "  font-size: 16px;"
+        "}"
+        "QPushButton:hover {"
+        "  background: rgba(126, 200, 227, 0.4);"
+        "}"
+        );
+    connect(settingsButton, &QPushButton::clicked,
+            this, &DashboardWindow::openModuleManager);
+
     m_userStatusLabel->setStyleSheet("font-size:16px;");
     auto *account = new QLabel(QStringLiteral("◌"), bottomBar);
     account->setStyleSheet("font-size:18px;");
@@ -449,7 +455,7 @@ QWidget *DashboardWindow::createBottomBar()
     layout->addSpacing(8);
     layout->addWidget(m_scanNetworkButton);
     layout->addStretch();
-    layout->addWidget(userIcon);
+    layout->addWidget(settingsButton);
     layout->addWidget(m_userStatusLabel);
     layout->addWidget(account);
 
@@ -623,4 +629,102 @@ void DashboardWindow::updateConnectedDevicesStatus()
                 QStringLiteral("🌐 %1 | %2").arg(localIp, subnet));
         }
     }
+}
+
+void DashboardWindow::setupWidgetEditButtons()
+{
+    connect(m_smokeWidget->editButton(), &QPushButton::clicked,
+            this, &DashboardWindow::onSmokeWidgetEdit);
+
+    connect(m_temperatureWidget->editButton(), &QPushButton::clicked,
+            this, &DashboardWindow::onTempWidgetEdit);
+
+    connect(m_cameraWidget->editButton(), &QPushButton::clicked,
+            this, &DashboardWindow::onCameraWidgetEdit);
+}
+
+void DashboardWindow::onSmokeWidgetEdit()
+{
+    WidgetConfig config;
+    config.id = QStringLiteral("smoke-001");
+    config.name = QStringLiteral("Niveau de Fumée");
+    config.type = QStringLiteral("Fumée MQ-2");
+    config.warningThreshold = 28;
+    config.alarmThreshold = 60;
+    config.unit = QStringLiteral("%");
+
+    WidgetEditor editor(config, this);
+    if (editor.exec() == QDialog::Accepted) {
+        WidgetConfig newConfig = editor.getConfig();
+        QMessageBox::information(this,
+                                 QStringLiteral("Widget modifié"),
+                                 QStringLiteral("Nouveau nom: %1\nType: %2")
+                                 .arg(newConfig.name, newConfig.type));
+    }
+}
+
+void DashboardWindow::onTempWidgetEdit()
+{
+    WidgetConfig config;
+    config.id = QStringLiteral("temp-001");
+    config.name = QStringLiteral("Historique Température");
+    config.type = QStringLiteral("Température DHT22");
+    config.warningThreshold = 45;
+    config.alarmThreshold = 58;
+    config.unit = QStringLiteral("°C");
+
+    WidgetEditor editor(config, this);
+    if (editor.exec() == QDialog::Accepted) {
+        WidgetConfig newConfig = editor.getConfig();
+        QMessageBox::information(this,
+                                 QStringLiteral("Widget modifié"),
+                                 QStringLiteral("Nouveau nom: %1\nType: %2")
+                                 .arg(newConfig.name, newConfig.type));
+    }
+}
+
+void DashboardWindow::onCameraWidgetEdit()
+{
+    WidgetConfig config;
+    config.id = QStringLiteral("cam-001");
+    config.name = QStringLiteral("Caméra Salle Serveur");
+    config.type = QStringLiteral("Caméra");
+    config.warningThreshold = 0;
+    config.alarmThreshold = 0;
+    config.unit = QStringLiteral("");
+
+    WidgetEditor editor(config, this);
+    if (editor.exec() == QDialog::Accepted) {
+        WidgetConfig newConfig = editor.getConfig();
+        QMessageBox::information(this,
+                                 QStringLiteral("Widget modifié"),
+                                 QStringLiteral("Nouveau nom: %1\nType: %2")
+                                 .arg(newConfig.name, newConfig.type));
+    }
+}
+
+void DashboardWindow::onRadiationPanelEdit()
+{
+    WidgetConfig config;
+    config.id = QStringLiteral("rad-001");
+    config.name = QStringLiteral("Niveau de Radiation");
+    config.type = QStringLiteral("Radiation");
+    config.warningThreshold = 3;
+    config.alarmThreshold = 10;
+    config.unit = QStringLiteral("μSv/h");
+
+    WidgetEditor editor(config, this);
+    if (editor.exec() == QDialog::Accepted) {
+        WidgetConfig newConfig = editor.getConfig();
+        QMessageBox::information(this,
+                                 QStringLiteral("Widget modifié"),
+                                 QStringLiteral("Nouveau nom: %1\nType: %2")
+                                 .arg(newConfig.name, newConfig.type));
+    }
+}
+
+void DashboardWindow::openModuleManager()
+{
+    ModuleManager manager(this);
+    manager.exec();
 }
