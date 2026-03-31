@@ -31,7 +31,6 @@ private slots:
     void onDevicesConnected(const QVector<NetworkDevice> &devices);
     void updateConnectedDevicesStatus();
     void openModuleManager();
-    void openWidgetEditor(QWidget *widget);
     void onSmokeWidgetEdit();
     void onTempWidgetEdit();
     void onCameraWidgetEdit();
