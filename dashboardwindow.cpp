@@ -91,7 +91,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     , m_sensorContainer(nullptr)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
-    resize(1420, 900);
+    resize(800, 600);
 
     setStyleSheet(
         "DashboardWindow, QWidget {"
