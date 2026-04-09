@@ -1,0 +1,92 @@
+\doxysection{arpscanner.\+h}
+\hypertarget{arpscanner_8h_source}{}\label{arpscanner_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QHostAddress>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QObject>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <QString>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <QTimer>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <QVector>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <QMap>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_network_device}{NetworkDevice}}\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ QString\ ipAddress;}
+\DoxyCodeLine{00012\ \ \ \ \ QString\ macAddress;}
+\DoxyCodeLine{00013\ \ \ \ \ QString\ hostname;}
+\DoxyCodeLine{00014\ \ \ \ \ QString\ deviceType;}
+\DoxyCodeLine{00015\ \ \ \ \ QString\ description;}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{bool}\ isOnline;}
+\DoxyCodeLine{00017\ \ \ \ \ \textcolor{keywordtype}{int}\ rssi;}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordtype}{bool}\ operator==(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_network_device}{NetworkDevice}}\ \&other)\textcolor{keyword}{\ const\ }\{}
+\DoxyCodeLine{00020\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ macAddress\ ==\ other.macAddress;}
+\DoxyCodeLine{00021\ \ \ \ \ \}}
+\DoxyCodeLine{00022\ \};}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_known_raspberry_pi}{KnownRaspberryPi}}\ \{}
+\DoxyCodeLine{00025\ \ \ \ \ QString\ ipAddress;}
+\DoxyCodeLine{00026\ \ \ \ \ QString\ name;}
+\DoxyCodeLine{00027\ \ \ \ \ QString\ description;}
+\DoxyCodeLine{00028\ \ \ \ \ QString\ expectedType;}
+\DoxyCodeLine{00029\ \};}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{keyword}{class\ }ArpScanner\ :\ \textcolor{keyword}{public}\ QObject\ \{}
+\DoxyCodeLine{00032\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keyword}{explicit}\ ArpScanner(QObject\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00036\ \ \ \ \ \string~ArpScanner();}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{void}\ startScan(\textcolor{keyword}{const}\ QString\ \&subnet\ =\ QString());}
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{void}\ startScanKnownDevices();}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordtype}{void}\ stopScan();}
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keywordtype}{bool}\ isScanning()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \ \ \ \ QVector<NetworkDevice>\ detectedDevices()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00044\ \ \ \ \ QVector<NetworkDevice>\ surveillanceModules()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00045\ \ \ \ \ QVector<NetworkDevice>\ knownRaspberryPiDevices()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keyword}{static}\ QString\ getLocalSubnet();}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keyword}{static}\ QString\ getLocalIpAddress();}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keyword}{static}\ QVector<KnownRaspberryPi>\ getKnownRaspberryPiList();}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keyword}{static}\ QMap<QString,\ QString>\ getRaspberryPiDescriptions();}
+\DoxyCodeLine{00052\ }
+\DoxyCodeLine{00053\ signals:}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordtype}{void}\ scanStarted();}
+\DoxyCodeLine{00055\ \ \ \ \ \textcolor{keywordtype}{void}\ scanProgress(\textcolor{keywordtype}{int}\ current,\ \textcolor{keywordtype}{int}\ total);}
+\DoxyCodeLine{00056\ \ \ \ \ \textcolor{keywordtype}{void}\ deviceFound(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_network_device}{NetworkDevice}}\ \&device);}
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordtype}{void}\ scanFinished(\textcolor{keyword}{const}\ QVector<NetworkDevice>\ \&devices);}
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordtype}{void}\ scanError(\textcolor{keyword}{const}\ QString\ \&error);}
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordtype}{void}\ raspberryPiFound(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_network_device}{NetworkDevice}}\ \&device,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_known_raspberry_pi}{KnownRaspberryPi}}\ \&knownInfo);}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{00062\ \ \ \ \ \textcolor{keywordtype}{void}\ onScanTimeout();}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordtype}{void}\ performArpScan();}
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00065\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00066\ \ \ \ \ \textcolor{keywordtype}{void}\ parseArpTable();}
+\DoxyCodeLine{00067\ \ \ \ \ \textcolor{keywordtype}{void}\ pingSweep(\textcolor{keyword}{const}\ QString\ \&subnet);}
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{keywordtype}{void}\ pingSpecificHosts(\textcolor{keyword}{const}\ QVector<QString>\ \&hosts);}
+\DoxyCodeLine{00069\ \ \ \ \ QString\ resolveHostname(\textcolor{keyword}{const}\ QString\ \&ipAddress);}
+\DoxyCodeLine{00070\ \ \ \ \ QString\ identifyDeviceType(\textcolor{keyword}{const}\ QString\ \&macAddress,\ \textcolor{keyword}{const}\ QString\ \&hostname);}
+\DoxyCodeLine{00071\ \ \ \ \ QString\ getMacVendor(\textcolor{keyword}{const}\ QString\ \&macAddress);}
+\DoxyCodeLine{00072\ \ \ \ \ \textcolor{keywordtype}{bool}\ isKnownRaspberryPi(\textcolor{keyword}{const}\ QString\ \&ipAddress)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00073\ \ \ \ \ \doxymbox{\hyperlink{struct_known_raspberry_pi}{KnownRaspberryPi}}\ getRaspberryPiInfo(\textcolor{keyword}{const}\ QString\ \&ipAddress)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \ \ \ \ QTimer\ *m\_scanTimer;}
+\DoxyCodeLine{00076\ \ \ \ \ QTimer\ *m\_progressTimer;}
+\DoxyCodeLine{00077\ \ \ \ \ QVector<NetworkDevice>\ m\_devices;}
+\DoxyCodeLine{00078\ \ \ \ \ QString\ m\_currentSubnet;}
+\DoxyCodeLine{00079\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_currentProgress;}
+\DoxyCodeLine{00080\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_totalHosts;}
+\DoxyCodeLine{00081\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_isScanning;}
+\DoxyCodeLine{00082\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_scanningKnownDevicesOnly;}
+\DoxyCodeLine{00083\ \ \ \ \ QVector<QString>\ m\_pendingHosts;}
+\DoxyCodeLine{00084\ }
+\DoxyCodeLine{00085\ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ QVector<QString>\ SURVEILLANCE\_MAC\_PREFIXES;}
+\DoxyCodeLine{00086\ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ QVector<KnownRaspberryPi>\ KNOWN\_RASPBERRY\_PI;}
+\DoxyCodeLine{00087\ \};}
+
+\end{DoxyCode}

@@ -1,0 +1,58 @@
+\doxysection{temperaturewidget.\+h}
+\hypertarget{temperaturewidget_8h_source}{}\label{temperaturewidget_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QFrame>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QVector>}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{keyword}{class\ }QLabel;}
+\DoxyCodeLine{00007\ \textcolor{keyword}{class\ }QPushButton;}
+\DoxyCodeLine{00008\ \textcolor{keyword}{class\ }QTimer;}
+\DoxyCodeLine{00009\ \textcolor{keyword}{class\ }QWidget;}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{keyword}{class\ }TemperatureWidget\ :\ \textcolor{keyword}{public}\ QFrame}
+\DoxyCodeLine{00012\ \{}
+\DoxyCodeLine{00013\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00014\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keyword}{enum}\ Severity\ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \ \ \ \ Normal,}
+\DoxyCodeLine{00017\ \ \ \ \ \ \ \ \ Warning,}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ Alarm}
+\DoxyCodeLine{00019\ \ \ \ \ \};}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keyword}{explicit}\ TemperatureWidget(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \ \ \ \ QPushButton\ *editButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00024\ \ \ \ \ QPushButton\ *closeButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \ \ \ \ QString\ currentSummary()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{int}\ currentValue()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00028\ \ \ \ \ Severity\ severity()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{void}\ simulateStep();}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{void}\ resetSensor();}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{void}\ setTitle(\textcolor{keyword}{const}\ QString\ \&title);}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{void}\ setResizable(\textcolor{keywordtype}{bool}\ enabled);}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordtype}{void}\ refreshUi();}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{void}\ setSeverity(Severity\ severity);}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \ \ \ \ QPushButton\ *m\_editButton;}
+\DoxyCodeLine{00041\ \ \ \ \ QPushButton\ *m\_closeButton;}
+\DoxyCodeLine{00042\ \ \ \ \ QLabel\ *m\_titleLabel;}
+\DoxyCodeLine{00043\ \ \ \ \ QLabel\ *m\_stateLabel;}
+\DoxyCodeLine{00044\ \ \ \ \ QWidget\ *m\_chart;}
+\DoxyCodeLine{00045\ \ \ \ \ QTimer\ *m\_timer;}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \ \ \ \ QVector<double>\ m\_values;}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_currentValue;}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_peakValue;}
+\DoxyCodeLine{00050\ \ \ \ \ Severity\ m\_severity;}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_warningThreshold;}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_alarmThreshold;}
+\DoxyCodeLine{00053\ \};}
+
+\end{DoxyCode}

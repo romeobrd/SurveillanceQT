@@ -90,6 +90,8 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_reloadButton(nullptr)
     , m_snapshotButton(nullptr)
     , m_fullscreenButton(nullptr)
+    , m_recordButton(nullptr)
+    , m_isRecording(false)
 {
     setObjectName(QStringLiteral("panelCamera"));
     setStyleSheet(
@@ -111,11 +113,12 @@ CameraWidget::CameraWidget(QWidget *parent)
     mainLayout->setSpacing(10);
 
     auto *headerLayout = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("Caméra Salle Serveur"), this);
-    title->setObjectName(QStringLiteral("title"));
-    headerLayout->addWidget(title);
+    m_titleLabel = new QLabel(QStringLiteral("Caméra Salle Serveur"), this);
+    m_titleLabel->setObjectName(QStringLiteral("title"));
+    headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
+    // Bouton édition pour modifier le nom de la caméra
     m_editButton = createToolButton(QStringLiteral("✎"), this);
     m_closeButton = createToolButton(QStringLiteral("✕"), this);
     headerLayout->addWidget(m_editButton);
@@ -123,7 +126,7 @@ CameraWidget::CameraWidget(QWidget *parent)
     mainLayout->addLayout(headerLayout);
 
     auto *viewerContainer = new QWidget(this);
-    viewerContainer->setMinimumHeight(270);
+    viewerContainer->setMinimumHeight(150);
     auto *stack = new QStackedLayout(viewerContainer);
     stack->setStackingMode(QStackedLayout::StackAll);
     stack->setContentsMargins(0, 0, 0, 0);
@@ -147,8 +150,23 @@ CameraWidget::CameraWidget(QWidget *parent)
 
     auto *rightControls = new QHBoxLayout;
     rightControls->setSpacing(6);
+    m_recordButton = createOverlayButton(QStringLiteral("●"), overlay);
+    m_recordButton->setStyleSheet(
+        "QPushButton {"
+        "  color: #ff4444;"
+        "  background: rgba(20, 28, 47, 0.75);"
+        "  border: 1px solid rgba(189, 205, 239, 0.10);"
+        "  border-radius: 5px;"
+        "  font-size: 12px;"
+        "  font-weight: 700;"
+        "}"
+        "QPushButton:hover { background: rgba(41, 58, 92, 0.88); }"
+        "QPushButton:checked { color: #ff0000; background: rgba(255,0,0,0.2); }"
+        );
+    m_recordButton->setCheckable(true);
     m_snapshotButton = createOverlayButton(QStringLiteral("◉"), overlay);
     m_fullscreenButton = createOverlayButton(QStringLiteral("⇲"), overlay);
+    rightControls->addWidget(m_recordButton);
     rightControls->addWidget(m_snapshotButton);
     rightControls->addWidget(m_fullscreenButton);
     bottomLayout->addLayout(rightControls);
@@ -164,6 +182,16 @@ CameraWidget::CameraWidget(QWidget *parent)
 QPushButton *CameraWidget::editButton() const
 {
     return m_editButton;
+}
+
+QPushButton *CameraWidget::recordButton() const
+{
+    return m_recordButton;
+}
+
+bool CameraWidget::isRecording() const
+{
+    return m_isRecording;
 }
 
 QPushButton *CameraWidget::closeButton() const
@@ -203,4 +231,18 @@ bool CameraWidget::reloadFrame()
 
     m_imageLabel->setPixmap(pixmap);
     return true;
+}
+
+void CameraWidget::setTitle(const QString &title)
+{
+    if (m_titleLabel) {
+        m_titleLabel->setText(title);
+    }
+}
+
+void CameraWidget::setResizable(bool enabled)
+{
+    // Pour l'instant, cette méthode ne fait rien
+    // Le redimensionnement sera implémenté différemment
+    Q_UNUSED(enabled)
 }

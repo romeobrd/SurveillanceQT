@@ -1,0 +1,89 @@
+\doxysection{Database\+Manager Class Reference}
+\hypertarget{class_database_manager}{}\label{class_database_manager}\index{DatabaseManager@{DatabaseManager}}
+Inheritance diagram for Database\+Manager:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_database_manager}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Signals}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_database_manager_ad62798346273e4b5bd358af57ea4c1c5}\label{class_database_manager_ad62798346273e4b5bd358af57ea4c1c5} 
+void {\bfseries user\+Authenticated} (const \doxymbox{\hyperlink{struct_user}{User}} \&user)
+\item 
+\Hypertarget{class_database_manager_a4ece24878bf8d7b39b1a78d49314976b}\label{class_database_manager_a4ece24878bf8d7b39b1a78d49314976b} 
+void {\bfseries user\+Logged\+Out} ()
+\item 
+\Hypertarget{class_database_manager_a8b61c76bfadf74819947ef6cb9752172}\label{class_database_manager_a8b61c76bfadf74819947ef6cb9752172} 
+void {\bfseries authentication\+Failed} (const QString \&reason)
+\item 
+\Hypertarget{class_database_manager_a14aa81b61e69adc0348966df7fc39b18}\label{class_database_manager_a14aa81b61e69adc0348966df7fc39b18} 
+void {\bfseries database\+Error} (const QString \&error)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_database_manager_aebfb8cc7427256623ccbe059b30b6450}\label{class_database_manager_aebfb8cc7427256623ccbe059b30b6450} 
+{\bfseries Database\+Manager} (QObject \texorpdfstring{$\ast$}{*}parent=nullptr)
+\item 
+\Hypertarget{class_database_manager_ab4c1d7b625f6511bf5048882778c29cf}\label{class_database_manager_ab4c1d7b625f6511bf5048882778c29cf} 
+bool {\bfseries initialize} ()
+\item 
+\Hypertarget{class_database_manager_a16d9be2703e41512269684ebfa9e8579}\label{class_database_manager_a16d9be2703e41512269684ebfa9e8579} 
+bool {\bfseries is\+Initialized} () const
+\item 
+\Hypertarget{class_database_manager_a4d5550e2f354d4a939f8c1407cb965cf}\label{class_database_manager_a4d5550e2f354d4a939f8c1407cb965cf} 
+bool {\bfseries create\+User} (const QString \&username, const QString \&password, User\+Role role, const QString \&full\+Name=QString(), const QString \&email=QString())
+\item 
+\Hypertarget{class_database_manager_ae6ecb7e58f5230cf50a1cebbf15f4692}\label{class_database_manager_ae6ecb7e58f5230cf50a1cebbf15f4692} 
+bool {\bfseries authenticate\+User} (const QString \&username, const QString \&password)
+\item 
+\Hypertarget{class_database_manager_a8aaedb54b33e12da2ce5de3fc34161c4}\label{class_database_manager_a8aaedb54b33e12da2ce5de3fc34161c4} 
+\doxymbox{\hyperlink{struct_user}{User}} {\bfseries get\+User} (const QString \&username)
+\item 
+\Hypertarget{class_database_manager_a58ce25db030acf2d89224c672cdc18ad}\label{class_database_manager_a58ce25db030acf2d89224c672cdc18ad} 
+\doxymbox{\hyperlink{struct_user}{User}} {\bfseries get\+Current\+User} () const
+\item 
+\Hypertarget{class_database_manager_a4db6e9c8b5c1afe195c39a60ea228037}\label{class_database_manager_a4db6e9c8b5c1afe195c39a60ea228037} 
+bool {\bfseries update\+Last\+Login} (const QString \&username)
+\item 
+\Hypertarget{class_database_manager_aaf085b3772e6614fb916d64e2a9781de}\label{class_database_manager_aaf085b3772e6614fb916d64e2a9781de} 
+bool {\bfseries change\+Password} (const QString \&username, const QString \&old\+Password, const QString \&new\+Password)
+\item 
+\Hypertarget{class_database_manager_a5e61ed287bffe164181295abcbf14fd5}\label{class_database_manager_a5e61ed287bffe164181295abcbf14fd5} 
+bool {\bfseries deactivate\+User} (const QString \&username)
+\item 
+\Hypertarget{class_database_manager_a8eed7f31b092ad9cf3b6105524ded097}\label{class_database_manager_a8eed7f31b092ad9cf3b6105524ded097} 
+QVector$<$ \doxymbox{\hyperlink{struct_user}{User}} $>$ {\bfseries get\+All\+Users} ()
+\item 
+\Hypertarget{class_database_manager_aab65ba691c1d39df590aa390247b814a}\label{class_database_manager_aab65ba691c1d39df590aa390247b814a} 
+void {\bfseries create\+Default\+Users} ()
+\item 
+\Hypertarget{class_database_manager_a8ac440ebea3a8e97fd302d57904e805e}\label{class_database_manager_a8ac440ebea3a8e97fd302d57904e805e} 
+void {\bfseries set\+Current\+User} (const \doxymbox{\hyperlink{struct_user}{User}} \&user)
+\item 
+\Hypertarget{class_database_manager_a448da41b693de2761fa57259c2be832e}\label{class_database_manager_a448da41b693de2761fa57259c2be832e} 
+void {\bfseries clear\+Current\+User} ()
+\item 
+\Hypertarget{class_database_manager_ab14ba18e3b196e17c2a3f7065027ce62}\label{class_database_manager_ab14ba18e3b196e17c2a3f7065027ce62} 
+bool {\bfseries is\+User\+Logged\+In} () const
+\item 
+\Hypertarget{class_database_manager_afcaa8e421fede35d336f0884f89a1017}\label{class_database_manager_afcaa8e421fede35d336f0884f89a1017} 
+bool {\bfseries log\+Action} (const QString \&username, const QString \&action, const QString \&details=QString())
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_database_manager_abd09241fda97f8731f94549610923869}\label{class_database_manager_abd09241fda97f8731f94549610923869} 
+static QString {\bfseries role\+To\+String} (User\+Role role)
+\item 
+\Hypertarget{class_database_manager_a7f6466735cd1d55493bffb2a8e68f8af}\label{class_database_manager_a7f6466735cd1d55493bffb2a8e68f8af} 
+static User\+Role {\bfseries string\+To\+Role} (const QString \&role)
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+databasemanager.\+h\item 
+databasemanager.\+cpp\end{DoxyCompactItemize}

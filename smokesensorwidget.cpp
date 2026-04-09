@@ -38,7 +38,7 @@ public:
     explicit SmokeChartWidget(QWidget *parent = nullptr)
         : QWidget(parent)
     {
-        setMinimumHeight(220);
+        setMinimumHeight(80);
     }
 
     void setValues(const QVector<double> &values)
@@ -48,6 +48,12 @@ public:
     }
 
 protected:
+    void resizeEvent(QResizeEvent *event) override
+    {
+        QWidget::resizeEvent(event);
+        update();  // Forcer le redessin quand on redimensionne
+    }
+
     void paintEvent(QPaintEvent *) override
     {
         const QVector<double> values = m_values.isEmpty()
@@ -188,10 +194,10 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(8);
 
-    auto *title = new QLabel(QStringLiteral("Niveau de Fumée"), this);
-    title->setObjectName(QStringLiteral("title"));
+    m_titleLabel = new QLabel(QStringLiteral("Niveau de Fumée"), this);
+    m_titleLabel->setObjectName(QStringLiteral("title"));
 
-    headerLayout->addWidget(title);
+    headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
     m_editButton = createToolButton(QStringLiteral("✎"), this);
@@ -216,10 +222,11 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
 
     auto *chart = new SmokeChartWidget(this);
     m_chart = chart;
+    chart->setMinimumHeight(100);
 
     mainLayout->addLayout(headerLayout);
     mainLayout->addLayout(subHeaderLayout);
-    mainLayout->addWidget(chart, 1);
+    mainLayout->addWidget(chart, 1);  // Le 1 fait que le chart prend tout l'espace disponible
 
     QObject::connect(m_timer, &QTimer::timeout, this, [this]() {
         simulateStep();
@@ -353,4 +360,18 @@ void SmokeSensorWidget::refreshUi()
 void SmokeSensorWidget::setSeverity(SmokeSensorWidget::Severity severity)
 {
     m_severity = severity;
+}
+
+void SmokeSensorWidget::setTitle(const QString &title)
+{
+    if (m_titleLabel) {
+        m_titleLabel->setText(title);
+    }
+}
+
+void SmokeSensorWidget::setResizable(bool enabled)
+{
+    // Pour l'instant, cette méthode ne fait rien
+    // Le redimensionnement sera implémenté différemment
+    Q_UNUSED(enabled)
 }

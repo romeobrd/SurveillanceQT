@@ -1,0 +1,57 @@
+\doxysection{Resize\+Handle Class Reference}
+\hypertarget{class_resize_handle}{}\label{class_resize_handle}\index{ResizeHandle@{ResizeHandle}}
+Inheritance diagram for Resize\+Handle:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_resize_handle}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_resize_handle_a3ab37cb029ac5dc1cc23f2ab576c68bc}\label{class_resize_handle_a3ab37cb029ac5dc1cc23f2ab576c68bc} 
+enum {\bfseries Position} \{ {\bfseries Top\+Left}
+, {\bfseries Top\+Right}
+, {\bfseries Bottom\+Left}
+, {\bfseries Bottom\+Right}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Signals}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_resize_handle_ada9b3f923cb9517c7342d4d2e8cff5da}\label{class_resize_handle_ada9b3f923cb9517c7342d4d2e8cff5da} 
+void {\bfseries resize\+Started} ()
+\item 
+\Hypertarget{class_resize_handle_acd97fd843604fd43ecc481ae37095cd8}\label{class_resize_handle_acd97fd843604fd43ecc481ae37095cd8} 
+void {\bfseries resize\+Moved} (const QPoint \&delta)
+\item 
+\Hypertarget{class_resize_handle_a03c678eac47d3e2067d67593d7564326}\label{class_resize_handle_a03c678eac47d3e2067d67593d7564326} 
+void {\bfseries resize\+Finished} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_resize_handle_a4de52182864f7045c90e6d3d21efa9a4}\label{class_resize_handle_a4de52182864f7045c90e6d3d21efa9a4} 
+{\bfseries Resize\+Handle} (Position pos, QWidget \texorpdfstring{$\ast$}{*}parent=nullptr)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_resize_handle_a48f9ce513256ca92b6a71e3ef3c02682}\label{class_resize_handle_a48f9ce513256ca92b6a71e3ef3c02682} 
+void {\bfseries mouse\+Press\+Event} (QMouse\+Event \texorpdfstring{$\ast$}{*}event) override
+\item 
+\Hypertarget{class_resize_handle_a39c9e40ed9dd2111def72b85de867721}\label{class_resize_handle_a39c9e40ed9dd2111def72b85de867721} 
+void {\bfseries mouse\+Move\+Event} (QMouse\+Event \texorpdfstring{$\ast$}{*}event) override
+\item 
+\Hypertarget{class_resize_handle_a4cab4f0746f385d530f884065f050ee9}\label{class_resize_handle_a4cab4f0746f385d530f884065f050ee9} 
+void {\bfseries mouse\+Release\+Event} (QMouse\+Event \texorpdfstring{$\ast$}{*}event) override
+\item 
+\Hypertarget{class_resize_handle_a6a961e70576571747cc9b2f892dd0b22}\label{class_resize_handle_a6a961e70576571747cc9b2f892dd0b22} 
+void {\bfseries paint\+Event} (QPaint\+Event \texorpdfstring{$\ast$}{*}event) override
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+resizehandle.\+h\item 
+resizehandle.\+cpp\end{DoxyCompactItemize}

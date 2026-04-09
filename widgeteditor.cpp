@@ -9,11 +9,12 @@
 #include <QPushButton>
 #include <QDialogButtonBox>
 
-WidgetEditor::WidgetEditor(const WidgetConfig &config, QWidget *parent)
+WidgetEditor::WidgetEditor(const WidgetConfig &config, QWidget *parent, bool cameraMode)
     : QDialog(parent)
     , m_originalConfig(config)
+    , m_cameraMode(cameraMode)
 {
-    setWindowTitle(QStringLiteral("✏️ Éditer le Widget"));
+    setWindowTitle(cameraMode ? QStringLiteral("✏️ Éditer la Caméra") : QStringLiteral("✏️ Éditer le Widget"));
     setMinimumWidth(400);
     setupUi();
 
@@ -22,6 +23,11 @@ WidgetEditor::WidgetEditor(const WidgetConfig &config, QWidget *parent)
     m_warningSpin->setValue(config.warningThreshold);
     m_alarmSpin->setValue(config.alarmThreshold);
     m_unitEdit->setText(config.unit);
+
+    // En mode caméra, cacher les seuils et unité
+    if (m_cameraMode) {
+        m_thresholdGroup->hide();
+    }
 }
 
 void WidgetEditor::setupUi()
@@ -60,30 +66,42 @@ void WidgetEditor::setupUi()
     formLayout->addRow(QStringLiteral("Nom:"), m_nameEdit);
 
     m_typeCombo = new QComboBox(this);
-    m_typeCombo->addItems({
-        QStringLiteral("Fumée MQ-2"),
-        QStringLiteral("Température DHT22"),
-        QStringLiteral("Humidité DHT22"),
-        QStringLiteral("CO2 PIM480"),
-        QStringLiteral("VOC PIM480"),
-        QStringLiteral("Caméra"),
-        QStringLiteral("Radiation")
-    });
+    if (m_cameraMode) {
+        m_typeCombo->addItem(QStringLiteral("Caméra"));
+        m_typeCombo->setEnabled(false);  // Type fixe pour caméra
+    } else {
+        m_typeCombo->addItems({
+            QStringLiteral("Fumée MQ-2"),
+            QStringLiteral("Température DHT22"),
+            QStringLiteral("Humidité DHT22"),
+            QStringLiteral("CO2 PIM480"),
+            QStringLiteral("VOC PIM480"),
+            QStringLiteral("Caméra")
+        });
+    }
     formLayout->addRow(QStringLiteral("Type:"), m_typeCombo);
 
-    m_warningSpin = new QSpinBox(this);
+    // Groupe des seuils (caché en mode caméra)
+    m_thresholdGroup = new QWidget(this);
+    auto *thresholdLayout = new QFormLayout(m_thresholdGroup);
+    thresholdLayout->setSpacing(12);
+    thresholdLayout->setContentsMargins(0, 0, 0, 0);
+
+    m_warningSpin = new QSpinBox(m_thresholdGroup);
     m_warningSpin->setRange(0, 9999);
     m_warningSpin->setSuffix(QStringLiteral(" (seuil avertissement)"));
-    formLayout->addRow(QStringLiteral("Seuil Warning:"), m_warningSpin);
+    thresholdLayout->addRow(QStringLiteral("Seuil Warning:"), m_warningSpin);
 
-    m_alarmSpin = new QSpinBox(this);
+    m_alarmSpin = new QSpinBox(m_thresholdGroup);
     m_alarmSpin->setRange(0, 9999);
     m_alarmSpin->setSuffix(QStringLiteral(" (seuil alarme)"));
-    formLayout->addRow(QStringLiteral("Seuil Alarme:"), m_alarmSpin);
+    thresholdLayout->addRow(QStringLiteral("Seuil Alarme:"), m_alarmSpin);
 
-    m_unitEdit = new QLineEdit(this);
+    m_unitEdit = new QLineEdit(m_thresholdGroup);
     m_unitEdit->setPlaceholderText(QStringLiteral("°C, %, ppm, etc."));
-    formLayout->addRow(QStringLiteral("Unité:"), m_unitEdit);
+    thresholdLayout->addRow(QStringLiteral("Unité:"), m_unitEdit);
+
+    formLayout->addRow(m_thresholdGroup);
 
     layout->addLayout(formLayout);
     layout->addStretch();

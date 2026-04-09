@@ -1,0 +1,77 @@
+\doxysection{Raspberry\+Manager Class Reference}
+\hypertarget{class_raspberry_manager}{}\label{class_raspberry_manager}\index{RaspberryManager@{RaspberryManager}}
+Inheritance diagram for Raspberry\+Manager:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_raspberry_manager}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Signals}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_raspberry_manager_aa4cdb41849e33baf56ff1d9899bae01d}\label{class_raspberry_manager_aa4cdb41849e33baf56ff1d9899bae01d} 
+void {\bfseries configuration\+Loaded} ()
+\item 
+\Hypertarget{class_raspberry_manager_a6ae9fed94811489df8a3ce02ca2c8342}\label{class_raspberry_manager_a6ae9fed94811489df8a3ce02ca2c8342} 
+void {\bfseries configuration\+Error} (const QString \&error)
+\item 
+\Hypertarget{class_raspberry_manager_a1c3c3c6f08112166eb3e4bb93bba6a27}\label{class_raspberry_manager_a1c3c3c6f08112166eb3e4bb93bba6a27} 
+void {\bfseries node\+Status\+Changed} (const QString \&node\+Id, bool online)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_raspberry_manager_a821e245cf2736bd881293dbcfcdb6008}\label{class_raspberry_manager_a821e245cf2736bd881293dbcfcdb6008} 
+{\bfseries Raspberry\+Manager} (QObject \texorpdfstring{$\ast$}{*}parent=nullptr)
+\item 
+\Hypertarget{class_raspberry_manager_af9ad983e86a380114fece177e18973c1}\label{class_raspberry_manager_af9ad983e86a380114fece177e18973c1} 
+bool {\bfseries load\+Configuration} (const QString \&file\+Path=QString())
+\item 
+\Hypertarget{class_raspberry_manager_a45c7aec514f5d427c09c3e2a79ce3403}\label{class_raspberry_manager_a45c7aec514f5d427c09c3e2a79ce3403} 
+bool {\bfseries save\+Configuration} (const QString \&file\+Path=QString())
+\item 
+\Hypertarget{class_raspberry_manager_ab925646be6fc8a2c94388be4672f781a}\label{class_raspberry_manager_ab925646be6fc8a2c94388be4672f781a} 
+QVector$<$ \doxymbox{\hyperlink{struct_raspberry_node}{Raspberry\+Node}} $>$ {\bfseries nodes} () const
+\item 
+\Hypertarget{class_raspberry_manager_acca0beec285c22ffd3a37a381b4a3fe6}\label{class_raspberry_manager_acca0beec285c22ffd3a37a381b4a3fe6} 
+\doxymbox{\hyperlink{struct_raspberry_node}{Raspberry\+Node}} {\bfseries node\+By\+Id} (const QString \&id) const
+\item 
+\Hypertarget{class_raspberry_manager_a46bba96149049e6bfbf3b20fb48216a0}\label{class_raspberry_manager_a46bba96149049e6bfbf3b20fb48216a0} 
+\doxymbox{\hyperlink{struct_raspberry_node}{Raspberry\+Node}} {\bfseries node\+By\+Ip} (const QString \&ip) const
+\item 
+\Hypertarget{class_raspberry_manager_a1cf99ab8a8c4b245d04c9983fe5310e9}\label{class_raspberry_manager_a1cf99ab8a8c4b245d04c9983fe5310e9} 
+\doxymbox{\hyperlink{struct_broker_config}{Broker\+Config}} {\bfseries broker\+Config} () const
+\item 
+\Hypertarget{class_raspberry_manager_a496510fd9b616a4aa13c40eb240274ab}\label{class_raspberry_manager_a496510fd9b616a4aa13c40eb240274ab} 
+\doxymbox{\hyperlink{struct_app_config}{App\+Config}} {\bfseries app\+Config} () const
+\item 
+\Hypertarget{class_raspberry_manager_ac32e05baea231b9cc927ea06198a6324}\label{class_raspberry_manager_ac32e05baea231b9cc927ea06198a6324} 
+void {\bfseries add\+Node} (const \doxymbox{\hyperlink{struct_raspberry_node}{Raspberry\+Node}} \&node)
+\item 
+\Hypertarget{class_raspberry_manager_ad73395d349560406f78f93edc0e3cb54}\label{class_raspberry_manager_ad73395d349560406f78f93edc0e3cb54} 
+void {\bfseries update\+Node} (const QString \&id, const \doxymbox{\hyperlink{struct_raspberry_node}{Raspberry\+Node}} \&node)
+\item 
+\Hypertarget{class_raspberry_manager_a8333e8ffad4bdaf8485b095da62f1a83}\label{class_raspberry_manager_a8333e8ffad4bdaf8485b095da62f1a83} 
+void {\bfseries remove\+Node} (const QString \&id)
+\item 
+\Hypertarget{class_raspberry_manager_a66b2f92bd61f4bd48b41dbd08af36efd}\label{class_raspberry_manager_a66b2f92bd61f4bd48b41dbd08af36efd} 
+void {\bfseries set\+Node\+Online} (const QString \&id, bool online)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_raspberry_manager_ae19d9799bafb15942ae6d13ede476c6a}\label{class_raspberry_manager_ae19d9799bafb15942ae6d13ede476c6a} 
+static QString {\bfseries default\+Config\+Path} ()
+\item 
+\Hypertarget{class_raspberry_manager_ac7eb967a904b2f6cf0c19c367b93ed12}\label{class_raspberry_manager_ac7eb967a904b2f6cf0c19c367b93ed12} 
+static Sensor\+Type {\bfseries sensor\+Type\+From\+String} (const QString \&type)
+\item 
+\Hypertarget{class_raspberry_manager_ab2333464481cb14a2b55ee3a523c47d4}\label{class_raspberry_manager_ab2333464481cb14a2b55ee3a523c47d4} 
+static QString {\bfseries sensor\+Type\+To\+String} (Sensor\+Type type)
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+raspberrymanager.\+h\item 
+raspberrymanager.\+cpp\end{DoxyCompactItemize}

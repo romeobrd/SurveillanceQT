@@ -7,9 +7,9 @@ class QLabel;
 class QPushButton;
 class QTimer;
 class QWidget;
-
 class SmokeSensorWidget : public QFrame
 {
+    Q_OBJECT
 public:
     enum Severity {
         Normal,
@@ -28,6 +28,9 @@ public:
 
     void simulateStep();
     void resetSensor();
+    void setTitle(const QString &title);
+
+    void setResizable(bool enabled);
 
 private:
     void refreshUi();
@@ -35,6 +38,7 @@ private:
 
     QPushButton *m_editButton;
     QPushButton *m_closeButton;
+    QLabel *m_titleLabel;
     QLabel *m_stateLabel;
     QWidget *m_chart;
     QTimer *m_timer;

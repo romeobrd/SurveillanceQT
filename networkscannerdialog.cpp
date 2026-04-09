@@ -50,7 +50,7 @@ void NetworkScannerDialog::displayKnownRaspberryPiList()
 
     for (const auto &rpi : knownRpi) {
         auto *item = new QListWidgetItem();
-        item->setText(QStringLiteral("🍓 %1 | %2 | En attente de scan...")
+        item->setText(QStringLiteral(" %1 | %2 | En attente de scan...")
                       .arg(rpi.name, rpi.ipAddress));
         item->setData(Qt::UserRole, rpi.ipAddress);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -109,7 +109,7 @@ void NetworkScannerDialog::setupUi()
         "QCheckBox::indicator { width: 18px; height: 18px; }"
         );
 
-    auto *headerLabel = new QLabel(QStringLiteral("🔍 Scanner les modules de surveillance sur le réseau"), this);
+    auto *headerLabel = new QLabel(QStringLiteral("Scanner les modules de surveillance sur le réseau"), this);
     headerLabel->setStyleSheet("font-size: 18px; font-weight: 700; color: #4a90d9; margin-bottom: 10px;");
     mainLayout->addWidget(headerLabel);
 
@@ -185,7 +185,7 @@ void NetworkScannerDialog::setupUi()
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
     buttonLayout->addWidget(cancelButton);
 
-    m_connectButton = new QPushButton(QStringLiteral("🔗 Connecter les modules sélectionnés"), this);
+    m_connectButton = new QPushButton(QStringLiteral(" Connecter les modules sélectionnés"), this);
     m_connectButton->setEnabled(false);
     m_connectButton->setCursor(Qt::PointingHandCursor);
     m_connectButton->setMinimumWidth(250);
@@ -213,7 +213,7 @@ void NetworkScannerDialog::onScanClicked()
     m_selectAllButton->setEnabled(false);
     m_deselectAllButton->setEnabled(false);
 
-    m_scanButton->setText(QStringLiteral("⏹ Arrêter"));
+    m_scanButton->setText(QStringLiteral("Arrêter"));
     m_statusLabel->setText(QStringLiteral("Scan des Raspberry Pi en cours..."));
     m_statusLabel->setStyleSheet("color: #f39c12; font-weight: 600;");
 
@@ -342,9 +342,9 @@ void NetworkScannerDialog::onDeviceItemChanged(QListWidgetItem *item)
 
     m_connectButton->setEnabled(selectedCount > 0);
     if (selectedCount > 0) {
-        m_connectButton->setText(QStringLiteral("🔗 Connecter %1 module(s)").arg(selectedCount));
+        m_connectButton->setText(QStringLiteral(" Connecter %1 module(s)").arg(selectedCount));
     } else {
-        m_connectButton->setText(QStringLiteral("🔗 Connecter les modules sélectionnés"));
+        m_connectButton->setText(QStringLiteral("Connecter les modules sélectionnés"));
     }
 }
 
@@ -416,13 +416,13 @@ QString NetworkScannerDialog::formatDeviceInfo(const NetworkDevice &device) cons
 QString NetworkScannerDialog::getSignalIcon(int rssi) const
 {
     if (rssi > -50) {
-        return QStringLiteral("📶");
+        return QStringLiteral("");
     } else if (rssi > -65) {
-        return QStringLiteral("📶");
+        return QStringLiteral("");
     } else if (rssi > -80) {
-        return QStringLiteral("📶");
+        return QStringLiteral("");
     } else {
-        return QStringLiteral("📶");
+        return QStringLiteral("");
     }
 }
 

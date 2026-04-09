@@ -257,7 +257,7 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
                 device.ipAddress = ip;
                 device.macAddress = QStringLiteral("En attente ARP...");
                 device.hostname = rpiInfo.name;
-                device.deviceType = QStringLiteral("🍓 %1").arg(rpiInfo.expectedType);
+                device.deviceType = QStringLiteral(" %1").arg(rpiInfo.expectedType);
                 device.description = rpiInfo.description;
                 device.isOnline = true;
                 device.rssi = -50;

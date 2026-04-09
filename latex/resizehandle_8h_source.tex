@@ -1,0 +1,38 @@
+\doxysection{resizehandle.\+h}
+\hypertarget{resizehandle_8h_source}{}\label{resizehandle_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QMouseEvent>}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{keyword}{class\ }ResizeHandle\ :\ \textcolor{keyword}{public}\ QWidget\ \{}
+\DoxyCodeLine{00007\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00010\ \ \ \ \ \textcolor{keyword}{enum}\ Position\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ \ \ \ \ TopLeft,\ TopRight,\ BottomLeft,\ BottomRight}
+\DoxyCodeLine{00012\ \ \ \ \ \};}
+\DoxyCodeLine{00013\ \ \ \ \ Q\_ENUM(Position)}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keyword}{explicit}\ ResizeHandle(Position\ pos,\ QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ signals:}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordtype}{void}\ resizeStarted();}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordtype}{void}\ resizeMoved(\textcolor{keyword}{const}\ QPoint\ \&delta);}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordtype}{void}\ resizeFinished();}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \textcolor{keyword}{protected}:}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keywordtype}{void}\ mousePressEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keywordtype}{void}\ mouseMoveEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{keywordtype}{void}\ mouseReleaseEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{void}\ paintEvent(QPaintEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00029\ \ \ \ \ Position\ m\_position;}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_resizing;}
+\DoxyCodeLine{00031\ \ \ \ \ QPoint\ m\_startPos;}
+\DoxyCodeLine{00032\ \ \ \ \ QSize\ m\_startSize;}
+\DoxyCodeLine{00033\ \};}
+
+\end{DoxyCode}

@@ -21,7 +21,7 @@ class WidgetEditor : public QDialog {
     Q_OBJECT
 
 public:
-    explicit WidgetEditor(const WidgetConfig &config, QWidget *parent = nullptr);
+    explicit WidgetEditor(const WidgetConfig &config, QWidget *parent = nullptr, bool cameraMode = false);
 
     WidgetConfig getConfig() const;
 
@@ -33,6 +33,8 @@ private:
     QSpinBox *m_warningSpin;
     QSpinBox *m_alarmSpin;
     QLineEdit *m_unitEdit;
+    QWidget *m_thresholdGroup;
 
     WidgetConfig m_originalConfig;
+    bool m_cameraMode;
 };
