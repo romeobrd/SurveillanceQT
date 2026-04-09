@@ -27,7 +27,7 @@ NetworkScannerDialog::NetworkScannerDialog(QWidget *parent)
     , m_surveillanceModuleCount(0)
 {
     setWindowTitle(QStringLiteral("Scanner Réseau - Raspberry Pi Dédiés"));
-    setMinimumSize(700, 500);
+    setMinimumSize(600, 450);
     setupUi();
 
     connect(m_arpScanner, &ArpScanner::deviceFound,

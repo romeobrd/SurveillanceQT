@@ -164,18 +164,18 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     m_sensorContainer = new QWidget(bodyArea);
     m_sensorContainer->setObjectName(QStringLiteral("sensorContainer"));
 
-    // Capteurs fixes - positions initiales absolues
+    // Capteurs fixes - positions initiales absolues (adapté 800x600)
     m_smokeWidget->setParent(m_sensorContainer);
-    m_smokeWidget->move(20, 20);
-    m_smokeWidget->resize(350, 250);
+    m_smokeWidget->move(15, 15);
+    m_smokeWidget->resize(260, 180);
 
     m_temperatureWidget->setParent(m_sensorContainer);
-    m_temperatureWidget->move(20, 290);
-    m_temperatureWidget->resize(350, 250);
+    m_temperatureWidget->move(15, 210);
+    m_temperatureWidget->resize(260, 180);
 
     m_cameraWidget->setParent(m_sensorContainer);
-    m_cameraWidget->move(390, 20);
-    m_cameraWidget->resize(450, 520);
+    m_cameraWidget->move(295, 15);
+    m_cameraWidget->resize(320, 240);
 
     // Activer le déplacement pour tous les widgets
     enableWidgetDragging(m_smokeWidget);
