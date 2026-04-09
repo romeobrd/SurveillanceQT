@@ -133,13 +133,13 @@ DashboardWindow::DashboardWindow(QWidget *parent)
         );
 
     auto *chromeLayout = new QVBoxLayout(this);
-    chromeLayout->setContentsMargins(24, 24, 24, 24);
+    chromeLayout->setContentsMargins(12, 12, 12, 12);
     chromeLayout->setSpacing(0);
 
     auto *chrome = new QWidget(this);
     chrome->setObjectName(QStringLiteral("chrome"));
     auto *chromeInner = new QVBoxLayout(chrome);
-    chromeInner->setContentsMargins(28, 20, 28, 26);
+    chromeInner->setContentsMargins(14, 10, 14, 12);
     chromeInner->setSpacing(0);
 
     auto *rootPanel = new QWidget(chrome);
@@ -153,8 +153,8 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     auto *bodyArea = new QWidget(rootPanel);
     bodyArea->setObjectName(QStringLiteral("bodyArea"));
     auto *bodyLayout = new QVBoxLayout(bodyArea);
-    bodyLayout->setContentsMargins(24, 18, 24, 10);
-    bodyLayout->setSpacing(14);
+    bodyLayout->setContentsMargins(12, 10, 12, 6);
+    bodyLayout->setSpacing(8);
 
     auto *contentLayout = new QHBoxLayout;
     contentLayout->setContentsMargins(0, 0, 0, 0);
@@ -376,7 +376,7 @@ QWidget *DashboardWindow::createBottomBar()
 {
     auto *bottomBar = new QFrame(this);
     bottomBar->setObjectName(QStringLiteral("bottomBar"));
-    bottomBar->setFixedHeight(50);
+    bottomBar->setFixedHeight(42);
 
     auto *layout = new QHBoxLayout(bottomBar);
     layout->setContentsMargins(18, 0, 18, 0);
