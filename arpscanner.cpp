@@ -237,12 +237,6 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
         QProcess *pingProcess = new QProcess(this);
         pingProcess->setProperty("ip", ip);
 
-#ifdef Q_OS_WIN
-        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "1000" << ip);
-#else
-        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "2" << ip);
-#endif
-
         connect(pingProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this, [this, pingProcess](int exitCode, QProcess::ExitStatus) {
             QString ip = pingProcess->property("ip").toString();
@@ -269,6 +263,18 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
                 }
             }
         });
+
+        connect(pingProcess, &QProcess::errorOccurred,
+                this, [this, pingProcess](QProcess::ProcessError) {
+            pingProcess->deleteLater();
+            m_currentProgress++;
+        });
+
+#ifdef Q_OS_WIN
+        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "1000" << ip);
+#else
+        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "2" << ip);
+#endif
     }
 }
 
@@ -388,17 +394,23 @@ void ArpScanner::pingSweep(const QString &subnet)
         QProcess *pingProcess = new QProcess(this);
         pingProcess->setProperty("ip", ip);
 
-#ifdef Q_OS_WIN
-        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "500" << ip);
-#else
-        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "1" << ip);
-#endif
-
         connect(pingProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this, [this, pingProcess](int, QProcess::ExitStatus) {
             pingProcess->deleteLater();
             m_currentProgress++;
         });
+
+        connect(pingProcess, &QProcess::errorOccurred,
+                this, [this, pingProcess](QProcess::ProcessError) {
+            pingProcess->deleteLater();
+            m_currentProgress++;
+        });
+
+#ifdef Q_OS_WIN
+        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "500" << ip);
+#else
+        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "1" << ip);
+#endif
     }
 }
 
