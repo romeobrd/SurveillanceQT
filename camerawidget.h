@@ -3,6 +3,7 @@
 #include <QFrame>
 #include <QTimer>
 #include <QUrl>
+#include <QProcess>
 
 class QLabel;
 class QPushButton;
@@ -35,6 +36,9 @@ public:
     void setTitle(const QString &title);
     void setResizable(bool enabled);
 
+signals:
+    void streamError(const QString &error);
+
 private slots:
     void onPlayerStatusChanged();
     void onPlayerError();
@@ -42,6 +46,10 @@ private slots:
 
 private:
     void setStatus(const QString &text, const QString &color);
+    void tryExternalPlayer();
+    void onExternalPlayerFinished(int exitCode, QProcess::ExitStatus status);
+    void onExternalPlayerError(QProcess::ProcessError error);
+    bool checkGstreamerHlsSupport() const;
 
     QMediaPlayer   *m_player;
     QVideoWidget   *m_videoWidget;
@@ -58,4 +66,7 @@ private:
     QString         m_streamUrl;
     QTimer         *m_reconnectTimer;
     int             m_reconnectAttempts;
+    QProcess       *m_externalPlayer;
+    bool            m_useExternalPlayer;
+    int             m_consecutiveErrors;
 };

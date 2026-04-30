@@ -2,6 +2,7 @@
 
 #include "arpscanner.h"
 #include "databasemanager.h"
+#include "sensordatabroker.h"
 
 #include <QPoint>
 #include <QWidget>
@@ -54,6 +55,7 @@ private:
     void updateBottomStatus();
     void showCameraFullscreen();
     void setupNetworkFeatures();
+    void setupMqttBroker();
     void setupWidgetEditButtons();
     void addSensorToGrid(QWidget *widget, int rowSpan = 1, int colSpan = 1);
     void setWidgetSize(QWidget *widget, const QSize &size);
@@ -77,6 +79,7 @@ private:
     QLabel *m_defaultValueLabel;
 
     QLabel *m_networkStatusLabel;
+    QLabel *m_mqttStatusLabel;
     QPushButton *m_scanNetworkButton;
     QPushButton *m_logoutButton;
 
@@ -86,13 +89,16 @@ private:
 
     QVector<NetworkDevice> m_connectedDevices;
 
+    // Dynamic sensor container (positionnement absolu)
+    QWidget *m_sensorContainer;
+    QVector<QWidget*> m_dynamicSensors;
+
+    // MQTT broker
+    SensorDataBroker *m_broker;
+
     // Authentication
     DatabaseManager *m_dbManager;
     User m_currentUser;
     QWidget *m_lockOverlay;
     bool m_isAuthenticated;
-
-    // Dynamic sensor container (positionnement absolu)
-    QWidget *m_sensorContainer;
-    QVector<QWidget*> m_dynamicSensors;
 };

@@ -30,6 +30,7 @@ public:
     void simulateStep();
     void resetSensor();
     void setTitle(const QString &title);
+    void updateValue(double value, const QString &unit);
 
     void setResizable(bool enabled);
 

@@ -6,10 +6,18 @@
 #include <QMediaPlayer>
 #include <QPixmap>
 #include <QPushButton>
+#include <QProcess>
+#include <QRandomGenerator>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QVideoWidget>
+
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QFileInfo>
+#endif
 
 namespace {
 
@@ -68,6 +76,9 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_streamUrl(QStringLiteral("http://200.26.16.180:8888/rascam/index.m3u8"))
     , m_reconnectTimer(new QTimer(this))
     , m_reconnectAttempts(0)
+    , m_externalPlayer(nullptr)
+    , m_useExternalPlayer(false)
+    , m_consecutiveErrors(0)
 {
     setObjectName(QStringLiteral("panelCamera"));
     setStyleSheet(
@@ -79,6 +90,14 @@ CameraWidget::CameraWidget(QWidget *parent)
         "QLabel { color: #eff4ff; }"
         "QLabel#title { font-size: 18px; font-weight: 700; }"
         );
+
+    // On Linux, check if GStreamer has HLS support; if not, use external player
+#ifdef Q_OS_LINUX
+    if (!checkGstreamerHlsSupport()) {
+        m_useExternalPlayer = true;
+        setStatus(QStringLiteral("⚠ GStreamer HLS manquant — mode externe"), QStringLiteral("#f0c040"));
+    }
+#endif
 
     m_reconnectTimer->setSingleShot(true);
     connect(m_reconnectTimer, &QTimer::timeout, this, &CameraWidget::onReconnectTimer);
@@ -227,6 +246,12 @@ void CameraWidget::startStream()
     m_reconnectTimer->stop();
     setStatus(QStringLiteral("⏳ Connexion…"), QStringLiteral("#f0c040"));
 
+    // On Linux with missing GStreamer HLS, use external player fallback
+    if (m_useExternalPlayer) {
+        tryExternalPlayer();
+        return;
+    }
+
     m_player->setSource(QUrl(m_streamUrl));
     m_player->play();
 }
@@ -235,7 +260,18 @@ void CameraWidget::stopStream()
 {
     m_streamActive = false;
     m_reconnectAttempts = 0;
+    m_consecutiveErrors = 0;
     m_reconnectTimer->stop();
+
+    // Stop external player if running
+    if (m_externalPlayer) {
+        m_externalPlayer->terminate();
+        m_externalPlayer->waitForFinished(3000);
+        if (m_externalPlayer->state() != QProcess::NotRunning) {
+            m_externalPlayer->kill();
+        }
+    }
+
     m_player->stop();
     m_player->setSource(QUrl());
     setStatus(QStringLiteral("⏸ Arrêté"), QStringLiteral("#9caac4"));
@@ -280,7 +316,21 @@ void CameraWidget::onPlayerError()
         return;
     }
 
-    setStatus(QStringLiteral("❌ ") + m_player->errorString(), QStringLiteral("#ff6666"));
+    m_consecutiveErrors++;
+    QString errorMsg = m_player->errorString();
+
+    setStatus(QStringLiteral("❌ ") + errorMsg, QStringLiteral("#ff6666"));
+    emit streamError(errorMsg);
+
+    // On Linux, if GStreamer fails repeatedly, switch to external player
+#ifdef Q_OS_LINUX
+    if (m_consecutiveErrors >= 3 && !m_useExternalPlayer) {
+        m_useExternalPlayer = true;
+        setStatus(QStringLiteral("↺ Bascule vers lecteur externe…"), QStringLiteral("#f0c040"));
+        tryExternalPlayer();
+        return;
+    }
+#endif
 
     m_reconnectAttempts++;
     int delayMs = qMin(5000 * m_reconnectAttempts, 30000);
@@ -351,3 +401,152 @@ QPushButton *CameraWidget::snapshotButton()   const { return m_snapshotButton;  
 QPushButton *CameraWidget::fullscreenButton() const { return m_fullscreenButton;}
 QPushButton *CameraWidget::recordButton()     const { return m_recordButton;    }
 bool         CameraWidget::isRecording()      const { return m_isRecording;     }
+
+// ── Linux GStreamer HLS detection ────────────────────────────────────────────
+
+bool CameraWidget::checkGstreamerHlsSupport() const
+{
+#ifdef Q_OS_LINUX
+    // Check if gst-plugins-bad is installed by looking for the hlsdemux element
+    QProcess gstCheck;
+    gstCheck.start(QStringLiteral("gst-inspect-1.0"),
+                   QStringList{QStringLiteral("hlsdemux")});
+    gstCheck.waitForFinished(5000);
+    if (gstCheck.exitCode() != 0) {
+        return false;  // hlsdemux not found
+    }
+
+    // Also check for the adaptive demuxer used by playbin
+    gstCheck.start(QStringLiteral("gst-inspect-1.0"),
+                   QStringList{QStringLiteral("adaptivedemux2")});
+    gstCheck.waitForFinished(5000);
+    if (gstCheck.exitCode() != 0) {
+        // Try the older name
+        gstCheck.start(QStringLiteral("gst-inspect-1.0"),
+                       QStringList{QStringLiteral("adaptivedemux")});
+        gstCheck.waitForFinished(5000);
+        if (gstCheck.exitCode() != 0) {
+            return false;
+        }
+    }
+
+    return true;
+#else
+    return true;  // Non-Linux platforms use their native media backends
+#endif
+}
+
+// ── External player fallback (Linux) ─────────────────────────────────────────
+
+void CameraWidget::tryExternalPlayer()
+{
+    // Stop any existing external player
+    if (m_externalPlayer) {
+        m_externalPlayer->terminate();
+        m_externalPlayer->waitForFinished(2000);
+        if (m_externalPlayer->state() != QProcess::NotRunning) {
+            m_externalPlayer->kill();
+        }
+        m_externalPlayer->deleteLater();
+        m_externalPlayer = nullptr;
+    }
+
+    // Try to find an available external player
+    static const QStringList players = {
+        QStringLiteral("vlc"),
+        QStringLiteral("ffplay"),
+        QStringLiteral("mpv")
+    };
+
+    QString foundPlayer;
+    for (const QString &player : players) {
+        QProcess whichCheck;
+        whichCheck.start(QStringLiteral("which"), QStringList{player});
+        whichCheck.waitForFinished(3000);
+        if (whichCheck.exitCode() == 0) {
+            foundPlayer = player;
+            break;
+        }
+    }
+
+    if (foundPlayer.isEmpty()) {
+        QString msg = QStringLiteral("❌ Aucun lecteur externe trouvé (vlc, ffplay, mpv). "
+                                     "Installez: sudo apt install vlc ou sudo apt install ffmpeg");
+        setStatus(msg, QStringLiteral("#ff6666"));
+        emit streamError(msg);
+
+        // Also show GStreamer hint
+        m_reconnectAttempts++;
+        int delayMs = qMin(5000 * m_reconnectAttempts, 30000);
+        m_reconnectTimer->start(delayMs);
+        return;
+    }
+
+    m_externalPlayer = new QProcess(this);
+    connect(m_externalPlayer, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &CameraWidget::onExternalPlayerFinished);
+    connect(m_externalPlayer, &QProcess::errorOccurred,
+            this, &CameraWidget::onExternalPlayerError);
+
+    QStringList args;
+    if (foundPlayer == QStringLiteral("vlc")) {
+        args << QStringLiteral("--no-video-title") << QStringLiteral("--play-and-exit")
+             << m_streamUrl;
+    } else if (foundPlayer == QStringLiteral("ffplay")) {
+        args << QStringLiteral("-fflags") << QStringLiteral("nobuffer")
+             << QStringLiteral("-flags") << QStringLiteral("low_delay")
+             << QStringLiteral("-i") << m_streamUrl
+             << QStringLiteral("-window_title") << QStringLiteral("Surveillance Camera");
+    } else if (foundPlayer == QStringLiteral("mpv")) {
+        args << QStringLiteral("--profile=low-latency") << m_streamUrl;
+    }
+
+    m_externalPlayer->start(foundPlayer, args);
+    setStatus(QStringLiteral("✔ Lecteur externe: ") + foundPlayer, QStringLiteral("#40d080"));
+}
+
+void CameraWidget::onExternalPlayerFinished(int exitCode, QProcess::ExitStatus status)
+{
+    Q_UNUSED(status)
+
+    if (!m_streamActive) {
+        return;
+    }
+
+    if (exitCode != 0) {
+        setStatus(QStringLiteral("❌ Lecteur externe terminé avec erreur (code %1)").arg(exitCode),
+                  QStringLiteral("#ff6666"));
+    }
+
+    // Auto-reconnect if stream was active
+    m_reconnectAttempts++;
+    int delayMs = qMin(5000 * m_reconnectAttempts, 30000);
+    m_reconnectTimer->start(delayMs);
+}
+
+void CameraWidget::onExternalPlayerError(QProcess::ProcessError error)
+{
+    if (!m_streamActive) {
+        return;
+    }
+
+    QString errMsg;
+    switch (error) {
+    case QProcess::FailedToStart:
+        errMsg = QStringLiteral("Impossible de lancer le lecteur externe");
+        break;
+    case QProcess::Crashed:
+        errMsg = QStringLiteral("Le lecteur externe a planté");
+        break;
+    default:
+        errMsg = QStringLiteral("Erreur lecteur externe");
+        break;
+    }
+
+    setStatus(QStringLiteral("❌ ") + errMsg, QStringLiteral("#ff6666"));
+    emit streamError(errMsg);
+
+    m_reconnectAttempts++;
+    int delayMs = qMin(5000 * m_reconnectAttempts, 30000);
+    m_reconnectTimer->start(delayMs);
+}

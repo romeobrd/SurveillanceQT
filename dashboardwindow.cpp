@@ -81,21 +81,23 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     , m_warningValueLabel(nullptr)
     , m_defaultValueLabel(nullptr)
     , m_networkStatusLabel(nullptr)
+    , m_mqttStatusLabel(nullptr)
     , m_scanNetworkButton(nullptr)
     , m_logoutButton(nullptr)
     , m_statusTimer(new QTimer(this))
     , m_dragging(false)
+    , m_sensorContainer(nullptr)
+    , m_broker(nullptr)
     , m_dbManager(nullptr)
     , m_lockOverlay(nullptr)
     , m_isAuthenticated(false)
-    , m_sensorContainer(nullptr)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(800, 600);
 
     setStyleSheet(
         "DashboardWindow, QWidget {"
-        "  font-family: 'Segoe UI', 'Arial';"
+        "  font-family: 'Segoe UI', 'Noto Sans', 'Arial', sans-serif;"
         "}"
         "QWidget#chrome {"
         "  background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #2952a3, stop:0.4 #254a97, stop:1 #3467be);"
@@ -240,6 +242,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
 
     setupNetworkFeatures();
     setupAuthentication();
+    setupMqttBroker();
     updateBottomStatus();
 }
 
@@ -550,8 +553,20 @@ QWidget *DashboardWindow::createBottomBar()
     layout->addWidget(m_scanNetworkButton);
     layout->addWidget(addSensorButton);
     layout->addWidget(resizeButton);
-    layout->addStretch();
+    m_mqttStatusLabel = new QLabel(QStringLiteral("⏳ MQTT…"), bottomBar);
+    m_mqttStatusLabel->setStyleSheet(
+        "QLabel {"
+        "  color: #f0c040;"
+        "  font-size: 13px;"
+        "  font-weight: 700;"
+        "  padding: 2px 8px;"
+        "  border-radius: 8px;"
+        "  background: rgba(240, 192, 64, 0.15);"
+        "}"
+        );
+
     layout->addWidget(settingsButton);
+    layout->addWidget(m_mqttStatusLabel);
     layout->addWidget(m_userStatusLabel);
     layout->addWidget(account);
 
@@ -676,6 +691,98 @@ void DashboardWindow::setupNetworkFeatures()
     } else {
         m_networkStatusLabel->setText(QStringLiteral("Réseau non détecté"));
     }
+}
+
+void DashboardWindow::setupMqttBroker()
+{
+    m_broker = new SensorDataBroker(this);
+
+    if (!m_broker->loadConfiguration()) {
+        if (m_mqttStatusLabel) {
+            m_mqttStatusLabel->setText(QStringLiteral("⚠ MQTT Config absente"));
+            m_mqttStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  color: #ff6666;"
+                "  font-size: 13px;"
+                "  font-weight: 700;"
+                "  padding: 2px 8px;"
+                "  border-radius: 8px;"
+                "  background: rgba(255, 102, 102, 0.15);"
+                "}"
+                );
+        }
+        return;
+    }
+
+    connect(m_broker, &SensorDataBroker::connected, this, [this]() {
+        if (m_mqttStatusLabel) {
+            m_mqttStatusLabel->setText(QStringLiteral("✔ MQTT Connecté"));
+            m_mqttStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  color: #40d080;"
+                "  font-size: 13px;"
+                "  font-weight: 700;"
+                "  padding: 2px 8px;"
+                "  border-radius: 8px;"
+                "  background: rgba(64, 208, 128, 0.15);"
+                "}"
+                );
+        }
+    });
+
+    connect(m_broker, &SensorDataBroker::disconnected, this, [this]() {
+        if (m_mqttStatusLabel) {
+            m_mqttStatusLabel->setText(QStringLiteral("✕ MQTT Non connecté"));
+            m_mqttStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  color: #ff6666;"
+                "  font-size: 13px;"
+                "  font-weight: 700;"
+                "  padding: 2px 8px;"
+                "  border-radius: 8px;"
+                "  background: rgba(255, 102, 102, 0.15);"
+                "}"
+                );
+        }
+    });
+
+    connect(m_broker, &SensorDataBroker::errorOccurred, this, [this](const QString &error) {
+        if (m_mqttStatusLabel) {
+            m_mqttStatusLabel->setText(QStringLiteral("⚠ MQTT Erreur"));
+            m_mqttStatusLabel->setToolTip(error);
+            m_mqttStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  color: #f0c040;"
+                "  font-size: 13px;"
+                "  font-weight: 700;"
+                "  padding: 2px 8px;"
+                "  border-radius: 8px;"
+                "  background: rgba(240, 192, 64, 0.15);"
+                "}"
+                );
+        }
+    });
+
+    connect(m_broker, &SensorDataBroker::sensorValueUpdated, this,
+            [this](const QString &sensorId, const QString & /*sensorName*/,
+                   const QString &sensorType, double value, const QString &unit) {
+        Q_UNUSED(sensorId)
+
+        // Route sensor data to the appropriate widget
+        if (sensorType.contains(QStringLiteral("smoke"), Qt::CaseInsensitive) ||
+            sensorType.contains(QStringLiteral("fumee"), Qt::CaseInsensitive)) {
+            if (m_smokeWidget) {
+                m_smokeWidget->updateValue(value, unit);
+            }
+        } else if (sensorType.contains(QStringLiteral("temperature"), Qt::CaseInsensitive) ||
+                   sensorType.contains(QStringLiteral("temp"), Qt::CaseInsensitive)) {
+            if (m_temperatureWidget) {
+                m_temperatureWidget->updateValue(value, unit);
+            }
+        }
+    });
+
+    m_broker->start();
 }
 
 void DashboardWindow::openNetworkScanner()

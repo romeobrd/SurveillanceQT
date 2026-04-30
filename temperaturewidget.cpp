@@ -37,8 +37,10 @@ class TemperatureChartWidget : public QWidget
 public:
     explicit TemperatureChartWidget(QWidget *parent = nullptr)
         : QWidget(parent)
+        , m_axisFont(QStringLiteral("Sans Serif"), 9, QFont::Medium)
     {
         setMinimumHeight(80);
+        setAttribute(Qt::WA_OpaquePaintEvent);  // Avoid bg clear on every paint
     }
 
     void setValues(const QVector<double> &values)
@@ -59,19 +61,13 @@ protected:
         ? QVector<double>{ 31, 32, 36, 37, 35, 34, 33, 36, 38, 37, 39, 41 }
         : m_values;
 
-        const QStringList xLabels {
-            QStringLiteral("16:40"),
-            QStringLiteral("16:25"),
-            QStringLiteral("16:30"),
-            QStringLiteral("16:35"),
-            QStringLiteral("16:50"),
-            QStringLiteral("16:55")
-        };
-
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
         const QRectF plotRect = rect().adjusted(38, 18, -20, -34);
+
+        // Fill background to avoid transparency compositing overhead
+        p.fillRect(rect(), QColor(31, 49, 92));
 
         QLinearGradient zoneGradient(plotRect.topLeft(), plotRect.bottomLeft());
         zoneGradient.setColorAt(0.0, QColor(195, 107, 29, 50));
@@ -89,16 +85,19 @@ protected:
         const qreal thresholdY = plotRect.bottom() - ((58.0 - 20.0) / 45.0) * plotRect.height();
         p.drawLine(QPointF(plotRect.left(), thresholdY), QPointF(plotRect.right(), thresholdY));
 
-        auto valueToPoint = [&](int index, double value) {
-            const qreal x = plotRect.left() + (plotRect.width() * index) / qMax(1, values.size() - 1);
-            const qreal y = plotRect.bottom() - ((value - 20.0) / 45.0) * plotRect.height();
-            return QPointF(x, y);
-        };
+        const int vSize = values.size();
+        const qreal plotW = plotRect.width();
+        const qreal plotH = plotRect.height();
+        const qreal plotL = plotRect.left();
+        const qreal plotB = plotRect.bottom();
+        const int denom = qMax(1, vSize - 1);
 
         QVector<QPointF> points;
-        points.reserve(values.size());
-        for (int i = 0; i < values.size(); ++i) {
-            points.push_back(valueToPoint(i, values[i]));
+        points.reserve(vSize);
+        for (int i = 0; i < vSize; ++i) {
+            const qreal x = plotL + (plotW * i) / denom;
+            const qreal y = plotB - ((values[i] - 20.0) / 45.0) * plotH;
+            points.push_back(QPointF(x, y));
         }
 
         if (!points.isEmpty()) {
@@ -115,18 +114,25 @@ protected:
         }
 
         p.setPen(QColor(226, 234, 250));
-        p.setFont(QFont(QStringLiteral("Segoe UI"), 9, QFont::Medium));
+        p.setFont(m_axisFont);
 
-        const QList<int> yValues { 20, 30, 45, 60 };
+        static const int yValues[] = { 20, 30, 45, 60 };
         for (int value : yValues) {
-            const qreal y = plotRect.bottom() - ((value - 20.0) / 45.0) * plotRect.height();
+            const qreal y = plotB - ((value - 20.0) / 45.0) * plotH;
             p.drawText(QRectF(4, y - 10, 30, 20),
                        Qt::AlignRight | Qt::AlignVCenter,
                        QString::number(value));
         }
 
-        for (int i = 0; i < xLabels.size(); ++i) {
-            const qreal x = plotRect.left() + i * plotRect.width() / qMax(1, xLabels.size() - 1);
+        static const QString xLabels[] = {
+            QStringLiteral("16:40"), QStringLiteral("16:25"),
+            QStringLiteral("16:30"), QStringLiteral("16:35"),
+            QStringLiteral("16:50"), QStringLiteral("16:55")
+        };
+        const int xLabelCount = 6;
+        const int xDenom = qMax(1, xLabelCount - 1);
+        for (int i = 0; i < xLabelCount; ++i) {
+            const qreal x = plotL + i * plotW / xDenom;
             p.drawText(QRectF(x - 22, plotRect.bottom() + 8, 48, 18),
                        Qt::AlignHCenter | Qt::AlignTop,
                        xLabels[i]);
@@ -141,6 +147,7 @@ protected:
 
 private:
     QVector<double> m_values;
+    QFont m_axisFont;
 };
 
 } // namespace
@@ -364,4 +371,27 @@ void TemperatureWidget::setResizable(bool enabled)
     // Pour l'instant, cette méthode ne fait rien
     // Le redimensionnement sera implémenté différemment
     Q_UNUSED(enabled)
+}
+
+void TemperatureWidget::updateValue(double value, const QString &unit)
+{
+    Q_UNUSED(unit)
+
+    m_currentValue = static_cast<int>(qBound(0.0, value, 100.0));
+    m_peakValue = qMax(m_peakValue, m_currentValue);
+
+    m_values.push_back(m_currentValue);
+    while (m_values.size() > 60) {
+        m_values.removeFirst();
+    }
+
+    if (m_currentValue >= m_alarmThreshold) {
+        setSeverity(Alarm);
+    } else if (m_currentValue >= m_warningThreshold) {
+        setSeverity(Warning);
+    } else {
+        setSeverity(Normal);
+    }
+
+    refreshUi();
 }
