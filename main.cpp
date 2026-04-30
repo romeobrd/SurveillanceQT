@@ -3,10 +3,6 @@
 #include <QApplication>
 #include <QSurfaceFormat>
 
-#ifdef Q_OS_LINUX
-#include <QDBusConnection>
-#endif
-
 int main(int argc, char *argv[])
 {
     // ── Platform-specific rendering setup ──────────────────────────────────
