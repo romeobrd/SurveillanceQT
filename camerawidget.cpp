@@ -65,7 +65,7 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_recordButton(nullptr)
     , m_isRecording(false)
     , m_streamActive(false)
-    , m_streamUrl(QStringLiteral("http://200.26.16.180:8888/rascam"))
+    , m_streamUrl(QStringLiteral("http://200.26.16.180:8888/rascam/index.m3u8"))
     , m_reconnectTimer(new QTimer(this))
     , m_reconnectAttempts(0)
 {
