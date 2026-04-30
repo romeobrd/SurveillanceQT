@@ -1,10 +1,13 @@
 #pragma once
 
 #include <QFrame>
-#include <QPixmap>
+#include <QTimer>
+#include <QUrl>
 
 class QLabel;
 class QPushButton;
+class QMediaPlayer;
+class QVideoWidget;
 
 class CameraWidget : public QFrame
 {
@@ -19,21 +22,40 @@ public:
     QPushButton *fullscreenButton() const;
     QPushButton *recordButton() const;
 
+    // Stream control
+    void setStreamUrl(const QString &url);
+    QString streamUrl() const;
+    void startStream();
+    void stopStream();
+
+    // Legacy (kept for dashboard compatibility)
     QPixmap currentFrame() const;
     bool reloadFrame();
     bool isRecording() const;
     void setTitle(const QString &title);
-
     void setResizable(bool enabled);
 
+private slots:
+    void onPlayerStatusChanged();
+    void onPlayerError();
+    void onReconnectTimer();
+
 private:
-    QLabel *m_imageLabel;
-    QLabel *m_titleLabel;
-    QPushButton *m_editButton;
-    QPushButton *m_closeButton;
-    QPushButton *m_reloadButton;
-    QPushButton *m_snapshotButton;
-    QPushButton *m_fullscreenButton;
-    QPushButton *m_recordButton;
-    bool m_isRecording;
+    void setStatus(const QString &text, const QString &color);
+
+    QMediaPlayer   *m_player;
+    QVideoWidget   *m_videoWidget;
+    QLabel         *m_statusLabel;
+    QLabel         *m_titleLabel;
+    QPushButton    *m_editButton;
+    QPushButton    *m_closeButton;
+    QPushButton    *m_reloadButton;
+    QPushButton    *m_snapshotButton;
+    QPushButton    *m_fullscreenButton;
+    QPushButton    *m_recordButton;
+    bool            m_isRecording;
+    bool            m_streamActive;
+    QString         m_streamUrl;
+    QTimer         *m_reconnectTimer;
+    int             m_reconnectAttempts;
 };
