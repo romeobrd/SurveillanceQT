@@ -13,12 +13,6 @@
 #include <QVBoxLayout>
 #include <QVideoWidget>
 
-#ifdef Q_OS_LINUX
-#include <QDBusConnection>
-#include <QDBusInterface>
-#include <QFileInfo>
-#endif
-
 namespace {
 
 QPushButton *createToolButton(const QString &text, QWidget *parent)
