@@ -199,6 +199,9 @@ CameraWidget::CameraWidget(QWidget *parent)
     ctrlLayout->addWidget(stopBtn);
     ctrlLayout->addStretch();
     mainLayout->addLayout(ctrlLayout);
+
+    // Auto-start stream when widget is ready
+    QTimer::singleShot(500, this, &CameraWidget::startStream);
 }
 
 // ── Stream control ────────────────────────────────────────────────────────────
