@@ -151,7 +151,41 @@ void RaspberryManager::setNodeOnline(const QString &id, bool online)
 
 QString RaspberryManager::defaultConfigPath()
 {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/config/raspberry_nodes.json");
+    // Try multiple locations to find the config file
+    // Priority: app dir -> parent dir (for build/) -> current working dir
+    static const QString configRelPath = QStringLiteral("/config/raspberry_nodes.json");
+
+    QString appDir = QCoreApplication::applicationDirPath();
+
+    // 1. Same directory as executable (deployed app)
+    QString path = appDir + configRelPath;
+    if (QFile::exists(path)) {
+        return path;
+    }
+
+    // 2. Parent directory (for build/ subdirectory during development)
+    QDir parentDir(appDir);
+    if (parentDir.cdUp()) {
+        path = parentDir.absolutePath() + configRelPath;
+        if (QFile::exists(path)) {
+            return path;
+        }
+    }
+
+    // 3. Current working directory
+    path = QDir::currentPath() + configRelPath;
+    if (QFile::exists(path)) {
+        return path;
+    }
+
+    // 4. Fallback: embedded Qt resource (always available in the binary)
+    QString resourcePath = QStringLiteral(":/config/raspberry_nodes.json");
+    if (QFile::exists(resourcePath)) {
+        return resourcePath;
+    }
+
+    // 5. Final fallback to app dir (will fail gracefully with "not found" error)
+    return appDir + configRelPath;
 }
 
 SensorType RaspberryManager::sensorTypeFromString(const QString &type)

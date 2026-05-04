@@ -166,6 +166,7 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     , m_editButton(nullptr)
     , m_closeButton(nullptr)
     , m_stateLabel(nullptr)
+    , m_liveIndicator(nullptr)
     , m_chart(nullptr)
     , m_timer(new QTimer(this))
     , m_values({
@@ -178,8 +179,9 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     , m_currentValue(static_cast<int>(m_values.isEmpty() ? 0 : m_values.last()))
     , m_peakValue(static_cast<int>(m_values.isEmpty() ? 0 : *std::max_element(m_values.begin(), m_values.end())))
     , m_severity(Warning)
-    , m_warningThreshold(28)
-    , m_alarmThreshold(60)
+    , m_warningThreshold(300)
+    , m_alarmThreshold(500)
+    , m_liveMode(false)
 {
     setObjectName(QStringLiteral("panelSmoke"));
     setStyleSheet(
@@ -223,7 +225,13 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     m_stateLabel->setAlignment(Qt::AlignCenter);
     m_stateLabel->setFixedWidth(130);
 
+    m_liveIndicator = new QLabel(QStringLiteral("● SIMULATION"), this);
+    m_liveIndicator->setStyleSheet(
+        "QLabel { color: #7ec8e3; font-size: 10px; font-weight: 700; }"
+        );
+
     subHeaderLayout->addWidget(subTitle);
+    subHeaderLayout->addWidget(m_liveIndicator);
     subHeaderLayout->addStretch();
     subHeaderLayout->addWidget(m_stateLabel);
 
@@ -387,7 +395,11 @@ void SmokeSensorWidget::updateValue(double value, const QString &unit)
 {
     Q_UNUSED(unit)
 
-    m_currentValue = static_cast<int>(qBound(0.0, value, 80.0));
+    if (!m_liveMode) {
+        setLiveMode(true);
+    }
+
+    m_currentValue = static_cast<int>(qBound(0.0, value, 1000.0));
     m_peakValue = qMax(m_peakValue, m_currentValue);
 
     m_values.push_back(m_currentValue);
@@ -404,4 +416,37 @@ void SmokeSensorWidget::updateValue(double value, const QString &unit)
     }
 
     refreshUi();
+}
+
+void SmokeSensorWidget::setLiveMode(bool live)
+{
+    m_liveMode = live;
+    if (m_liveMode) {
+        m_timer->stop();
+        if (m_liveIndicator) {
+            m_liveIndicator->setText(QStringLiteral("● LIVE MQTT"));
+            m_liveIndicator->setStyleSheet(
+                "QLabel { color: #40d080; font-size: 10px; font-weight: 700; }"
+                );
+        }
+    } else {
+        m_timer->start(1300);
+        if (m_liveIndicator) {
+            m_liveIndicator->setText(QStringLiteral("● SIMULATION"));
+            m_liveIndicator->setStyleSheet(
+                "QLabel { color: #7ec8e3; font-size: 10px; font-weight: 700; }"
+                );
+        }
+    }
+}
+
+bool SmokeSensorWidget::isLiveMode() const
+{
+    return m_liveMode;
+}
+
+void SmokeSensorWidget::setThresholds(int warning, int alarm)
+{
+    m_warningThreshold = warning;
+    m_alarmThreshold = alarm;
 }

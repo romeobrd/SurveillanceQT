@@ -31,6 +31,9 @@ public:
     void resetSensor();
     void setTitle(const QString &title);
     void updateValue(double value, const QString &unit);
+    void setLiveMode(bool live);
+    bool isLiveMode() const;
+    void setThresholds(int warning, int alarm);
 
     void setResizable(bool enabled);
 
@@ -42,6 +45,7 @@ private:
     QPushButton *m_closeButton;
     QLabel *m_titleLabel;
     QLabel *m_stateLabel;
+    QLabel *m_liveIndicator;
     QWidget *m_chart;
     QTimer *m_timer;
 
@@ -51,4 +55,5 @@ private:
     Severity m_severity;
     int m_warningThreshold;
     int m_alarmThreshold;
+    bool m_liveMode;
 };

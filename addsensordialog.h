@@ -13,7 +13,7 @@ class AddSensorDialog : public QDialog {
 public:
     explicit AddSensorDialog(QWidget *parent = nullptr);
 
-    SensorConfig getSensorConfig() const;
+    WidgetSensorConfig getSensorConfig() const;
 
 private slots:
     void onSensorTypeSelected();
@@ -25,5 +25,5 @@ private:
     QListWidget *m_sensorList;
     QLineEdit *m_nameEdit;
 
-    SensorType m_selectedType;
+    WidgetSensorType m_selectedType;
 };

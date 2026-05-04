@@ -56,6 +56,7 @@ private:
     void showCameraFullscreen();
     void setupNetworkFeatures();
     void setupMqttBroker();
+    void syncWidgetThresholdsFromConfig();
     void setupWidgetEditButtons();
     void addSensorToGrid(QWidget *widget, int rowSpan = 1, int colSpan = 1);
     void setWidgetSize(QWidget *widget, const QSize &size);

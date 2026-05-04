@@ -1,5 +1,8 @@
 QT += widgets network sql multimedia multimediawidgets
 
+RESOURCES += \
+    $$PWD/resources.qrc
+
 # MySQL support
 QT += sql
 

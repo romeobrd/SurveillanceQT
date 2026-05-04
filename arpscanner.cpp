@@ -296,6 +296,7 @@ QString ArpScanner::getLocalSubnet()
 QString ArpScanner::getLocalIpAddress()
 {
     QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+    QString fallbackIp;
 
     for (const QNetworkInterface &interface : interfaces) {
         if (interface.flags() & QNetworkInterface::IsUp &&
@@ -306,13 +307,25 @@ QString ArpScanner::getLocalIpAddress()
             for (const QNetworkAddressEntry &entry : entries) {
                 QHostAddress ip = entry.ip();
                 if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopback()) {
-                    return ip.toString();
+                    QString ipStr = ip.toString();
+                    // Skip APIPA/auto-config addresses (169.254.x.x)
+                    if (ipStr.startsWith(QStringLiteral("169.254."))) {
+                        continue;
+                    }
+                    // Prefer addresses in the known Raspberry Pi subnet (200.26.16.x)
+                    if (ipStr.startsWith(QStringLiteral("200.26.16."))) {
+                        return ipStr;
+                    }
+                    // Keep first non-APIPA as fallback
+                    if (fallbackIp.isEmpty()) {
+                        fallbackIp = ipStr;
+                    }
                 }
             }
         }
     }
 
-    return QString();
+    return fallbackIp;
 }
 
 void ArpScanner::onScanTimeout()

@@ -157,6 +157,7 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     , m_editButton(nullptr)
     , m_closeButton(nullptr)
     , m_stateLabel(nullptr)
+    , m_liveIndicator(nullptr)
     , m_chart(nullptr)
     , m_timer(new QTimer(this))
     , m_values({
@@ -169,8 +170,9 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     , m_currentValue(static_cast<int>(m_values.isEmpty() ? 0 : m_values.last()))
     , m_peakValue(static_cast<int>(m_values.isEmpty() ? 0 : *std::max_element(m_values.begin(), m_values.end())))
     , m_severity(Warning)
-    , m_warningThreshold(45)
-    , m_alarmThreshold(58)
+    , m_warningThreshold(35)
+    , m_alarmThreshold(45)
+    , m_liveMode(false)
 {
     setObjectName(QStringLiteral("panelTemperature"));
     setStyleSheet(
@@ -213,7 +215,13 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     m_stateLabel->setAlignment(Qt::AlignCenter);
     m_stateLabel->setFixedWidth(130);
 
+    m_liveIndicator = new QLabel(QStringLiteral("● SIMULATION"), this);
+    m_liveIndicator->setStyleSheet(
+        "QLabel { color: #7ec8e3; font-size: 10px; font-weight: 700; }"
+        );
+
     subHeaderLayout->addWidget(subTitle);
+    subHeaderLayout->addWidget(m_liveIndicator);
     subHeaderLayout->addStretch();
     subHeaderLayout->addWidget(m_stateLabel);
 
@@ -377,6 +385,10 @@ void TemperatureWidget::updateValue(double value, const QString &unit)
 {
     Q_UNUSED(unit)
 
+    if (!m_liveMode) {
+        setLiveMode(true);
+    }
+
     m_currentValue = static_cast<int>(qBound(0.0, value, 100.0));
     m_peakValue = qMax(m_peakValue, m_currentValue);
 
@@ -394,4 +406,37 @@ void TemperatureWidget::updateValue(double value, const QString &unit)
     }
 
     refreshUi();
+}
+
+void TemperatureWidget::setLiveMode(bool live)
+{
+    m_liveMode = live;
+    if (m_liveMode) {
+        m_timer->stop();
+        if (m_liveIndicator) {
+            m_liveIndicator->setText(QStringLiteral("● LIVE MQTT"));
+            m_liveIndicator->setStyleSheet(
+                "QLabel { color: #40d080; font-size: 10px; font-weight: 700; }"
+                );
+        }
+    } else {
+        m_timer->start(1500);
+        if (m_liveIndicator) {
+            m_liveIndicator->setText(QStringLiteral("● SIMULATION"));
+            m_liveIndicator->setStyleSheet(
+                "QLabel { color: #7ec8e3; font-size: 10px; font-weight: 700; }"
+                );
+        }
+    }
+}
+
+bool TemperatureWidget::isLiveMode() const
+{
+    return m_liveMode;
+}
+
+void TemperatureWidget::setThresholds(int warning, int alarm)
+{
+    m_warningThreshold = warning;
+    m_alarmThreshold = alarm;
 }

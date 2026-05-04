@@ -5,14 +5,19 @@
 #include "loginwidget.h"
 #include "modulemanager.h"
 #include "networkscannerdialog.h"
+#include "raspberrymanager.h"
 #include "sensorfactory.h"
 #include "smokesensorwidget.h"
 #include "temperaturewidget.h"
 #include "widgeteditor.h"
 
 #include <QDialog>
+#include <QFile>
 #include <QFileDialog>
 #include <QFrame>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -714,6 +719,9 @@ void DashboardWindow::setupMqttBroker()
         return;
     }
 
+    // Sync widget thresholds from config file
+    syncWidgetThresholdsFromConfig();
+
     connect(m_broker, &SensorDataBroker::connected, this, [this]() {
         if (m_mqttStatusLabel) {
             m_mqttStatusLabel->setText(QStringLiteral("✔ MQTT Connecté"));
@@ -783,6 +791,44 @@ void DashboardWindow::setupMqttBroker()
     });
 
     m_broker->start();
+}
+
+void DashboardWindow::syncWidgetThresholdsFromConfig()
+{
+    if (!m_broker) return;
+
+    // The config is loaded inside SensorDataBroker; we need to access it.
+    // SensorDataBroker uses RaspberryManager internally but doesn't expose it.
+    // As a workaround, we parse the config file ourselves here.
+    QFile file(RaspberryManager::defaultConfigPath());
+    if (!file.open(QIODevice::ReadOnly)) return;
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+    if (doc.isNull() || !doc.isObject()) return;
+
+    QJsonObject root = doc.object();
+    if (!root.contains(QStringLiteral("raspberry_nodes"))) return;
+
+    QJsonArray nodes = root[QStringLiteral("raspberry_nodes")].toArray();
+    for (const auto &nodeVal : nodes) {
+        QJsonObject node = nodeVal.toObject();
+        if (!node.contains(QStringLiteral("sensors"))) continue;
+
+        QJsonArray sensors = node[QStringLiteral("sensors")].toArray();
+        for (const auto &sensorVal : sensors) {
+            QJsonObject sensor = sensorVal.toObject();
+            QString type = sensor[QStringLiteral("type")].toString();
+            int warning = sensor[QStringLiteral("warning_threshold")].toInt(0);
+            int alarm = sensor[QStringLiteral("alarm_threshold")].toInt(0);
+
+            if (type.contains(QStringLiteral("smoke"), Qt::CaseInsensitive) && m_smokeWidget) {
+                m_smokeWidget->setThresholds(warning, alarm);
+            } else if (type.contains(QStringLiteral("temperature"), Qt::CaseInsensitive) && m_temperatureWidget) {
+                m_temperatureWidget->setThresholds(warning, alarm);
+            }
+        }
+    }
 }
 
 void DashboardWindow::openNetworkScanner()
@@ -1263,12 +1309,12 @@ void DashboardWindow::onAddSensor()
 {
     AddSensorDialog dialog(this);
     if (dialog.exec() == QDialog::Accepted) {
-        SensorConfig config = dialog.getSensorConfig();
+        WidgetSensorConfig config = dialog.getSensorConfig();
 
         QWidget *newWidget = nullptr;
 
         switch (config.type) {
-        case SensorType::Smoke:
+        case WidgetSensorType::Smoke:
             newWidget = SensorFactory::createSmokeSensor(this, config.name);
             connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                     this, [this, newWidget]() {
@@ -1282,7 +1328,7 @@ void DashboardWindow::onAddSensor()
             });
             break;
 
-        case SensorType::Temperature:
+        case WidgetSensorType::Temperature:
             newWidget = SensorFactory::createTemperatureSensor(this, config.name);
             connect(static_cast<TemperatureWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                     this, [this, newWidget]() {
@@ -1295,7 +1341,7 @@ void DashboardWindow::onAddSensor()
             });
             break;
 
-        case SensorType::Camera:
+        case WidgetSensorType::Camera:
             newWidget = SensorFactory::createCamera(this, config.name);
             connect(static_cast<CameraWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
                     this, [newWidget, this]() {
@@ -1326,13 +1372,13 @@ void DashboardWindow::onAddSensor()
 
         if (newWidget) {
             // Ajouter le widget à la grille dynamique
-            int rowSpan = (config.type == SensorType::Camera) ? 2 : 1;
-            int colSpan = (config.type == SensorType::Camera) ? 1 : 1;
+            int rowSpan = (config.type == WidgetSensorType::Camera) ? 2 : 1;
+            int colSpan = (config.type == WidgetSensorType::Camera) ? 1 : 1;
 
             addSensorToGrid(newWidget, rowSpan, colSpan);
 
             // Connecter le bouton d'édition pour les capteurs dynamiques
-            if (config.type == SensorType::Smoke || config.type == SensorType::Temperature) {
+            if (config.type == WidgetSensorType::Smoke || config.type == WidgetSensorType::Temperature) {
                 connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                         this, [this, newWidget, config]() {
                     WidgetConfig wc;

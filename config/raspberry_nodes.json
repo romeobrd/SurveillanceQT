@@ -46,7 +46,7 @@
           "type": "camera",
           "topic": "rpi-002/camera/stream",
           "stream_url": "http://200.26.16.20:8080/stream",
-          "snapshot_url": "http://200.26.16.20:8080/snapshot",
+          "snapshot_url": "",
           "resolution": "1920x1080",
           "fps": 30
         }
@@ -106,7 +106,7 @@
     }
   ],
   "broker": {
-    "host": "200.26.16.200",
+    "host": "200.26.16.180",
     "port": 1883,
     "protocol": "mqtt",
     "username": "",

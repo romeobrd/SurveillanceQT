@@ -13,7 +13,7 @@ AddSensorDialog::AddSensorDialog(QWidget *parent)
     : QDialog(parent)
     , m_sensorList(nullptr)
     , m_nameEdit(nullptr)
-    , m_selectedType(SensorType::Smoke)
+    , m_selectedType(WidgetSensorType::Smoke)
 {
     setWindowTitle(QStringLiteral("➕ Ajouter un capteur"));
     setFixedSize(450, 400);
@@ -64,28 +64,28 @@ void AddSensorDialog::setupUi()
     m_sensorList->setIconSize(QSize(32, 32));
 
     // Add sensor types with icons
-    auto *smokeItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::Smoke) + QStringLiteral("  Fumée MQ-2"));
-    smokeItem->setData(Qt::UserRole, static_cast<int>(SensorType::Smoke));
+    auto *smokeItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::Smoke) + QStringLiteral("  Fumée MQ-2"));
+    smokeItem->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::Smoke));
     m_sensorList->addItem(smokeItem);
 
-    auto *tempItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::Temperature) + QStringLiteral("  Température DHT22"));
-    tempItem->setData(Qt::UserRole, static_cast<int>(SensorType::Temperature));
+    auto *tempItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::Temperature) + QStringLiteral("  Température DHT22"));
+    tempItem->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::Temperature));
     m_sensorList->addItem(tempItem);
 
-    auto *humItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::Humidity) + QStringLiteral("  Humidité DHT22"));
-    humItem->setData(Qt::UserRole, static_cast<int>(SensorType::Humidity));
+    auto *humItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::Humidity) + QStringLiteral("  Humidité DHT22"));
+    humItem->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::Humidity));
     m_sensorList->addItem(humItem);
 
-    auto *co2Item = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::CO2) + QStringLiteral("  CO2 PIM480"));
-    co2Item->setData(Qt::UserRole, static_cast<int>(SensorType::CO2));
+    auto *co2Item = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::CO2) + QStringLiteral("  CO2 PIM480"));
+    co2Item->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::CO2));
     m_sensorList->addItem(co2Item);
 
-    auto *vocItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::VOC) + QStringLiteral("  VOC PIM480"));
-    vocItem->setData(Qt::UserRole, static_cast<int>(SensorType::VOC));
+    auto *vocItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::VOC) + QStringLiteral("  VOC PIM480"));
+    vocItem->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::VOC));
     m_sensorList->addItem(vocItem);
 
-    auto *camItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(SensorType::Camera) + QStringLiteral("  Caméra"));
-    camItem->setData(Qt::UserRole, static_cast<int>(SensorType::Camera));
+    auto *camItem = new QListWidgetItem(SensorFactory::sensorTypeToIcon(WidgetSensorType::Camera) + QStringLiteral("  Caméra"));
+    camItem->setData(Qt::UserRole, static_cast<int>(WidgetSensorType::Camera));
     m_sensorList->addItem(camItem);
 
     m_sensorList->setCurrentRow(0);
@@ -97,7 +97,7 @@ void AddSensorDialog::setupUi()
     layout->addWidget(nameLabel);
 
     m_nameEdit = new QLineEdit(this);
-    m_nameEdit->setPlaceholderText(SensorFactory::defaultName(SensorType::Smoke));
+    m_nameEdit->setPlaceholderText(SensorFactory::defaultName(WidgetSensorType::Smoke));
     layout->addWidget(m_nameEdit);
 
     layout->addStretch();
@@ -119,7 +119,7 @@ void AddSensorDialog::onSensorTypeSelected()
     auto *item = m_sensorList->currentItem();
     if (!item) return;
 
-    m_selectedType = static_cast<SensorType>(item->data(Qt::UserRole).toInt());
+    m_selectedType = static_cast<WidgetSensorType>(item->data(Qt::UserRole).toInt());
     m_nameEdit->setPlaceholderText(SensorFactory::defaultName(m_selectedType));
 }
 
@@ -131,9 +131,9 @@ void AddSensorDialog::onAccept()
     accept();
 }
 
-SensorConfig AddSensorDialog::getSensorConfig() const
+WidgetSensorConfig AddSensorDialog::getSensorConfig() const
 {
-    SensorConfig config;
+    WidgetSensorConfig config;
     config.type = m_selectedType;
     config.name = m_nameEdit->text().trimmed();
     if (config.name.isEmpty()) {
