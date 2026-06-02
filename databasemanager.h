@@ -5,6 +5,8 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QDateTime>
+#include <QPair>
+#include <QVector>
 
 enum class UserRole {
     Admin,      // Tous les droits
@@ -31,6 +33,17 @@ struct User {
     bool canViewSensors() const;
 };
 
+struct Sensor {
+    QString id;
+    QString name;
+    QString ipAddress;
+    QString type;  // "temperature", "smoke", "camera"
+    QString topic;
+    double lastValue;
+    QDateTime lastUpdate;
+    bool isOnline;
+};
+
 class DatabaseManager : public QObject {
     Q_OBJECT
 
@@ -53,6 +66,26 @@ public:
                         const QString &newPassword);
     bool deactivateUser(const QString &username);
     QVector<User> getAllUsers();
+
+    // Sensor management
+    bool registerSensor(const QString &id, const QString &name, const QString &ip,
+                        const QString &type, const QString &topic);
+    bool updateSensorValue(const QString &id, double value);
+    bool setSensorOnline(const QString &id, bool online);
+    QVector<Sensor> getAllSensors();
+    Sensor getSensor(const QString &id);
+
+    // Sensor readings history
+    bool saveTemperatureReading(const QString &sensorId, double temperature, double humidity);
+    bool saveSmokeReading(const QString &sensorId, int smokeLevel);
+    QVector<QPair<QDateTime, double>> getTemperatureHistory(const QString &sensorId, int hours = 24);
+    QVector<QPair<QDateTime, int>> getSmokeHistory(const QString &sensorId, int hours = 24);
+
+    // Latest sensor data (for display)
+    double getLatestTemperature(const QString &sensorId);
+    double getLatestHumidity(const QString &sensorId);
+    int getLatestSmokeLevel(const QString &sensorId);
+    QDateTime getLastUpdateTime(const QString &sensorId);
 
     // Default users initialization
     void createDefaultUsers();

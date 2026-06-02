@@ -5,10 +5,13 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMediaPlayer>
 #include <QPixmap>
 #include <QPushButton>
 #include <QStackedLayout>
+#include <QStackedWidget>
 #include <QVBoxLayout>
+#include <QVideoWidget>
 
 namespace {
 
@@ -92,6 +95,9 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_fullscreenButton(nullptr)
     , m_recordButton(nullptr)
     , m_isRecording(false)
+    , m_mediaPlayer(nullptr)
+    , m_videoWidget(nullptr)
+    , m_streamUrl(QStringLiteral("rtsp://200.26.16.20:8554/cam"))
 {
     setObjectName(QStringLiteral("panelCamera"));
     setStyleSheet(
@@ -101,59 +107,65 @@ CameraWidget::CameraWidget(QWidget *parent)
         "  border-radius: 16px;"
         "}"
         "QLabel { color: #eff4ff; }"
-        "QLabel#title { font-size: 18px; font-weight: 700; }"
-        "QLabel#viewer {"
-        "  border-radius: 8px;"
-        "  background: #111827;"
-        "}"
+        "QLabel#title { font-size: 20px; font-weight: 700; }"
+        "QLabel#subtitle { font-size: 13px; color: #d6e1ff; }"
         );
 
     auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(16, 12, 16, 16);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(16, 12, 16, 14);
+    mainLayout->setSpacing(8);
 
+    // Header
     auto *headerLayout = new QHBoxLayout;
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(8);
+
     m_titleLabel = new QLabel(QStringLiteral("Caméra Salle Serveur"), this);
     m_titleLabel->setObjectName(QStringLiteral("title"));
+
     headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
-    // Bouton édition pour modifier le nom de la caméra
     m_editButton = createToolButton(QStringLiteral("✎"), this);
     m_closeButton = createToolButton(QStringLiteral("✕"), this);
     headerLayout->addWidget(m_editButton);
     headerLayout->addWidget(m_closeButton);
+
     mainLayout->addLayout(headerLayout);
 
-    auto *viewerContainer = new QWidget(this);
-    viewerContainer->setMinimumHeight(150);
-    auto *stack = new QStackedLayout(viewerContainer);
-    stack->setStackingMode(QStackedLayout::StackAll);
-    stack->setContentsMargins(0, 0, 0, 0);
+    // Video/Image display
+    auto *stack = new QStackedWidget(this);
+    stack->setMinimumSize(320, 180);
 
-    m_imageLabel = new QLabel(viewerContainer);
-    m_imageLabel->setObjectName(QStringLiteral("viewer"));
-    m_imageLabel->setScaledContents(true);
-    m_imageLabel->setPixmap(loadCameraPixmap());
+    // Static image fallback
+    m_imageLabel = new QLabel(this);
+    m_imageLabel->setPixmap(loadCameraPixmap().scaled(640, 360, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    m_imageLabel->setAlignment(Qt::AlignCenter);
+    m_imageLabel->setStyleSheet("background: #0d1529; border-radius: 8px;");
+    stack->addWidget(m_imageLabel);
 
-    auto *overlay = new QWidget(viewerContainer);
-    overlay->setAttribute(Qt::WA_TranslucentBackground);
-    auto *overlayLayout = new QVBoxLayout(overlay);
-    overlayLayout->setContentsMargins(10, 10, 10, 10);
-    overlayLayout->addStretch();
+    // Video widget for RTSP
+    m_videoWidget = new QVideoWidget(this);
+    m_videoWidget->setStyleSheet("background: #0d1529; border-radius: 8px;");
+    stack->addWidget(m_videoWidget);
 
-    auto *bottomLayout = new QHBoxLayout;
-    bottomLayout->setContentsMargins(0, 0, 0, 0);
-    m_reloadButton = createOverlayButton(QStringLiteral("◀"), overlay);
-    bottomLayout->addWidget(m_reloadButton, 0, Qt::AlignLeft | Qt::AlignBottom);
-    bottomLayout->addStretch();
+    // Media player
+    m_mediaPlayer = new QMediaPlayer(this);
+    m_mediaPlayer->setVideoOutput(m_videoWidget);
 
-    auto *rightControls = new QHBoxLayout;
-    rightControls->setSpacing(6);
-    m_recordButton = createOverlayButton(QStringLiteral("●"), overlay);
+    mainLayout->addWidget(stack, 1);
+
+    // Controls
+    auto *controlsLayout = new QHBoxLayout;
+    controlsLayout->setSpacing(6);
+
+    m_reloadButton = createOverlayButton(QStringLiteral("↻"), this);
+    m_snapshotButton = createOverlayButton(QStringLiteral("📷"), this);
+    m_fullscreenButton = createOverlayButton(QStringLiteral("⛶"), this);
+    m_recordButton = createOverlayButton(QStringLiteral("●"), this);
     m_recordButton->setStyleSheet(
         "QPushButton {"
-        "  color: #ff4444;"
+        "  color: #ff4757;"
         "  background: rgba(20, 28, 47, 0.75);"
         "  border: 1px solid rgba(189, 205, 239, 0.10);"
         "  border-radius: 5px;"
@@ -161,37 +173,43 @@ CameraWidget::CameraWidget(QWidget *parent)
         "  font-weight: 700;"
         "}"
         "QPushButton:hover { background: rgba(41, 58, 92, 0.88); }"
-        "QPushButton:checked { color: #ff0000; background: rgba(255,0,0,0.2); }"
         );
-    m_recordButton->setCheckable(true);
-    m_snapshotButton = createOverlayButton(QStringLiteral("◉"), overlay);
-    m_fullscreenButton = createOverlayButton(QStringLiteral("⇲"), overlay);
-    rightControls->addWidget(m_recordButton);
-    rightControls->addWidget(m_snapshotButton);
-    rightControls->addWidget(m_fullscreenButton);
-    bottomLayout->addLayout(rightControls);
 
-    overlayLayout->addLayout(bottomLayout);
+    controlsLayout->addWidget(m_reloadButton);
+    controlsLayout->addWidget(m_snapshotButton);
+    controlsLayout->addStretch();
+    controlsLayout->addWidget(m_recordButton);
+    controlsLayout->addWidget(m_fullscreenButton);
 
-    stack->addWidget(m_imageLabel);
-    stack->addWidget(overlay);
+    mainLayout->addLayout(controlsLayout);
 
-    mainLayout->addWidget(viewerContainer, 1);
+    // Connect buttons
+    connect(m_reloadButton, &QPushButton::clicked, this, [this, stack]() {
+        if (m_mediaPlayer->playbackState() == QMediaPlayer::PlayingState) {
+            m_mediaPlayer->stop();
+            stack->setCurrentIndex(0);
+        } else {
+            play();
+            stack->setCurrentIndex(1);
+        }
+    });
+
+    connect(m_recordButton, &QPushButton::clicked, this, [this]() {
+        m_isRecording = !m_isRecording;
+        m_recordButton->setText(m_isRecording ? QStringLiteral("■") : QStringLiteral("●"));
+    });
+}
+
+CameraWidget::~CameraWidget()
+{
+    if (m_mediaPlayer) {
+        m_mediaPlayer->stop();
+    }
 }
 
 QPushButton *CameraWidget::editButton() const
 {
     return m_editButton;
-}
-
-QPushButton *CameraWidget::recordButton() const
-{
-    return m_recordButton;
-}
-
-bool CameraWidget::isRecording() const
-{
-    return m_isRecording;
 }
 
 QPushButton *CameraWidget::closeButton() const
@@ -214,23 +232,26 @@ QPushButton *CameraWidget::fullscreenButton() const
     return m_fullscreenButton;
 }
 
+QPushButton *CameraWidget::recordButton() const
+{
+    return m_recordButton;
+}
+
 QPixmap CameraWidget::currentFrame() const
 {
-    if (!m_imageLabel || !m_imageLabel->pixmap()) {
-        return QPixmap();
-    }
-    return m_imageLabel->pixmap();
+    return m_imageLabel->pixmap().copy();
 }
 
 bool CameraWidget::reloadFrame()
 {
-    const QPixmap pixmap = loadCameraPixmap();
-    if (pixmap.isNull() || !m_imageLabel) {
-        return false;
-    }
-
-    m_imageLabel->setPixmap(pixmap);
+    m_imageLabel->setPixmap(loadCameraPixmap().scaled(
+        m_imageLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     return true;
+}
+
+bool CameraWidget::isRecording() const
+{
+    return m_isRecording;
 }
 
 void CameraWidget::setTitle(const QString &title)
@@ -242,7 +263,25 @@ void CameraWidget::setTitle(const QString &title)
 
 void CameraWidget::setResizable(bool enabled)
 {
-    // Pour l'instant, cette méthode ne fait rien
-    // Le redimensionnement sera implémenté différemment
     Q_UNUSED(enabled)
+}
+
+void CameraWidget::setStreamUrl(const QString &url)
+{
+    m_streamUrl = url;
+}
+
+void CameraWidget::play()
+{
+    if (m_mediaPlayer && !m_streamUrl.isEmpty()) {
+        m_mediaPlayer->setSource(QUrl(m_streamUrl));
+        m_mediaPlayer->play();
+    }
+}
+
+void CameraWidget::stop()
+{
+    if (m_mediaPlayer) {
+        m_mediaPlayer->stop();
+    }
 }

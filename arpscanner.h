@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QVector>
 #include <QMap>
+#include <QTcpSocket>
 
 struct NetworkDevice {
     QString ipAddress;
@@ -17,7 +18,7 @@ struct NetworkDevice {
     int rssi;
 
     bool operator==(const NetworkDevice &other) const {
-        return macAddress == other.macAddress;
+        return ipAddress == other.ipAddress; // Compare by IP instead of MAC
     }
 };
 
@@ -66,6 +67,7 @@ private:
     void parseArpTable();
     void pingSweep(const QString &subnet);
     void pingSpecificHosts(const QVector<QString> &hosts);
+    void checkTcpConnect(const QString &ip, quint16 port);
     QString resolveHostname(const QString &ipAddress);
     QString identifyDeviceType(const QString &macAddress, const QString &hostname);
     QString getMacVendor(const QString &macAddress);
@@ -81,7 +83,7 @@ private:
     bool m_isScanning;
     bool m_scanningKnownDevicesOnly;
     QVector<QString> m_pendingHosts;
+    QVector<QTcpSocket*> m_tcpSockets;
 
-    static const QVector<QString> SURVEILLANCE_MAC_PREFIXES;
     static const QVector<KnownRaspberryPi> KNOWN_RASPBERRY_PI;
 };

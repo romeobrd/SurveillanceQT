@@ -47,6 +47,12 @@ public:
         update();
     }
 
+    void setHumidity(double humidity)
+    {
+        m_humidity = humidity;
+        update();
+    }
+
 protected:
     void resizeEvent(QResizeEvent *event) override
     {
@@ -55,9 +61,7 @@ protected:
     }
     void paintEvent(QPaintEvent *) override
     {
-        const QVector<double> values = m_values.isEmpty()
-        ? QVector<double>{ 31, 32, 36, 37, 35, 34, 33, 36, 38, 37, 39, 41 }
-        : m_values;
+        const QVector<double> values = m_values;
 
         const QStringList xLabels {
             QStringLiteral("16:40"),
@@ -141,6 +145,7 @@ protected:
 
 private:
     QVector<double> m_values;
+    double m_humidity = 0.0;
 };
 
 } // namespace
@@ -150,20 +155,17 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     , m_editButton(nullptr)
     , m_closeButton(nullptr)
     , m_stateLabel(nullptr)
+    , m_valueLabel(nullptr)
     , m_chart(nullptr)
     , m_timer(new QTimer(this))
-    , m_values({
-          31, 32, 36, 37, 35, 34, 33, 36, 38, 37, 39, 41,
-          40, 39, 38, 37, 36, 35, 38, 41, 43, 45, 44, 42,
-          40, 39, 38, 37, 36, 38, 41, 43, 46, 48, 50, 47,
-          45, 44, 43, 42, 40, 39, 38, 40, 42, 45, 47, 49,
-          46, 44, 43, 45, 48, 50, 47, 45, 44, 46, 49, 51
-      })
-    , m_currentValue(static_cast<int>(m_values.isEmpty() ? 0 : m_values.last()))
-    , m_peakValue(static_cast<int>(m_values.isEmpty() ? 0 : *std::max_element(m_values.begin(), m_values.end())))
-    , m_severity(Warning)
+    , m_values()
+    , m_currentValue(0)
+    , m_peakValue(0)
+    , m_severity(Normal)
     , m_warningThreshold(45)
     , m_alarmThreshold(58)
+    , m_realTimeMode(false)
+    , m_humidity(0.0)
 {
     setObjectName(QStringLiteral("panelTemperature"));
     setStyleSheet(
@@ -202,11 +204,22 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     auto *subTitle = new QLabel(QStringLiteral("Température (°C)"), this);
     subTitle->setObjectName(QStringLiteral("subtitle"));
 
+    m_valueLabel = new QLabel(QStringLiteral("-- °C"), this);
+    m_valueLabel->setStyleSheet(
+        "QLabel {"
+        "  color: #ffae5c;"
+        "  font-size: 22px;"
+        "  font-weight: 700;"
+        "}"
+    );
+
     m_stateLabel = new QLabel(this);
     m_stateLabel->setAlignment(Qt::AlignCenter);
     m_stateLabel->setFixedWidth(130);
 
     subHeaderLayout->addWidget(subTitle);
+    subHeaderLayout->addSpacing(12);
+    subHeaderLayout->addWidget(m_valueLabel);
     subHeaderLayout->addStretch();
     subHeaderLayout->addWidget(m_stateLabel);
 
@@ -221,7 +234,7 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     QObject::connect(m_timer, &QTimer::timeout, this, [this]() {
         simulateStep();
     });
-    m_timer->start(1500);
+    // Don't auto-start simulation timer; real values come from MQTT.
 
     refreshUi();
 }
@@ -298,9 +311,9 @@ void TemperatureWidget::simulateStep()
 
 void TemperatureWidget::resetSensor()
 {
-    m_currentValue = 32;
-    m_peakValue = m_currentValue;
-    m_values.fill(m_currentValue, 60);
+    m_currentValue = 0;
+    m_peakValue = 0;
+    m_values.clear();
     setSeverity(Normal);
     refreshUi();
 }
@@ -365,3 +378,58 @@ void TemperatureWidget::setResizable(bool enabled)
     // Le redimensionnement sera implémenté différemment
     Q_UNUSED(enabled)
 }
+
+void TemperatureWidget::setRealTimeMode(bool enabled)
+{
+    m_realTimeMode = enabled;
+
+    // Always keep simulation timer stopped; real-time values come from MQTT.
+    m_timer->stop();
+}
+
+void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
+{
+    // Use the actual MQTT value (no rounding for storage / display)
+    m_currentValue = qRound(temperature);
+    m_peakValue = qMax(m_peakValue, m_currentValue);
+    m_humidity = humidity;
+
+    // Add real value to history
+    m_values.push_back(temperature);
+    while (m_values.size() > 60) {
+        m_values.removeFirst();
+    }
+
+    // Update severity based on thresholds
+    if (m_currentValue >= m_alarmThreshold) {
+        setSeverity(Alarm);
+    } else if (m_currentValue >= m_warningThreshold) {
+        setSeverity(Warning);
+    } else {
+        setSeverity(Normal);
+    }
+
+    // Display the actual MQTT value (one decimal)
+    if (m_valueLabel) {
+        m_valueLabel->setText(QString::number(temperature, 'f', 1) + QStringLiteral(" °C"));
+    }
+
+    refreshUi();
+    qDebug() << "TemperatureWidget: Updated from MQTT" << temperature << humidity;
+}
+
+
+
+void TemperatureWidget::setHumidity(double humidity)
+{
+    m_humidity = humidity;
+    // Humidity is stored but chart update happens via refreshUi()
+    // The chart widget will use this value when repainting
+}
+void TemperatureWidget:: addtemperature (double value){
+    m_values.push_back(value);
+    while (m_values.size() > 60) {
+        m_values.removeFirst();
+    }
+    refreshUi();
+};

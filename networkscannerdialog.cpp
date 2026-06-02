@@ -228,9 +228,13 @@ void NetworkScannerDialog::onConnectClicked()
     for (int i = 0; i < m_deviceList->count(); ++i) {
         QListWidgetItem *item = m_deviceList->item(i);
         if (item->checkState() == Qt::Checked) {
-            int deviceIndex = item->data(Qt::UserRole).toInt();
-            if (deviceIndex >= 0 && deviceIndex < m_detectedDevices.size()) {
-                m_selectedDevices.append(m_detectedDevices[deviceIndex]);
+            // Find device by IP address (stored in UserRole)
+            QString deviceIp = item->data(Qt::UserRole).toString();
+            for (const auto &device : m_detectedDevices) {
+                if (device.ipAddress == deviceIp) {
+                    m_selectedDevices.append(device);
+                    break;
+                }
             }
         }
     }
@@ -312,12 +316,31 @@ void NetworkScannerDialog::onScanFinished(const QVector<NetworkDevice> &devices)
         if (device.isOnline) onlineCount++;
     }
 
+    // Auto-connect all online devices
     if (onlineCount > 0) {
         QMessageBox::information(this,
-                                 QStringLiteral("Scan terminé"),
-                                 QStringLiteral("%1 Raspberry Pi détecté(s) sur 4\n"
-                                                "%2 en ligne et prêt(s) à être connecté(s)")
+                                 QStringLiteral("Scan termin\u00e9"),
+                                 QStringLiteral("%1 Raspberry Pi d\u00e9tect\u00e9(s) sur 4\n"
+                                                "%2 en ligne - Connexion automatique en cours...")
                                  .arg(devices.size()).arg(onlineCount));
+    
+        // Select all online devices and populate m_selectedDevices
+        m_selectedDevices.clear();
+        for (int i = 0; i < m_deviceList->count(); ++i) {
+            QListWidgetItem *item = m_deviceList->item(i);
+            QString itemIp = item->data(Qt::UserRole).toString();
+    
+            for (const auto &device : devices) {
+                if (device.ipAddress == itemIp && device.isOnline) {
+                    item->setCheckState(Qt::Checked);
+                    m_selectedDevices.append(device);
+                    break;
+                }
+            }
+        }
+    
+        // Auto-accept the dialog to connect devices
+        accept();
     }
 }
 
@@ -386,8 +409,6 @@ void NetworkScannerDialog::updateStatusLabel()
 void NetworkScannerDialog::addDeviceToList(const NetworkDevice &device)
 {
     auto *item = new QListWidgetItem();
-    item->setText(formatDeviceInfo(device));
-    item->setData(Qt::UserRole, m_detectedDevices.size() - 1);
     item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
 
     bool isSurveillance = device.deviceType.contains(QStringLiteral("Surveillance"), Qt::CaseInsensitive) ||
@@ -398,6 +419,9 @@ void NetworkScannerDialog::addDeviceToList(const NetworkDevice &device)
 
     QString icon = getSignalIcon(device.rssi);
     item->setText(QStringLiteral("%1 %2").arg(icon, formatDeviceInfo(device)));
+
+    // Store IP address for lookup (consistent with displayKnownRaspberryPiList)
+    item->setData(Qt::UserRole, device.ipAddress);
 
     m_deviceList->addItem(item);
 }

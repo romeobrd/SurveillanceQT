@@ -1,4 +1,4 @@
-QT += widgets network sql
+ QT += widgets network sql multimedia multimediawidgets
 
 # MySQL support
 QT += sql
@@ -17,12 +17,13 @@ SOURCES += \
     $$PWD/databasemanager.cpp \
     $$PWD/loginwidget.cpp \
     $$PWD/modulemanager.cpp \
+    $$PWD/mqttclient.cpp \
     $$PWD/networkscannerdialog.cpp \
     $$PWD/raspberrymanager.cpp \
     $$PWD/sensorfactory.cpp \
     $$PWD/smokesensorwidget.cpp \
     $$PWD/temperaturewidget.cpp \
-    $$PWD/widgeteditor.cpp
+    $$PWD/widgeteditor.cpp 
 
 HEADERS += \
     $$PWD/addsensordialog.h \
@@ -33,6 +34,7 @@ HEADERS += \
     $$PWD/databasemanager.h \
     $$PWD/loginwidget.h \
     $$PWD/modulemanager.h \
+    $$PWD/mqttclient.h \
     $$PWD/networkscannerdialog.h \
     $$PWD/raspberrymanager.h \
     $$PWD/sensorfactory.h \

@@ -106,9 +106,10 @@
     }
   ],
   "broker": {
-    "host": "200.26.16.200",
-    "port": 1883,
+    "host": "200.26.16.180",
+    "port": 8883,
     "protocol": "mqtt",
+    "use_ssl": true,
     "username": "",
     "password": ""
   },

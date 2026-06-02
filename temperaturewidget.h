@@ -30,8 +30,13 @@ public:
     void simulateStep();
     void resetSensor();
     void setTitle(const QString &title);
-
     void setResizable(bool enabled);
+
+    // Real-time MQTT data methods
+    void setRealTimeMode(bool enabled);
+    void setHumidity(double humidity);
+    double humidity() const { return m_humidity; }
+    void updateFromMqtt(double temperature, double humidity);
 
 private:
     void refreshUi();
@@ -41,6 +46,7 @@ private:
     QPushButton *m_closeButton;
     QLabel *m_titleLabel;
     QLabel *m_stateLabel;
+    QLabel *m_valueLabel;
     QWidget *m_chart;
     QTimer *m_timer;
 
@@ -50,4 +56,11 @@ private:
     Severity m_severity;
     int m_warningThreshold;
     int m_alarmThreshold;
+
+    // Real-time mode
+    bool m_realTimeMode;
+    double m_humidity;
+private slots:
+    void addtemperature (double value);
 };
+

@@ -17,68 +17,6 @@ const QVector<KnownRaspberryPi> ArpScanner::KNOWN_RASPBERRY_PI = {
       QStringLiteral("Écran d'affichage local"), QStringLiteral("Display") }
 };
 
-const QVector<QString> ArpScanner::SURVEILLANCE_MAC_PREFIXES = {
-    QStringLiteral("00:0C:43"),
-    QStringLiteral("00:13:10"),
-    QStringLiteral("00:18:AE"),
-    QStringLiteral("00:1B:11"),
-    QStringLiteral("00:40:8C"),
-    QStringLiteral("00:90:7A"),
-    QStringLiteral("00:E0:4C"),
-    QStringLiteral("08:EA:44"),
-    QStringLiteral("0C:EF:AF"),
-    QStringLiteral("10:DA:43"),
-    QStringLiteral("18:FE:34"),
-    QStringLiteral("1C:5F:2B"),
-    QStringLiteral("24:0A:C4"),
-    QStringLiteral("24:B6:20"),
-    QStringLiteral("2C:3A:E8"),
-    QStringLiteral("2C:F4:32"),
-    QStringLiteral("30:AE:A4"),
-    QStringLiteral("3C:71:BF"),
-    QStringLiteral("48:3F:DA"),
-    QStringLiteral("4C:11:AE"),
-    QStringLiteral("50:02:91"),
-    QStringLiteral("54:5A:A6"),
-    QStringLiteral("5C:CF:7F"),
-    QStringLiteral("60:01:94"),
-    QStringLiteral("64:69:4E"),
-    QStringLiteral("68:C6:3A"),
-    QStringLiteral("78:E1:03"),
-    QStringLiteral("7C:9A:54"),
-    QStringLiteral("80:7D:3A"),
-    QStringLiteral("84:CC:A8"),
-    QStringLiteral("88:4C:81"),
-    QStringLiteral("8C:AA:B5"),
-    QStringLiteral("90:97:F3"),
-    QStringLiteral("98:F4:AB"),
-    QStringLiteral("9C:9C:1F"),
-    QStringLiteral("A0:20:A6"),
-    QStringLiteral("A4:7B:9C"),
-    QStringLiteral("A4:CF:12"),
-    QStringLiteral("AC:0B:FB"),
-    QStringLiteral("AC:D0:74"),
-    QStringLiteral("B0:BE:76"),
-    QStringLiteral("B4:E6:2D"),
-    QStringLiteral("B8:27:EB"),
-    QStringLiteral("BC:DD:C2"),
-    QStringLiteral("C0:49:EF"),
-    QStringLiteral("C4:4F:33"),
-    QStringLiteral("C8:2B:96"),
-    QStringLiteral("CC:50:E3"),
-    QStringLiteral("D0:27:88"),
-    QStringLiteral("D4:F5:13"),
-    QStringLiteral("D8:A0:1D"),
-    QStringLiteral("DC:4F:22"),
-    QStringLiteral("E0:98:06"),
-    QStringLiteral("E4:F0:42"),
-    QStringLiteral("E8:DB:84"),
-    QStringLiteral("EC:FA:BC"),
-    QStringLiteral("F0:08:D1"),
-    QStringLiteral("F4:CF:A2"),
-    QStringLiteral("F8:1A:67"),
-    QStringLiteral("FC:F5:C4")
-};
 
 ArpScanner::ArpScanner(QObject *parent)
     : QObject(parent)
@@ -90,7 +28,7 @@ ArpScanner::ArpScanner(QObject *parent)
     , m_scanningKnownDevicesOnly(false)
 {
     m_scanTimer->setSingleShot(true);
-    connect(m_scanTimer, &QTimer::timeout, this, &ArpScanner::performArpScan);
+    connect(m_scanTimer, &QTimer::timeout, this, &ArpScanner::onScanTimeout);
 
     m_progressTimer->setInterval(100);
     connect(m_progressTimer, &QTimer::timeout, this, [this]() {
@@ -135,6 +73,13 @@ void ArpScanner::stopScan()
     m_isScanning = false;
     m_scanTimer->stop();
     m_progressTimer->stop();
+
+    // Clean up TCP sockets
+    for (QTcpSocket *socket : std::as_const(m_tcpSockets)) {
+        socket->abort();
+        socket->deleteLater();
+    }
+    m_tcpSockets.clear();
 }
 
 bool ArpScanner::isScanning() const
@@ -191,8 +136,20 @@ void ArpScanner::startScanKnownDevices()
         knownIps.append(rpi.ipAddress);
     }
 
+    qDebug() << "ArpScanner: Starting scan for" << knownIps.size() << "known Raspberry Pis";
+
+    // Method 1: Ping
     pingSpecificHosts(knownIps);
-    m_scanTimer->start(2000);
+
+    // Method 2: TCP check on MQTT port (8883) as fallback
+    // Delay TCP check slightly to avoid race conditions
+    QTimer::singleShot(500, this, [this, knownIps]() {
+        for (const QString &ip : knownIps) {
+            checkTcpConnect(ip, 8883);
+        }
+    });
+
+    m_scanTimer->start(8000); // Increase timeout for both methods
 }
 
 QVector<KnownRaspberryPi> ArpScanner::getKnownRaspberryPiList()
@@ -233,7 +190,11 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
 {
     m_pendingHosts = hosts;
 
+    qDebug() << "ArpScanner: Pinging" << hosts.size() << "hosts...";
+
     for (const QString &ip : hosts) {
+        qDebug() << "ArpScanner: Pinging" << ip;
+
         QProcess *pingProcess = new QProcess(this);
         pingProcess->setProperty("ip", ip);
 
@@ -243,6 +204,8 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
             pingProcess->deleteLater();
 
             m_currentProgress++;
+
+            qDebug() << "ArpScanner: Ping result for" << ip << "- exit code:" << exitCode;
 
             if (exitCode == 0) {
                 KnownRaspberryPi rpiInfo = getRaspberryPiInfo(ip);
@@ -260,22 +223,78 @@ void ArpScanner::pingSpecificHosts(const QVector<QString> &hosts)
                     m_devices.append(device);
                     emit deviceFound(device);
                     emit raspberryPiFound(device, rpiInfo);
+                    qDebug() << "ArpScanner: Found device:" << ip << rpiInfo.name;
                 }
             }
         });
 
         connect(pingProcess, &QProcess::errorOccurred,
-                this, [this, pingProcess](QProcess::ProcessError) {
+                this, [this, pingProcess](QProcess::ProcessError err) {
+            QString ip = pingProcess->property("ip").toString();
+            qDebug() << "ArpScanner: Ping error for" << ip << "-" << err;
             pingProcess->deleteLater();
             m_currentProgress++;
         });
 
 #ifdef Q_OS_WIN
-        pingProcess->start("ping", QStringList() << "-n" << "1" << "-w" << "1000" << ip);
+        // Windows: -n count, -w timeout in ms (increase to 3000ms)
+        pingProcess->start("ping", QStringList() << "-n" << "2" << "-w" << "3000" << ip);
 #else
-        pingProcess->start("ping", QStringList() << "-c" << "1" << "-W" << "2" << ip);
+        pingProcess->start("ping", QStringList() << "-c" << "2" << "-W" << "3" << ip);
 #endif
     }
+}
+
+void ArpScanner::checkTcpConnect(const QString &ip, quint16 port)
+{
+    qDebug() << "ArpScanner: TCP check" << ip << "port" << port;
+
+    QTcpSocket *socket = new QTcpSocket(this);
+    m_tcpSockets.append(socket);
+    socket->setProperty("ip", ip);
+
+    connect(socket, &QTcpSocket::connected, this, [this, socket]() {
+        QString ip = socket->property("ip").toString();
+        qDebug() << "ArpScanner: TCP connected to" << ip;
+
+        KnownRaspberryPi rpiInfo = getRaspberryPiInfo(ip);
+
+        NetworkDevice device;
+        device.ipAddress = ip;
+        device.macAddress = QStringLiteral("TCP détecté");
+        device.hostname = rpiInfo.name;
+        device.deviceType = QStringLiteral(" %1").arg(rpiInfo.expectedType);
+        device.description = rpiInfo.description;
+        device.isOnline = true;
+        device.rssi = -50;
+
+        if (!m_devices.contains(device)) {
+            m_devices.append(device);
+            emit deviceFound(device);
+            emit raspberryPiFound(device, rpiInfo);
+        }
+
+        socket->disconnectFromHost();
+    });
+
+    connect(socket, &QTcpSocket::errorOccurred, this, [this, socket](QAbstractSocket::SocketError err) {
+        Q_UNUSED(err)
+        QString ip = socket->property("ip").toString();
+        qDebug() << "ArpScanner: TCP error for" << ip;
+        if (m_tcpSockets.contains(socket)) {
+            m_tcpSockets.removeAll(socket);
+            socket->deleteLater();
+        }
+    });
+
+    connect(socket, &QTcpSocket::disconnected, this, [this, socket]() {
+        if (m_tcpSockets.contains(socket)) {
+            m_tcpSockets.removeAll(socket);
+            socket->deleteLater();
+        }
+    });
+
+    socket->connectToHost(ip, port);
 }
 
 QString ArpScanner::getLocalSubnet()
@@ -295,15 +314,15 @@ QString ArpScanner::getLocalSubnet()
 
 QString ArpScanner::getLocalIpAddress()
 {
-    QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+    const QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
 
-    for (const QNetworkInterface &interface : interfaces) {
+    for (const QNetworkInterface &interface : std::as_const(interfaces)) {
         if (interface.flags() & QNetworkInterface::IsUp &&
             interface.flags() & QNetworkInterface::IsRunning &&
             !(interface.flags() & QNetworkInterface::IsLoopBack)) {
 
-            QList<QNetworkAddressEntry> entries = interface.addressEntries();
-            for (const QNetworkAddressEntry &entry : entries) {
+            const QList<QNetworkAddressEntry> entries = interface.addressEntries();
+            for (const QNetworkAddressEntry &entry : std::as_const(entries)) {
                 QHostAddress ip = entry.ip();
                 if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopback()) {
                     return ip.toString();
@@ -317,7 +336,16 @@ QString ArpScanner::getLocalIpAddress()
 
 void ArpScanner::onScanTimeout()
 {
-    performArpScan();
+    // For known devices scan, just finish
+    if (m_scanningKnownDevicesOnly) {
+        m_isScanning = false;
+        m_progressTimer->stop();
+        emit scanProgress(m_totalHosts, m_totalHosts);
+        qDebug() << "ArpScanner: Scan finished, found" << m_devices.size() << "devices";
+        emit scanFinished(m_devices);
+    } else {
+        performArpScan();
+    }
 }
 
 void ArpScanner::performArpScan()
@@ -425,14 +453,6 @@ QString ArpScanner::resolveHostname(const QString &ipAddress)
 
 QString ArpScanner::identifyDeviceType(const QString &macAddress, const QString &hostname)
 {
-    QString macPrefix = macAddress.left(8).toUpper();
-
-    for (const QString &prefix : SURVEILLANCE_MAC_PREFIXES) {
-        if (macPrefix == prefix.left(8).toUpper()) {
-            return QStringLiteral("Surveillance Module");
-        }
-    }
-
     QString lowerHostname = hostname.toLower();
     if (lowerHostname.contains(QStringLiteral("cam")) ||
         lowerHostname.contains(QStringLiteral("camera"))) {

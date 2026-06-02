@@ -15,6 +15,7 @@ class TemperatureWidget;
 class CameraWidget;
 class QPushButton;
 class DatabaseManager;
+class MqttClient;
 
 class DashboardWindow : public QWidget
 {
@@ -29,6 +30,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
@@ -45,6 +47,13 @@ private slots:
     void showLoginDialog();
     void logout();
     void onAddSensor();
+
+    // MQTT slots
+    void onMqttConnected();
+    void onMqttDisconnected();
+    void onMqttError(const QString &error);
+    void onMqttTemperatureReceived(double temperature, double humidity, const QString &sensorId);
+    void onMqttSmokeReceived(int smokeLevel, const QString &sensorId);
 
 private:
     QWidget *createTitleBar();
@@ -63,6 +72,9 @@ private:
     void createLockOverlay();
     void updateUIBasedOnRole();
     void setWidgetsEnabled(bool enabled);
+    void setupMqtt();
+    void setupDataRefreshTimer();
+    void refreshFromDatabase();
 
     LoginWidget *m_loginWidget;
     SmokeSensorWidget *m_smokeWidget;
@@ -81,6 +93,7 @@ private:
     QPushButton *m_logoutButton;
 
     QTimer *m_statusTimer;
+    QTimer *m_dataRefreshTimer;
     bool m_dragging;
     QPoint m_dragOffset;
 
@@ -95,4 +108,7 @@ private:
     // Dynamic sensor container (positionnement absolu)
     QWidget *m_sensorContainer;
     QVector<QWidget*> m_dynamicSensors;
+
+    // MQTT client
+    MqttClient *m_mqttClient;
 };

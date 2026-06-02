@@ -4,6 +4,7 @@
 #include "camerawidget.h"
 #include "loginwidget.h"
 #include "modulemanager.h"
+#include "mqttclient.h"
 #include "networkscannerdialog.h"
 #include "sensorfactory.h"
 #include "smokesensorwidget.h"
@@ -11,6 +12,8 @@
 #include "widgeteditor.h"
 
 #include <QDialog>
+#include <QFile>
+#include <QCoreApplication>
 #include <QFileDialog>
 #include <QFrame>
 #include <QGridLayout>
@@ -23,8 +26,10 @@
 #include <QNetworkInterface>
 #include <QPixmap>
 #include <QPushButton>
+#include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QDebug>
 
 namespace {
 
@@ -71,9 +76,9 @@ QLabel *createStatusBubble(const QString &text, const QString &color)
 DashboardWindow::DashboardWindow(QWidget *parent)
     : QWidget(parent)
     , m_loginWidget(nullptr)
-    , m_smokeWidget(new SmokeSensorWidget(this))
-    , m_temperatureWidget(new TemperatureWidget(this))
-    , m_cameraWidget(new CameraWidget(this))
+    , m_smokeWidget(nullptr)
+    , m_temperatureWidget(nullptr)
+    , m_cameraWidget(nullptr)
     , m_radiationPanel(nullptr)
     , m_userStatusLabel(new QLabel(QStringLiteral("Non connecté"), this))
     , m_activeValueLabel(nullptr)
@@ -89,6 +94,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     , m_lockOverlay(nullptr)
     , m_isAuthenticated(false)
     , m_sensorContainer(nullptr)
+    , m_mqttClient(nullptr)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(800, 600);
@@ -164,23 +170,8 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     m_sensorContainer = new QWidget(bodyArea);
     m_sensorContainer->setObjectName(QStringLiteral("sensorContainer"));
 
-    // Capteurs fixes - positions initiales absolues (adapté 800x600)
-    m_smokeWidget->setParent(m_sensorContainer);
-    m_smokeWidget->move(15, 15);
-    m_smokeWidget->resize(260, 180);
-
-    m_temperatureWidget->setParent(m_sensorContainer);
-    m_temperatureWidget->move(15, 210);
-    m_temperatureWidget->resize(260, 180);
-
-    m_cameraWidget->setParent(m_sensorContainer);
-    m_cameraWidget->move(295, 15);
-    m_cameraWidget->resize(320, 240);
-
-    // Activer le déplacement pour tous les widgets
-    enableWidgetDragging(m_smokeWidget);
-    enableWidgetDragging(m_temperatureWidget);
-    enableWidgetDragging(m_cameraWidget);
+    // Dashboard starts empty — widgets are created when the user
+    // scans the network and selects Raspberry Pis to connect.
 
     contentLayout->addWidget(m_sensorContainer, 1);
     bodyLayout->addLayout(contentLayout, 1);
@@ -191,47 +182,8 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     chromeInner->addWidget(rootPanel, 1);
     chromeLayout->addWidget(chrome, 1);
 
-    setupWidgetEditButtons();
-
-    connect(m_smokeWidget->closeButton(), &QPushButton::clicked, this, [this]() {
-        m_smokeWidget->hide();
-        updateBottomStatus();
-    });
-
-    connect(m_temperatureWidget->closeButton(), &QPushButton::clicked, this, [this]() {
-        m_temperatureWidget->hide();
-        updateBottomStatus();
-    });
-
-    connect(m_cameraWidget->reloadButton(), &QPushButton::clicked, this, [this]() {
-        if (!m_cameraWidget->reloadFrame()) {
-            QMessageBox::warning(this, QStringLiteral("Caméra"), QStringLiteral("Impossible de recharger l'image."));
-        }
-    });
-    connect(m_cameraWidget->snapshotButton(), &QPushButton::clicked, this, [this]() {
-        const QPixmap frame = m_cameraWidget->currentFrame();
-        if (frame.isNull()) {
-            QMessageBox::warning(this, QStringLiteral("Caméra"), QStringLiteral("Aucune image à capturer."));
-            return;
-        }
-
-        const QString fileName = QFileDialog::getSaveFileName(
-            this,
-            QStringLiteral("Enregistrer une capture"),
-            QStringLiteral("capture_camera.png"),
-            QStringLiteral("Images (*.png *.jpg *.jpeg)"));
-
-        if (fileName.isEmpty()) {
-            return;
-        }
-
-        if (!frame.save(fileName)) {
-            QMessageBox::warning(this, QStringLiteral("Caméra"), QStringLiteral("Échec de l'enregistrement."));
-        }
-    });
-    connect(m_cameraWidget->fullscreenButton(), &QPushButton::clicked, this, [this]() {
-        showCameraFullscreen();
-    });
+    // Widget edit buttons will be set up when devices are connected
+    // (widgets start as nullptr, created after ARP scan + selection)
 
     connect(m_statusTimer, &QTimer::timeout, this, [this]() {
         updateBottomStatus();
@@ -240,7 +192,15 @@ DashboardWindow::DashboardWindow(QWidget *parent)
 
     setupNetworkFeatures();
     setupAuthentication();
+    setupMqtt();  // Prepare MQTT client (connection deferred until devices are selected)
+    setupDataRefreshTimer();  // Poll database for sensor data
     updateBottomStatus();
+
+    // Ensure overlay is on top after all widgets are created
+    if (m_lockOverlay) {
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+        m_lockOverlay->raise();
+    }
 }
 
 QWidget *DashboardWindow::createTitleBar()
@@ -692,19 +652,102 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
     m_connectedDevices = devices;
 
     QStringList deviceNames;
+    int xOffset = 15;
+    int yOffset = 15;
+
     for (const auto &device : devices) {
         deviceNames.append(QStringLiteral("%1 (%2)")
                            .arg(device.ipAddress, device.deviceType));
+
+        QWidget *newWidget = nullptr;
+        QString cleanType = device.deviceType.trimmed();
+
+        if (cleanType.contains(QStringLiteral("Temperature"), Qt::CaseInsensitive) ||
+            cleanType.contains(QStringLiteral("DHT"), Qt::CaseInsensitive)) {
+
+            auto *tempWidget = new TemperatureWidget(m_sensorContainer);
+            tempWidget->move(xOffset, yOffset);
+            tempWidget->resize(260, 180);
+            yOffset += 195;
+
+            m_temperatureWidget = tempWidget;
+            newWidget = tempWidget;
+
+            connect(tempWidget->closeButton(), &QPushButton::clicked,
+                    this, [this, tempWidget]() {
+                tempWidget->hide();
+                updateBottomStatus();
+            });
+            connect(tempWidget->editButton(), &QPushButton::clicked,
+                    this, &DashboardWindow::onTempWidgetEdit);
+        }
+        else if (cleanType.contains(QStringLiteral("Smoke"), Qt::CaseInsensitive) ||
+                 cleanType.contains(QStringLiteral("MQ-2"), Qt::CaseInsensitive) ||
+                 cleanType.contains(QStringLiteral("Fum\u00e9e"), Qt::CaseInsensitive) ||
+                 cleanType.contains(QStringLiteral("AirQuality"), Qt::CaseInsensitive)) {
+
+            auto *smokeWidget = new SmokeSensorWidget(m_sensorContainer);
+            smokeWidget->move(xOffset, yOffset);
+            smokeWidget->resize(260, 180);
+            yOffset += 195;
+
+            m_smokeWidget = smokeWidget;
+            newWidget = smokeWidget;
+
+            connect(smokeWidget->closeButton(), &QPushButton::clicked,
+                    this, [this, smokeWidget]() {
+                smokeWidget->hide();
+                updateBottomStatus();
+            });
+            connect(smokeWidget->editButton(), &QPushButton::clicked,
+                    this, &DashboardWindow::onSmokeWidgetEdit);
+        }
+        else if (cleanType.contains(QStringLiteral("Camera"), Qt::CaseInsensitive) ||
+                 cleanType.contains(QStringLiteral("Cam"), Qt::CaseInsensitive)) {
+
+            auto *camWidget = new CameraWidget(m_sensorContainer);
+            camWidget->move(295, 15);
+            camWidget->resize(320, 240);
+
+            QString rtspUrl = QStringLiteral("rtsp://%1:8554/cam").arg(device.ipAddress);
+            camWidget->setStreamUrl(rtspUrl);
+
+            m_cameraWidget = camWidget;
+            newWidget = camWidget;
+
+            connect(camWidget->closeButton(), &QPushButton::clicked,
+                    this, [this, camWidget]() {
+                camWidget->hide();
+                updateBottomStatus();
+            });
+            connect(camWidget->editButton(), &QPushButton::clicked,
+                    this, &DashboardWindow::onCameraWidgetEdit);
+        }
+
+        // Show and enable dragging
+        if (newWidget) {
+            enableWidgetDragging(newWidget);
+            newWidget->show();
+        }
     }
 
     if (!devices.isEmpty()) {
         QMessageBox::information(this,
-                                 QStringLiteral("Modules Connectés"),
-                                 QStringLiteral("%1 module(s) connecté(s):\n\n%2")
+                                 QStringLiteral("Modules Connect\u00e9s"),
+                                 QStringLiteral("%1 module(s) connect\u00e9(s):\n\n%2")
                                  .arg(devices.size())
                                  .arg(deviceNames.join(QStringLiteral("\n"))));
 
         updateConnectedDevicesStatus();
+        updateBottomStatus();
+
+        // Now that widgets exist, connect to MQTT broker
+        if (m_mqttClient && !m_mqttClient->isConnected()) {
+            QString brokerHost = QStringLiteral("200.26.16.180");
+            quint16 brokerPort = 8883;
+            qDebug() << "MQTT: Connecting to" << brokerHost << ":" << brokerPort;
+            m_mqttClient->connectToBroker(brokerHost, brokerPort, true);
+        }
     }
 }
 
@@ -729,14 +772,15 @@ void DashboardWindow::updateConnectedDevicesStatus()
 
 void DashboardWindow::setupWidgetEditButtons()
 {
-    connect(m_smokeWidget->editButton(), &QPushButton::clicked,
-            this, &DashboardWindow::onSmokeWidgetEdit);
-
-    connect(m_temperatureWidget->editButton(), &QPushButton::clicked,
-            this, &DashboardWindow::onTempWidgetEdit);
-
-    connect(m_cameraWidget->editButton(), &QPushButton::clicked,
-            this, &DashboardWindow::onCameraWidgetEdit);
+    if (m_smokeWidget)
+        connect(m_smokeWidget->editButton(), &QPushButton::clicked,
+                this, &DashboardWindow::onSmokeWidgetEdit);
+    if (m_temperatureWidget)
+        connect(m_temperatureWidget->editButton(), &QPushButton::clicked,
+                this, &DashboardWindow::onTempWidgetEdit);
+    if (m_cameraWidget)
+        connect(m_cameraWidget->editButton(), &QPushButton::clicked,
+                this, &DashboardWindow::onCameraWidgetEdit);
 }
 
 void DashboardWindow::onSmokeWidgetEdit()
@@ -872,8 +916,13 @@ void DashboardWindow::showLoginDialog()
 {
     // Show the built-in lock overlay (already visible)
     if (m_lockOverlay) {
+        // Set geometry to cover entire widget
+        m_lockOverlay->setGeometry(0, 0, width(), height());
         m_lockOverlay->show();
         m_lockOverlay->raise();
+        m_lockOverlay->activateWindow();
+        // Force immediate repaint
+        m_lockOverlay->repaint();
     }
 }
 
@@ -892,7 +941,19 @@ void DashboardWindow::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     if (m_lockOverlay) {
-        m_lockOverlay->setGeometry(rect());
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+    }
+}
+
+void DashboardWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    // Ensure login overlay is properly positioned and visible when window shows
+    if (m_lockOverlay && !m_isAuthenticated) {
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+        m_lockOverlay->show();
+        m_lockOverlay->raise();
+        m_lockOverlay->activateWindow();
     }
 }
 
@@ -924,8 +985,11 @@ void DashboardWindow::createLockOverlay()
 {
     // Full-size overlay covering the dashboard
     m_lockOverlay = new QWidget(this);
-    m_lockOverlay->setGeometry(rect());
     m_lockOverlay->setObjectName(QStringLiteral("lockOverlay"));
+    m_lockOverlay->setAttribute(Qt::WA_StyledBackground, true);
+    m_lockOverlay->setAutoFillBackground(true);
+    m_lockOverlay->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+    m_lockOverlay->setFocusPolicy(Qt::StrongFocus);
     m_lockOverlay->setStyleSheet(
         "QWidget#lockOverlay { background: rgba(10, 18, 40, 0.92); }"
         "QWidget#loginCard {"
@@ -1072,8 +1136,11 @@ void DashboardWindow::createLockOverlay()
     connect(passwordEdit, &QLineEdit::returnPressed, this, doLogin);
     connect(quitBtn, &QPushButton::clicked, this, &DashboardWindow::close);
 
+    // Set initial geometry and show
+    m_lockOverlay->setGeometry(0, 0, width(), height());
     m_lockOverlay->show();
     m_lockOverlay->raise();
+    m_lockOverlay->ensurePolished();
 }
 
 void DashboardWindow::updateUIBasedOnRole()
@@ -1472,4 +1539,168 @@ bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QWidget::eventFilter(watched, event);
+}
+
+void DashboardWindow::setupMqtt()
+{
+    qDebug() << "=== DashboardWindow::setupMqtt() called ===";
+    m_mqttClient = new MqttClient(this);
+
+    connect(m_mqttClient, &MqttClient::connected,
+            this, &DashboardWindow::onMqttConnected);
+    connect(m_mqttClient, &MqttClient::disconnected,
+            this, &DashboardWindow::onMqttDisconnected);
+    connect(m_mqttClient, &MqttClient::error,
+            this, &DashboardWindow::onMqttError);
+    connect(m_mqttClient, &MqttClient::temperatureReceived,
+            this, &DashboardWindow::onMqttTemperatureReceived);
+    connect(m_mqttClient, &MqttClient::smokeReceived,
+            this, &DashboardWindow::onMqttSmokeReceived);
+    connect(m_mqttClient, &MqttClient::gasDataReceived,
+            this, [this](int eco2, int tvoc, bool detected, const QString &sensorId) {
+                qDebug() << "MQTT: Gas data — eCO2:" << eco2 << "ppm  TVOC:" << tvoc
+                         << "ppb  detected:" << detected << "  sensor:" << sensorId;
+                if (m_smokeWidget) {
+                    m_smokeWidget->updateFromGasData(eco2, tvoc, detected);
+                }
+            });
+
+    // Certificates are loaded here, but connection is deferred
+    // until the user selects devices via the network scanner.
+    QString caCertPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/ca.crt");
+    m_mqttClient->setCaCertificate(caCertPath);
+
+    // Load client certificate and private key (for mTLS authentication)
+    QString clientCertPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/admin-console.crt");
+    QString clientKeyPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/admin-console.key");
+    m_mqttClient->setClientCertificate(clientCertPath, clientKeyPath);
+
+    qDebug() << "MQTT: Client prepared, waiting for device selection before connecting";
+}
+
+void DashboardWindow::onMqttConnected()
+{
+    qDebug() << "MQTT: Connected to broker";
+
+    // Switch sensors to real-time mode
+    if (m_temperatureWidget) {
+        m_temperatureWidget->setRealTimeMode(true);
+    }
+    if (m_smokeWidget) {
+        m_smokeWidget->setRealTimeMode(true);
+    }
+
+    // Subscribe dynamically to each sensor's topic from the database
+    const QVector<Sensor> sensors = m_dbManager->getAllSensors();
+    for (const Sensor &sensor : sensors) {
+        if (!sensor.topic.isEmpty()) {
+            m_mqttClient->subscribe(sensor.topic);
+            qDebug() << "MQTT: subscribed to sensor" << sensor.id
+                     << "(" << sensor.type << ") on topic:" << sensor.topic;
+        }
+    }
+
+    // Also subscribe to node-level wildcards to catch any sub-topic
+    m_mqttClient->subscribe(QStringLiteral("rpi-001/sensors/temperature"));  // Temperature Pi
+    m_mqttClient->subscribe(QStringLiteral("rpi-002/sensors/camera"));  // Camera Pi
+    m_mqttClient->subscribe(QStringLiteral("rpi-003/sensors/smoke"));  // Smoke/CO2 Pi
+
+    // Update network status
+    if (m_networkStatusLabel) {
+        m_networkStatusLabel->setText(m_networkStatusLabel->text() + QStringLiteral(" | MQTT ✓"));
+    }
+}
+
+void DashboardWindow::onMqttDisconnected()
+{
+    qDebug() << "MQTT: Disconnected from broker";
+
+    // Switch sensors back to simulation mode
+    if (m_temperatureWidget) {
+        m_temperatureWidget->setRealTimeMode(false);
+    }
+    if (m_smokeWidget) {
+        m_smokeWidget->setRealTimeMode(false);
+    }
+
+    // Update network status
+    if (m_networkStatusLabel) {
+        QString text = m_networkStatusLabel->text();
+        text.remove(QStringLiteral(" | MQTT ✓"));
+        m_networkStatusLabel->setText(text + QStringLiteral(" | MQTT ✗"));
+    }
+}
+
+void DashboardWindow::setupDataRefreshTimer()
+{
+    m_dataRefreshTimer = new QTimer(this);
+    connect(m_dataRefreshTimer, &QTimer::timeout, this, &DashboardWindow::refreshFromDatabase);
+    m_dataRefreshTimer->start(2000);  // Refresh every 2 seconds
+    qDebug() << "Database refresh timer started (2s interval)";
+}
+
+void DashboardWindow::refreshFromDatabase()
+{
+    if (!m_dbManager || !m_dbManager->isInitialized()) {
+        return;
+    }
+
+    // Get latest temperature from database
+    double temp = m_dbManager->getLatestTemperature("rpi-001");
+    double humidity = m_dbManager->getLatestHumidity("rpi-001");
+
+
+
+    // Get latest smoke level from database
+    int smoke = m_dbManager->getLatestSmokeLevel("rpi-003");
+
+    if (smoke >= 0 && m_smokeWidget) {
+        m_smokeWidget->updateFromMqtt(smoke);
+    }
+}
+
+void DashboardWindow::onMqttError(const QString &error)
+{
+    qWarning() << "MQTT Error:" << error;
+
+    // Update network status
+    if (m_networkStatusLabel) {
+        QString text = m_networkStatusLabel->text();
+        text.remove(QStringLiteral(" | MQTT ✓"));
+        m_networkStatusLabel->setText(text + QStringLiteral(" | MQTT ✗"));
+    }
+}
+
+void DashboardWindow::onMqttTemperatureReceived(double temperature, double humidity, const QString &sensorId)
+{
+    qDebug() << "MQTT: Temperature received:" << temperature << "°C, Humidity:" << humidity << "%, Sensor:" << sensorId;
+
+    QString sid = sensorId.isEmpty() ? "rpi-001" : sensorId;
+
+    // Save to database history
+    if (m_dbManager) {
+        m_dbManager->saveTemperatureReading(sid, temperature, humidity);
+    }
+
+    // Update UI with the actual MQTT value
+    if (m_temperatureWidget) {
+        m_temperatureWidget->updateFromMqtt(temperature, humidity);
+    }
+}
+
+void DashboardWindow::onMqttSmokeReceived(int smokeLevel, const QString &sensorId)
+{
+    qDebug() << "MQTT: Smoke level received:" << smokeLevel << ", Sensor:" << sensorId;
+
+    QString sid = sensorId.isEmpty() ? "rpi-003" : sensorId;
+
+    // Save to database history
+    if (m_dbManager) {
+        m_dbManager->saveSmokeReading(sid, smokeLevel);
+    }
+
+    // Update UI
+    if (m_smokeWidget) {
+        m_smokeWidget->updateFromMqtt(smokeLevel);
+    }
 }
