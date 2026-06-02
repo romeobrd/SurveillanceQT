@@ -2,19 +2,20 @@
 
 #include <QFrame>
 #include <QPixmap>
-#include <QUrl>
+#include <QString>
 
 class QLabel;
 class QPushButton;
-class QMediaPlayer;
-class QVideoWidget;
+class QWidget;
+class QProcess;
 
 class CameraWidget : public QFrame
 {
     Q_OBJECT
+
 public:
     explicit CameraWidget(QWidget *parent = nullptr);
-    ~CameraWidget();
+    ~CameraWidget() override;
 
     QPushButton *editButton() const;
     QPushButton *closeButton() const;
@@ -34,6 +35,10 @@ public:
     void stop();
 
 private:
+    void startMpv();
+    void stopMpv();
+    void toggleRecordingUi();
+
     QLabel *m_imageLabel;
     QLabel *m_titleLabel;
     QPushButton *m_editButton;
@@ -42,10 +47,10 @@ private:
     QPushButton *m_snapshotButton;
     QPushButton *m_fullscreenButton;
     QPushButton *m_recordButton;
-    bool m_isRecording;
+    QWidget *m_videoWidget;
+    QProcess *m_mpvProcess;
 
-    // Media player for RTSP stream
-    QMediaPlayer *m_mediaPlayer;
-    QVideoWidget *m_videoWidget;
     QString m_streamUrl;
+    QPixmap m_fallbackPixmap;
+    bool m_isRecording;
 };

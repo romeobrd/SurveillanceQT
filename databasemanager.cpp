@@ -1,4 +1,5 @@
 #include "databasemanager.h"
+#include "camerawidget.h"
 
 #include <QSqlError>
 #include <QSqlRecord>
