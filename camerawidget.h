@@ -7,17 +7,13 @@
 class QLabel;
 class QPushButton;
 class QWidget;
-class QShowEvent;
 class QProcess;
+class QShowEvent;
+class QResizeEvent;
 
 class CameraWidget : public QFrame
 {
     Q_OBJECT
-
-
-protected:
-    void showEvent(QShowEvent *event) override;
-
 
 public:
     explicit CameraWidget(QWidget *parent = nullptr);
@@ -33,17 +29,22 @@ public:
     QPixmap currentFrame() const;
     bool reloadFrame();
     bool isRecording() const;
-    void setTitle(const QString &title);
 
+    void setTitle(const QString &title);
     void setResizable(bool enabled);
     void setStreamUrl(const QString &url);
     void play();
     void stop();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+
 private:
     void startMpv();
     void stopMpv();
     void toggleRecordingUi();
+    void updatePlaceholderGeometry();
 
     QLabel *m_imageLabel;
     QLabel *m_titleLabel;

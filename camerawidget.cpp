@@ -6,6 +6,8 @@
 #include <QLabel>
 #include <QProcess>
 #include <QPushButton>
+#include <QResizeEvent>
+#include <QShowEvent>
 #include <QSizePolicy>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -28,7 +30,7 @@ QPushButton *createToolButton(const QString &text, QWidget *parent)
         "  font-weight: 700;"
         "}"
         "QPushButton:hover { background: rgba(130, 154, 208, 0.28); }"
-    );
+        );
     return button;
 }
 
@@ -47,7 +49,7 @@ QPushButton *createOverlayButton(const QString &text, QWidget *parent)
         "  font-weight: 700;"
         "}"
         "QPushButton:hover { background: rgba(41, 58, 92, 0.88); }"
-    );
+        );
     return button;
 }
 
@@ -100,6 +102,7 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_streamUrl(QStringLiteral("rtsp://127.0.0.1:8554/rascam"))
     , m_fallbackPixmap(loadCameraPixmap())
     , m_isRecording(false)
+    , m_startedOnce(false)
 {
     setObjectName(QStringLiteral("panelCamera"));
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -112,7 +115,7 @@ CameraWidget::CameraWidget(QWidget *parent)
         "QLabel { color: #eff4ff; }"
         "QLabel#title { font-size: 20px; font-weight: 700; }"
         "QLabel#subtitle { font-size: 13px; color: #d6e1ff; }"
-    );
+        );
 
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(16, 12, 16, 14);
@@ -135,19 +138,21 @@ CameraWidget::CameraWidget(QWidget *parent)
     mainLayout->addLayout(headerLayout);
 
     m_videoWidget = new QWidget(this);
-    m_videoWidget->setMinimumSize(320, 180);
+    m_videoWidget->setMinimumSize(160, 100);
     m_videoWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_videoWidget->setStyleSheet(QStringLiteral("background: #0d1529; border-radius: 8px;"));
-    m_videoWidget->setAttribute(Qt::WA_NativeWindow);
-    m_videoWidget->setAttribute(Qt::WA_DontCreateNativeAncestors);
+
+    // Obligatoire pour intégrer mpv dans ce QWidget avec --wid.
+    m_videoWidget->setAttribute(Qt::WA_NativeWindow, true);
+    m_videoWidget->setAttribute(Qt::WA_DontCreateNativeAncestors, true);
+
     mainLayout->addWidget(m_videoWidget, 1);
 
     m_imageLabel = new QLabel(m_videoWidget);
     m_imageLabel->setAlignment(Qt::AlignCenter);
-    m_imageLabel->setPixmap(m_fallbackPixmap.scaled(640, 360, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    m_imageLabel->setStyleSheet(QStringLiteral("background: transparent; color: #d6e1ff;"));
     m_imageLabel->setText(QStringLiteral("Flux caméra en attente"));
-    m_imageLabel->setGeometry(m_videoWidget->rect());
+    m_imageLabel->setStyleSheet(QStringLiteral("background: transparent; color: #d6e1ff;"));
+    updatePlaceholderGeometry();
     m_imageLabel->show();
 
     auto *controlsLayout = new QHBoxLayout;
@@ -167,7 +172,7 @@ CameraWidget::CameraWidget(QWidget *parent)
         "  font-weight: 700;"
         "}"
         "QPushButton:hover { background: rgba(41, 58, 92, 0.88); }"
-    );
+        );
 
     controlsLayout->addWidget(m_reloadButton);
     controlsLayout->addWidget(m_snapshotButton);
@@ -182,15 +187,39 @@ CameraWidget::CameraWidget(QWidget *parent)
     connect(m_reloadButton, &QPushButton::clicked, this, &CameraWidget::reloadFrame);
     connect(m_recordButton, &QPushButton::clicked, this, &CameraWidget::toggleRecordingUi);
     connect(m_closeButton, &QPushButton::clicked, this, &CameraWidget::stop);
-
     connect(m_videoWidget, &QWidget::destroyed, this, &CameraWidget::stopMpv);
 
-    //QTimer::singleShot(300, this, &CameraWidget::play);
+    // Ne lance pas mpv dans le constructeur.
+    // Le lancement se fait dans showEvent(), quand le widget est vraiment affiché.
 }
 
 CameraWidget::~CameraWidget()
 {
     stopMpv();
+}
+
+void CameraWidget::showEvent(QShowEvent *event)
+{
+    QFrame::showEvent(event);
+
+    if (m_startedOnce) {
+        return;
+    }
+
+    m_startedOnce = true;
+
+    // Force la création de la fenêtre native avant de donner son ID à mpv.
+    if (m_videoWidget) {
+        m_videoWidget->winId();
+    }
+
+    QTimer::singleShot(1000, this, &CameraWidget::play);
+}
+
+void CameraWidget::resizeEvent(QResizeEvent *event)
+{
+    QFrame::resizeEvent(event);
+    updatePlaceholderGeometry();
 }
 
 QPushButton *CameraWidget::editButton() const { return m_editButton; }
@@ -208,7 +237,13 @@ QPixmap CameraWidget::currentFrame() const
 bool CameraWidget::reloadFrame()
 {
     stopMpv();
-    QTimer::singleShot(200, this, &CameraWidget::play);
+    if (m_imageLabel) {
+        m_imageLabel->setText(QStringLiteral("Reconnexion au flux caméra..."));
+        updatePlaceholderGeometry();
+        m_imageLabel->show();
+    }
+
+    QTimer::singleShot(500, this, &CameraWidget::play);
     return true;
 }
 
@@ -243,8 +278,10 @@ void CameraWidget::play()
 void CameraWidget::stop()
 {
     stopMpv();
+
     if (m_imageLabel) {
-        m_imageLabel->setGeometry(m_videoWidget->rect());
+        m_imageLabel->setText(QStringLiteral("Flux caméra arrêté"));
+        updatePlaceholderGeometry();
         m_imageLabel->show();
     }
 }
@@ -259,8 +296,8 @@ void CameraWidget::startMpv()
         return;
     }
 
+    updatePlaceholderGeometry();
     if (m_imageLabel) {
-        m_imageLabel->setGeometry(m_videoWidget->rect());
         m_imageLabel->hide();
     }
 
@@ -280,7 +317,8 @@ void CameraWidget::startMpv()
 
     if (!m_mpvProcess->waitForStarted(1500)) {
         if (m_imageLabel) {
-            m_imageLabel->setText(QStringLiteral("mpv introuvable ou flux inaccessible"));
+            m_imageLabel->setText(QStringLiteral("mpv introuvable ou impossible à lancer"));
+            updatePlaceholderGeometry();
             m_imageLabel->show();
         }
     }
@@ -302,5 +340,16 @@ void CameraWidget::stopMpv()
 void CameraWidget::toggleRecordingUi()
 {
     m_isRecording = !m_isRecording;
-    m_recordButton->setText(m_isRecording ? QStringLiteral("■") : QStringLiteral("●"));
+    if (m_recordButton) {
+        m_recordButton->setText(m_isRecording ? QStringLiteral("■") : QStringLiteral("●"));
+    }
+}
+
+void CameraWidget::updatePlaceholderGeometry()
+{
+    if (!m_imageLabel || !m_videoWidget) {
+        return;
+    }
+
+    m_imageLabel->setGeometry(m_videoWidget->rect());
 }
