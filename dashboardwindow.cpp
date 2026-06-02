@@ -30,7 +30,8 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QDebug>
-
+#include <QTimer>
+#include <QDebug>
 namespace {
 
 
@@ -114,6 +115,17 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     m_cameraWidget->setStreamUrl("rtsp://127.0.0.1:8554/rascam");
     m_cameraWidget->setGeometry(255, 75, 255, 190);
     m_cameraWidget->show();
+
+    QTimer::singleShot(2000, this, [this]() {
+        qDebug() << "[Dashboard] FORCE PLAY CAMERA";
+
+        if (!m_cameraWidget) {
+            qDebug() << "[Dashboard] m_cameraWidget est nullptr";
+            return;
+        }
+
+        m_cameraWidget->play();
+    });
 
     setStyleSheet(
         "DashboardWindow, QWidget {"
