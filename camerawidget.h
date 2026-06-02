@@ -7,11 +7,17 @@
 class QLabel;
 class QPushButton;
 class QWidget;
+class QShowEvent;
 class QProcess;
 
 class CameraWidget : public QFrame
 {
     Q_OBJECT
+
+
+protected:
+    void showEvent(QShowEvent *event) override;
+
 
 public:
     explicit CameraWidget(QWidget *parent = nullptr);
@@ -53,4 +59,5 @@ private:
     QString m_streamUrl;
     QPixmap m_fallbackPixmap;
     bool m_isRecording;
+    bool m_startedOnce;
 };

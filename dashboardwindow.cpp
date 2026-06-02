@@ -108,14 +108,13 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(800, 600);
 
-    m_cameraWidget = new CameraWidget(this);
-    m_cameraWidget->setTitle("Caméra RTSP");
-    m_cameraWidget->setStreamUrl("rtsp://127.0.0.1:8554/rascam");
 
-    m_cameraWidget->setGeometry(40, 120, 520, 320);
+    m_cameraWidget = new CameraWidget(this);
+    m_cameraWidget->setTitle("Caméra Salle Serveur");
+    m_cameraWidget->setStreamUrl("rtsp://127.0.0.1:8554/rascam");
+    m_cameraWidget->setGeometry(255, 75, 255, 190);
     m_cameraWidget->show();
 
-    QTimer::singleShot(1000, m_cameraWidget, &CameraWidget::play);
     setStyleSheet(
         "DashboardWindow, QWidget {"
         "  font-family: 'Segoe UI', 'Arial';"
