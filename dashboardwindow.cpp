@@ -10,7 +10,7 @@
 #include "smokesensorwidget.h"
 #include "temperaturewidget.h"
 #include "widgeteditor.h"
-
+#include <QTimer>
 #include <QDialog>
 #include <QFile>
 #include <QCoreApplication>
@@ -111,9 +111,11 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     m_cameraWidget = new CameraWidget(this);
     m_cameraWidget->setTitle("Caméra RTSP");
     m_cameraWidget->setStreamUrl("rtsp://127.0.0.1:8554/rascam");
+
     m_cameraWidget->setGeometry(40, 120, 520, 320);
     m_cameraWidget->show();
 
+    QTimer::singleShot(1000, m_cameraWidget, &CameraWidget::play);
     setStyleSheet(
         "DashboardWindow, QWidget {"
         "  font-family: 'Segoe UI', 'Arial';"

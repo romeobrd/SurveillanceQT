@@ -185,7 +185,7 @@ CameraWidget::CameraWidget(QWidget *parent)
 
     connect(m_videoWidget, &QWidget::destroyed, this, &CameraWidget::stopMpv);
 
-    QTimer::singleShot(300, this, &CameraWidget::play);
+    //QTimer::singleShot(300, this, &CameraWidget::play);
 }
 
 CameraWidget::~CameraWidget()
