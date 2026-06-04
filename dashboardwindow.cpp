@@ -106,27 +106,6 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(800, 600);
 
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
-    resize(800, 600);
-
-
-    m_cameraWidget = new CameraWidget(this);
-    m_cameraWidget->setTitle("Caméra Salle Serveur");
-    m_cameraWidget->setStreamUrl("rtsp://127.0.0.1:8554/rascam");
-    m_cameraWidget->setGeometry(255, 75, 255, 190);
-    m_cameraWidget->show();
-
-    QTimer::singleShot(2000, this, [this]() {
-        qDebug() << "[Dashboard] FORCE PLAY CAMERA";
-
-        if (!m_cameraWidget) {
-            qDebug() << "[Dashboard] m_cameraWidget est nullptr";
-            return;
-        }
-
-        m_cameraWidget->play();
-    });
-
     setStyleSheet(
         "DashboardWindow, QWidget {"
         "  font-family: 'Segoe UI', 'Arial';"
@@ -197,9 +176,59 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     // Container pour les capteurs avec positionnement absolu
     m_sensorContainer = new QWidget(bodyArea);
     m_sensorContainer->setObjectName(QStringLiteral("sensorContainer"));
+    m_sensorContainer->setMinimumSize(680, 420);
 
-    // Dashboard starts empty — widgets are created when the user
-    // scans the network and selects Raspberry Pis to connect.
+    // Widget caméra local, intégré dans le dashboard et non plus lancé
+    // comme une fenêtre séparée. Le flux correspond au tunnel local SSH.
+    m_cameraWidget = new CameraWidget(m_sensorContainer);
+    m_cameraWidget->setTitle(QStringLiteral("Caméra Salle Serveur"));
+    m_cameraWidget->setStreamUrl(QStringLiteral("rtsp://127.0.0.1:8554/rascam"));
+    m_cameraWidget->move(295, 15);
+    m_cameraWidget->resize(360, 260);
+
+    connect(m_cameraWidget->closeButton(), &QPushButton::clicked,
+            this, [this]() {
+        if (m_cameraWidget) {
+            m_cameraWidget->hide();
+        }
+        updateBottomStatus();
+    });
+
+    connect(m_cameraWidget->editButton(), &QPushButton::clicked,
+            this, &DashboardWindow::onCameraWidgetEdit);
+
+    connect(m_cameraWidget->reloadButton(), &QPushButton::clicked,
+            m_cameraWidget, &CameraWidget::reloadFrame);
+
+    connect(m_cameraWidget->snapshotButton(), &QPushButton::clicked,
+            this, [this]() {
+        if (!m_cameraWidget) {
+            return;
+        }
+
+        const QPixmap frame = m_cameraWidget->currentFrame();
+        if (frame.isNull()) {
+            QMessageBox::warning(this, QStringLiteral("Caméra"),
+                                 QStringLiteral("Aucune image disponible."));
+            return;
+        }
+
+        const QString fileName = QFileDialog::getSaveFileName(
+            this,
+            QStringLiteral("Enregistrer la capture"),
+            QStringLiteral("capture-camera.png"),
+            QStringLiteral("Images (*.png *.jpg)"));
+
+        if (!fileName.isEmpty()) {
+            frame.save(fileName);
+        }
+    });
+
+    enableWidgetDragging(m_cameraWidget);
+    m_cameraWidget->show();
+    QTimer::singleShot(500, m_cameraWidget, &CameraWidget::play);
+
+    // Les autres widgets restent créés dynamiquement après scan ARP.
 
     contentLayout->addWidget(m_sensorContainer, 1);
     bodyLayout->addLayout(contentLayout, 1);
@@ -737,7 +766,7 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
             camWidget->move(295, 15);
             camWidget->resize(320, 240);
 
-            QString rtspUrl = QStringLiteral("rtsp://%1:8554/cam").arg(device.ipAddress);
+            QString rtspUrl = QStringLiteral("rtsp://%1:8554/rascam").arg(device.ipAddress);
             camWidget->setStreamUrl(rtspUrl);
 
             m_cameraWidget = camWidget;
@@ -750,6 +779,31 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
             });
             connect(camWidget->editButton(), &QPushButton::clicked,
                     this, &DashboardWindow::onCameraWidgetEdit);
+
+            connect(camWidget->reloadButton(), &QPushButton::clicked,
+                    camWidget, &CameraWidget::reloadFrame);
+
+            connect(camWidget->snapshotButton(), &QPushButton::clicked,
+                    this, [this, camWidget]() {
+                const QPixmap frame = camWidget->currentFrame();
+                if (frame.isNull()) {
+                    QMessageBox::warning(this, QStringLiteral("Caméra"),
+                                         QStringLiteral("Aucune image disponible."));
+                    return;
+                }
+
+                const QString fileName = QFileDialog::getSaveFileName(
+                    this,
+                    QStringLiteral("Enregistrer la capture"),
+                    QStringLiteral("capture-camera.png"),
+                    QStringLiteral("Images (*.png *.jpg)"));
+
+                if (!fileName.isEmpty()) {
+                    frame.save(fileName);
+                }
+            });
+
+            QTimer::singleShot(300, camWidget, &CameraWidget::play);
         }
 
         // Show and enable dragging
@@ -855,11 +909,15 @@ void DashboardWindow::onTempWidgetEdit()
 
 void DashboardWindow::onCameraWidgetEdit()
 {
+    if (!m_cameraWidget) {
+        return;
+    }
+
     // Éditeur spécifique pour la caméra - sans seuils d'alarme
     WidgetConfig config;
     config.id = QStringLiteral("cam-001");
-    config.name = m_cameraWidget->windowTitle().isEmpty() ?
-                  QStringLiteral("Caméra Salle Serveur") : m_cameraWidget->windowTitle();
+    config.name = m_cameraWidget->title().isEmpty() ?
+                  QStringLiteral("Caméra Salle Serveur") : m_cameraWidget->title();
     config.type = QStringLiteral("Caméra");
     config.warningThreshold = 0;  // Pas utilisé pour caméra
     config.alarmThreshold = 0;    // Pas utilisé pour caméra

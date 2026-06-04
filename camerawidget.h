@@ -1,17 +1,16 @@
 #pragma once
 
-#include <QFrame>
 #include <QPixmap>
 #include <QString>
+#include <QWidget>
 
 class QLabel;
 class QPushButton;
-class QWidget;
 class QProcess;
 class QShowEvent;
 class QResizeEvent;
 
-class CameraWidget : public QFrame
+class CameraWidget : public QWidget
 {
     Q_OBJECT
 
@@ -19,46 +18,44 @@ public:
     explicit CameraWidget(QWidget *parent = nullptr);
     ~CameraWidget() override;
 
-    QPushButton *editButton() const;
-    QPushButton *closeButton() const;
-    QPushButton *reloadButton() const;
-    QPushButton *snapshotButton() const;
-    QPushButton *fullscreenButton() const;
-    QPushButton *recordButton() const;
-
-    QPixmap currentFrame() const;
-    bool reloadFrame();
-    bool isRecording() const;
-
     void setTitle(const QString &title);
-    void setResizable(bool enabled);
+    QString title() const;
+
     void setStreamUrl(const QString &url);
+    QString streamUrl() const;
+
     void play();
     void stop();
+    void reloadFrame();
+    QPixmap currentFrame() const;
+
+    QPushButton *closeButton() const;
+    QPushButton *editButton() const;
+    QPushButton *reloadButton() const;
+    QPushButton *snapshotButton() const;
 
 protected:
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private:
+    void buildUi();
     void startMpv();
-    void stopMpv();
-    void toggleRecordingUi();
-    void updatePlaceholderGeometry();
+    void setStatus(const QString &text, bool error = false);
+    bool ensureMpvAvailable();
+    QString mpvExecutable() const;
 
-    QLabel *m_imageLabel;
+private:
+    QString m_title;
+    QString m_streamUrl;
+    QString m_mpvExecutable;
+
     QLabel *m_titleLabel;
-    QPushButton *m_editButton;
+    QLabel *m_statusLabel;
+    QWidget *m_videoSurface;
     QPushButton *m_closeButton;
+    QPushButton *m_editButton;
     QPushButton *m_reloadButton;
     QPushButton *m_snapshotButton;
-    QPushButton *m_fullscreenButton;
-    QPushButton *m_recordButton;
-    QWidget *m_videoWidget;
     QProcess *m_mpvProcess;
-
-    QString m_streamUrl;
-    QPixmap m_fallbackPixmap;
-    bool m_isRecording;
-    bool m_startedOnce;
 };
