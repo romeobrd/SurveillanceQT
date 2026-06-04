@@ -32,7 +32,23 @@
 #include <QDebug>
 #include <QTimer>
 #include <QDebug>
+#include <QByteArray>
 namespace {
+
+// Force Qt to use the XCB platform plugin on Linux before QApplication is created.
+// This is required because mpv --wid cannot embed reliably inside a QWidget when Qt runs on Wayland.
+struct ForceQtXcbPlatformBeforeQApplication
+{
+    ForceQtXcbPlatformBeforeQApplication()
+    {
+#ifdef Q_OS_LINUX
+        qputenv("QT_QPA_PLATFORM", QByteArray("xcb"));
+#endif
+    }
+};
+
+const ForceQtXcbPlatformBeforeQApplication forceQtXcbPlatformBeforeQApplication;
+
 
 
 
