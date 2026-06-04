@@ -40,10 +40,13 @@ protected:
 
 private:
     void buildUi();
+    void scheduleStart(int delayMs = 250);
+    void startWhenReady();
     void startMpv();
     void setStatus(const QString &text, bool error = false);
     bool ensureMpvAvailable();
     QString mpvExecutable() const;
+    bool isEmbeddingReady() const;
 
 private:
     QString m_title;
@@ -58,4 +61,8 @@ private:
     QPushButton *m_reloadButton;
     QPushButton *m_snapshotButton;
     QProcess *m_mpvProcess;
+
+    bool m_playRequested;
+    bool m_stopping;
+    int m_startAttempts;
 };

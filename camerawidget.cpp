@@ -1,8 +1,8 @@
 #include "camerawidget.h"
 
-#include <QApplication>
 #include <QDebug>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProcess>
@@ -37,6 +37,17 @@ QPushButton *makeCameraToolButton(const QString &text, QWidget *parent)
     return button;
 }
 
+bool looksLikeMpvError(const QString &text)
+{
+    const QString lower = text.toLower();
+    return lower.contains(QStringLiteral("error"))
+        || lower.contains(QStringLiteral("failed"))
+        || lower.contains(QStringLiteral("refused"))
+        || lower.contains(QStringLiteral("timed out"))
+        || lower.contains(QStringLiteral("no video"))
+        || lower.contains(QStringLiteral("invalid"));
+}
+
 } // namespace
 
 CameraWidget::CameraWidget(QWidget *parent)
@@ -51,6 +62,9 @@ CameraWidget::CameraWidget(QWidget *parent)
     , m_reloadButton(nullptr)
     , m_snapshotButton(nullptr)
     , m_mpvProcess(new QProcess(this))
+    , m_playRequested(false)
+    , m_stopping(false)
+    , m_startAttempts(0)
 {
     buildUi();
 
@@ -60,6 +74,19 @@ CameraWidget::CameraWidget(QWidget *parent)
         setStatus(QStringLiteral("Flux lancé · %1").arg(m_streamUrl));
     });
 
+    connect(m_mpvProcess, &QProcess::readyReadStandardOutput, this, [this]() {
+        const QString output = QString::fromLocal8Bit(m_mpvProcess->readAllStandardOutput()).trimmed();
+        if (output.isEmpty()) {
+            return;
+        }
+
+        qDebug().noquote() << "[mpv]" << output;
+
+        if (looksLikeMpvError(output)) {
+            setStatus(output.left(180), true);
+        }
+    });
+
     connect(m_mpvProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         Q_UNUSED(error);
         setStatus(QStringLiteral("Erreur mpv : %1").arg(m_mpvProcess->errorString()), true);
@@ -67,17 +94,18 @@ CameraWidget::CameraWidget(QWidget *parent)
 
     connect(m_mpvProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
             this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        if (m_stopping) {
+            setStatus(QStringLiteral("Flux arrêté"));
+            return;
+        }
+
         if (exitStatus == QProcess::CrashExit) {
             setStatus(QStringLiteral("mpv a crashé"), true);
             return;
         }
 
         if (exitCode != 0) {
-            const QString output = QString::fromLocal8Bit(m_mpvProcess->readAll()).trimmed();
-            setStatus(output.isEmpty()
-                          ? QStringLiteral("mpv s'est arrêté avec le code %1").arg(exitCode)
-                          : QStringLiteral("mpv arrêté : %1").arg(output.left(180)),
-                      true);
+            setStatus(QStringLiteral("mpv s'est arrêté avec le code %1. Regarde Application Output pour le détail.").arg(exitCode), true);
             return;
         }
 
@@ -154,11 +182,12 @@ void CameraWidget::buildUi()
     m_videoSurface->setAttribute(Qt::WA_DontCreateNativeAncestors, false);
     m_videoSurface->setAutoFillBackground(true);
     m_videoSurface->setMinimumHeight(120);
-    m_videoSurface->winId(); // Force la création du handle natif utilisé par mpv --wid.
+    m_videoSurface->winId(); // Crée le handle natif utilisé par mpv --wid.
     root->addWidget(m_videoSurface, 1);
 
     m_statusLabel = new QLabel(QStringLiteral("Flux en attente"), this);
     m_statusLabel->setObjectName(QStringLiteral("cameraStatus"));
+    m_statusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     root->addWidget(m_statusLabel);
 }
 
@@ -222,7 +251,6 @@ bool CameraWidget::ensureMpvAvailable()
     const QString resolved = QStandardPaths::findExecutable(m_mpvExecutable);
 
 #ifdef Q_OS_WIN
-    // Sous Windows, un chemin absolu installé à la main peut ne pas repasser par findExecutable.
     if (resolved.isEmpty() && !QFileInfo::exists(m_mpvExecutable)) {
         setStatus(QStringLiteral("mpv introuvable. Installe mpv ou ajoute-le au PATH."), true);
         return false;
@@ -233,6 +261,27 @@ bool CameraWidget::ensureMpvAvailable()
         return false;
     }
 #endif
+
+    return true;
+}
+
+bool CameraWidget::isEmbeddingReady() const
+{
+    if (!m_videoSurface) {
+        return false;
+    }
+
+    if (!window() || !window()->isVisible()) {
+        return false;
+    }
+
+    if (!m_videoSurface->isVisible()) {
+        return false;
+    }
+
+    if (m_videoSurface->width() < 80 || m_videoSurface->height() < 60) {
+        return false;
+    }
 
     return true;
 }
@@ -253,11 +302,46 @@ void CameraWidget::play()
         return;
     }
 
+#ifdef Q_OS_LINUX
+    const QString platform = QGuiApplication::platformName().toLower();
+    if (platform.contains(QStringLiteral("wayland"))) {
+        setStatus(QStringLiteral("Qt tourne en Wayland : lance l'IHM avec QT_QPA_PLATFORM=xcb pour utiliser mpv --wid."), true);
+        return;
+    }
+#endif
+
     if (m_mpvProcess->state() != QProcess::NotRunning) {
         stop();
     }
 
-    // Attendre que Qt ait bien matérialisé le widget natif évite les écrans noirs.
+    m_playRequested = true;
+    m_startAttempts = 0;
+    scheduleStart(250);
+}
+
+void CameraWidget::scheduleStart(int delayMs)
+{
+    QTimer::singleShot(delayMs, this, &CameraWidget::startWhenReady);
+}
+
+void CameraWidget::startWhenReady()
+{
+    if (!m_playRequested) {
+        return;
+    }
+
+    if (!isEmbeddingReady()) {
+        ++m_startAttempts;
+        if (m_startAttempts <= 30) {
+            setStatus(QStringLiteral("Attente de l'affichage Qt avant lancement mpv…"));
+            scheduleStart(200);
+            return;
+        }
+
+        setStatus(QStringLiteral("Surface vidéo pas prête : widget non visible ou taille invalide."), true);
+        return;
+    }
+
     if (!m_videoSurface->testAttribute(Qt::WA_WState_Created)) {
         m_videoSurface->winId();
     }
@@ -267,6 +351,10 @@ void CameraWidget::play()
 
 void CameraWidget::startMpv()
 {
+    if (!m_playRequested) {
+        return;
+    }
+
     if (m_mpvProcess->state() != QProcess::NotRunning) {
         return;
     }
@@ -278,36 +366,41 @@ void CameraWidget::startMpv()
     args << QStringLiteral("--no-terminal");
     args << QStringLiteral("--no-osc");
     args << QStringLiteral("--no-border");
-    args << QStringLiteral("--force-window=yes");
+    args << QStringLiteral("--force-window=immediate");
     args << QStringLiteral("--demuxer-lavf-o=rtsp_transport=tcp");
-    args << QStringLiteral("--profile=low-latency");
-    args << QStringLiteral("--cache=no");
     args << QStringLiteral("--wid=%1").arg(windowId);
 
 #ifdef Q_OS_LINUX
-    // Ton test mpv fonctionnait avec x11 + hwdec off : on garde cette voie stable pour Qt/X11.
+    // C'est exactement la voie qui marche dans ton test terminal : X11 + pas de décodage matériel.
     args << QStringLiteral("--vo=x11");
     args << QStringLiteral("--hwdec=no");
 #endif
 
     args << m_streamUrl;
 
+    m_stopping = false;
     setStatus(QStringLiteral("Connexion au flux…"));
+    qDebug() << "[CameraWidget] platform" << QGuiApplication::platformName();
+    qDebug() << "[CameraWidget] wid" << windowId << "surface" << m_videoSurface->size();
     qDebug() << "[CameraWidget] start" << m_mpvExecutable << args;
     m_mpvProcess->start(m_mpvExecutable, args);
 }
 
 void CameraWidget::stop()
 {
+    m_playRequested = false;
+
     if (!m_mpvProcess || m_mpvProcess->state() == QProcess::NotRunning) {
         return;
     }
 
+    m_stopping = true;
     m_mpvProcess->terminate();
     if (!m_mpvProcess->waitForFinished(1200)) {
         m_mpvProcess->kill();
         m_mpvProcess->waitForFinished(1200);
     }
+    m_stopping = false;
 }
 
 void CameraWidget::reloadFrame()
@@ -351,11 +444,19 @@ void CameraWidget::showEvent(QShowEvent *event)
     if (m_videoSurface) {
         m_videoSurface->winId();
     }
+
+    if (m_playRequested && m_mpvProcess->state() == QProcess::NotRunning) {
+        scheduleStart(250);
+    }
 }
 
 void CameraWidget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
+
+    if (m_playRequested && m_mpvProcess->state() == QProcess::NotRunning) {
+        scheduleStart(250);
+    }
 }
 
 void CameraWidget::setStatus(const QString &text, bool error)

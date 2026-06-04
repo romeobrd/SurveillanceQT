@@ -189,6 +189,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     connect(m_cameraWidget->closeButton(), &QPushButton::clicked,
             this, [this]() {
         if (m_cameraWidget) {
+            m_cameraWidget->stop();
             m_cameraWidget->hide();
         }
         updateBottomStatus();
@@ -224,9 +225,10 @@ DashboardWindow::DashboardWindow(QWidget *parent)
         }
     });
 
+    m_cameraWidget->setProperty("cameraConnectionsReady", true);
     enableWidgetDragging(m_cameraWidget);
     m_cameraWidget->show();
-    QTimer::singleShot(500, m_cameraWidget, &CameraWidget::play);
+    // Le lancement mpv se fait dans showEvent(), quand la fenêtre native Qt existe vraiment.
 
     // Les autres widgets restent créés dynamiquement après scan ARP.
 
@@ -762,50 +764,62 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
         else if (cleanType.contains(QStringLiteral("Camera"), Qt::CaseInsensitive) ||
                  cleanType.contains(QStringLiteral("Cam"), Qt::CaseInsensitive)) {
 
-            auto *camWidget = new CameraWidget(m_sensorContainer);
+            // Ne recrée pas un deuxième widget caméra si celui du dashboard existe déjà.
+            // Sinon on se retrouve avec deux mpv, deux WID X11, et souvent un écran noir.
+            auto *camWidget = m_cameraWidget;
+            if (!camWidget) {
+                camWidget = new CameraWidget(m_sensorContainer);
+                m_cameraWidget = camWidget;
+            }
+
+            camWidget->setTitle(QStringLiteral("Caméra Salle Serveur"));
             camWidget->move(295, 15);
-            camWidget->resize(320, 240);
+            camWidget->resize(360, 260);
 
             // IMPORTANT : le flux vidéo est réexposé en local par le Docker/tunnel.
             // On ne doit pas utiliser l'IP détectée du module, sinon mpv tente
-            // rtsp://<ip_du_module>:8554/rascam et quitte avec une erreur.
+            // rtsp://<ip_du_module>:8554/rascam et quitte ou reste noir.
             camWidget->setStreamUrl(QStringLiteral("rtsp://127.0.0.1:8554/rascam"));
 
-            m_cameraWidget = camWidget;
             newWidget = camWidget;
 
-            connect(camWidget->closeButton(), &QPushButton::clicked,
-                    this, [this, camWidget]() {
-                camWidget->hide();
-                updateBottomStatus();
-            });
-            connect(camWidget->editButton(), &QPushButton::clicked,
-                    this, &DashboardWindow::onCameraWidgetEdit);
+            if (!camWidget->property("cameraConnectionsReady").toBool()) {
+                connect(camWidget->closeButton(), &QPushButton::clicked,
+                        this, [this, camWidget]() {
+                    camWidget->stop();
+                    camWidget->hide();
+                    updateBottomStatus();
+                });
+                connect(camWidget->editButton(), &QPushButton::clicked,
+                        this, &DashboardWindow::onCameraWidgetEdit);
 
-            connect(camWidget->reloadButton(), &QPushButton::clicked,
-                    camWidget, &CameraWidget::reloadFrame);
+                connect(camWidget->reloadButton(), &QPushButton::clicked,
+                        camWidget, &CameraWidget::reloadFrame);
 
-            connect(camWidget->snapshotButton(), &QPushButton::clicked,
-                    this, [this, camWidget]() {
-                const QPixmap frame = camWidget->currentFrame();
-                if (frame.isNull()) {
-                    QMessageBox::warning(this, QStringLiteral("Caméra"),
-                                         QStringLiteral("Aucune image disponible."));
-                    return;
-                }
+                connect(camWidget->snapshotButton(), &QPushButton::clicked,
+                        this, [this, camWidget]() {
+                    const QPixmap frame = camWidget->currentFrame();
+                    if (frame.isNull()) {
+                        QMessageBox::warning(this, QStringLiteral("Caméra"),
+                                             QStringLiteral("Aucune image disponible."));
+                        return;
+                    }
 
-                const QString fileName = QFileDialog::getSaveFileName(
-                    this,
-                    QStringLiteral("Enregistrer la capture"),
-                    QStringLiteral("capture-camera.png"),
-                    QStringLiteral("Images (*.png *.jpg)"));
+                    const QString fileName = QFileDialog::getSaveFileName(
+                        this,
+                        QStringLiteral("Enregistrer la capture"),
+                        QStringLiteral("capture-camera.png"),
+                        QStringLiteral("Images (*.png *.jpg)"));
 
-                if (!fileName.isEmpty()) {
-                    frame.save(fileName);
-                }
-            });
+                    if (!fileName.isEmpty()) {
+                        frame.save(fileName);
+                    }
+                });
 
-            QTimer::singleShot(300, camWidget, &CameraWidget::play);
+                camWidget->setProperty("cameraConnectionsReady", true);
+            }
+
+            QTimer::singleShot(800, camWidget, &CameraWidget::reloadFrame);
         }
 
         // Show and enable dragging
@@ -1036,6 +1050,14 @@ void DashboardWindow::resizeEvent(QResizeEvent *event)
 void DashboardWindow::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
+
+    // La caméra doit démarrer seulement quand le dashboard est réellement visible.
+    // mpv --wid a besoin d'un handle natif stable, sinon il peut lancer le process
+    // mais rester noir dans l'IHM.
+    if (m_cameraWidget && m_cameraWidget->isVisible()) {
+        QTimer::singleShot(900, m_cameraWidget, &CameraWidget::play);
+    }
+
     // Ensure login overlay is properly positioned and visible when window shows
     if (m_lockOverlay && !m_isAuthenticated) {
         m_lockOverlay->setGeometry(0, 0, width(), height());

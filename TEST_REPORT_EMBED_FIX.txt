@@ -1,0 +1,1 @@
+OK - camera embed fix static checks passed.
