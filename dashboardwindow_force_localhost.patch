@@ -1,0 +1,15 @@
+--- dashboardwindow.cpp.old
++++ dashboardwindow.cpp
+@@ -766,8 +766,10 @@
+             camWidget->move(295, 15);
+             camWidget->resize(320, 240);
+ 
+-            QString rtspUrl = QStringLiteral("rtsp://%1:8554/rascam").arg(device.ipAddress);
+-            camWidget->setStreamUrl(rtspUrl);
++            // IMPORTANT : le flux vidéo est réexposé en local par le Docker/tunnel.
++            // On ne doit pas utiliser l'IP détectée du module, sinon mpv tente
++            // rtsp://<ip_du_module>:8554/rascam et quitte avec une erreur.
++            camWidget->setStreamUrl(QStringLiteral("rtsp://127.0.0.1:8554/rascam"));
+ 
+             m_cameraWidget = camWidget;
+             newWidget = camWidget;

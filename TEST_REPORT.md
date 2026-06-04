@@ -59,3 +59,15 @@ ou via Qt Creator :
 Build > Run qmake
 Build > Rebuild Project
 ```
+
+
+## Correctif localhost ajouté
+
+Tests exécutés après correction :
+
+```txt
+OK - localhost RTSP integration is forced and no dynamic camera IP remains.
+OK - static integration tests passed.
+```
+
+La génération dynamique `rtsp://%1:8554/rascam` a été supprimée pour la caméra. Le flux reste forcé sur `rtsp://127.0.0.1:8554/rascam`.

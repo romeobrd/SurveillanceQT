@@ -61,3 +61,10 @@ rtsp://%1:8554/cam
 Aucune modification obligatoire : ton `.pro` référence déjà `camerawidget.cpp` et `camerawidget.h`.
 
 Aucune dépendance libVLC ajoutée. Le backend est `mpv`.
+
+
+## Correctif localhost RTSP
+
+- Suppression de l'URL dynamique `rtsp://%1:8554/rascam` dans la création dynamique du widget caméra.
+- Le widget caméra utilise désormais toujours `rtsp://127.0.0.1:8554/rascam`, car c'est le Docker/tunnel local qui reçoit le flux du Raspberry.
+- Objectif : éviter que mpv tente de lire le flux sur l'IP du module détecté et quitte avec un code d'erreur.
