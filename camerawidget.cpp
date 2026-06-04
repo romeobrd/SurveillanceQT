@@ -470,3 +470,6 @@ void CameraWidget::setStatus(const QString &text, bool error)
     m_statusLabel->style()->unpolish(m_statusLabel);
     m_statusLabel->style()->polish(m_statusLabel);
 }
+
+
+// fin de fichier
