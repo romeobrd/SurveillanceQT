@@ -1,7 +1,9 @@
 #pragma once
 
-#ifndef Q_OS_LINUX
-#error "CameraWidget minimal is Linux-only. This version intentionally removes Windows support."
+#include <QtGlobal>
+
+#if !defined(Q_OS_LINUX)
+#error "CameraWidget is Linux-only. This minimal version intentionally removes Windows support."
 #endif
 
 #include <QPixmap>
@@ -25,22 +27,17 @@ public:
     void setTitle(const QString &title);
     QString title() const;
 
-    // Compatibility method: the dashboard may pass an IP, but the real stream is local.
-    // This widget always uses rtsp://127.0.0.1:8554/rascam.
+    // Compatibility with the existing dashboard.
+    // Any value passed here is ignored: the real stream is local.
     void setStreamUrl(const QString &url);
     QString streamUrl() const;
 
     void play();
     void stop();
-
-    // Kept only to avoid breaking dashboard connections. No visible reload button exists.
     void reloadFrame();
 
-    // Kept only for compatibility with existing dashboard code.
+    // Compatibility with old dashboard actions.
     QPixmap currentFrame() const;
-
-    // Hidden compatibility buttons. They exist so dashboardwindow.cpp does not need changes,
-    // but the UI shows only the video surface.
     QPushButton *closeButton() const;
     QPushButton *editButton() const;
     QPushButton *reloadButton() const;
@@ -67,10 +64,13 @@ private:
     QString m_mpvExecutable;
 
     QWidget *m_videoSurface;
+
+    // Invisible compatibility buttons so dashboardwindow.cpp does not need changes.
     QPushButton *m_closeButton;
     QPushButton *m_editButton;
     QPushButton *m_reloadButton;
     QPushButton *m_snapshotButton;
+
     QProcess *m_mpvProcess;
 
     bool m_playRequested;

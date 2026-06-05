@@ -1,5 +1,6 @@
 #include "camerawidget.h"
 
+#include <QApplication>
 #include <QByteArray>
 #include <QDebug>
 #include <QGuiApplication>
@@ -7,16 +8,16 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
-#include <QHideEvent>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
 
-constexpr const char *kLocalRtspUrl = "rtsp://127.0.0.1:8554/rascam";
+constexpr const char *kForcedLocalRtspUrl = "rtsp://127.0.0.1:8554/rascam";
 
-// Required for mpv --wid embedding. Wayland does not expose a usable X11 window id.
+// mpv --wid needs an X11/XCB window id. This static guard runs before main()
+// when the object file is loaded, which gives Qt a chance to select xcb.
 struct ForceQtXcbForMpvEmbedding
 {
     ForceQtXcbForMpvEmbedding()
@@ -30,13 +31,21 @@ struct ForceQtXcbForMpvEmbedding
 
 const ForceQtXcbForMpvEmbedding kForceQtXcbForMpvEmbedding;
 
-QPushButton *makeHiddenCompatibilityButton(QWidget *parent)
+QPushButton *makeInvisibleCompatibilityButton(QWidget *parent)
 {
     auto *button = new QPushButton(parent);
-    button->setFixedSize(0, 0);
-    button->setVisible(false);
-    button->setEnabled(false);
+    button->setObjectName(QStringLiteral("cameraHiddenCompatibilityButton"));
     button->setFocusPolicy(Qt::NoFocus);
+    button->setEnabled(true);
+    button->setFixedSize(0, 0);
+    button->setMinimumSize(0, 0);
+    button->setMaximumSize(0, 0);
+    button->setStyleSheet(QStringLiteral(
+        "QPushButton#cameraHiddenCompatibilityButton {"
+        "  border:0; padding:0; margin:0; background:transparent;"
+        "}"
+    ));
+    button->hide();
     return button;
 }
 
@@ -45,7 +54,7 @@ QPushButton *makeHiddenCompatibilityButton(QWidget *parent)
 CameraWidget::CameraWidget(QWidget *parent)
     : QWidget(parent)
     , m_title(QStringLiteral("Caméra"))
-    , m_streamUrl(QString::fromLatin1(kLocalRtspUrl))
+    , m_streamUrl(QString::fromLatin1(kForcedLocalRtspUrl))
     , m_videoSurface(nullptr)
     , m_closeButton(nullptr)
     , m_editButton(nullptr)
@@ -60,10 +69,6 @@ CameraWidget::CameraWidget(QWidget *parent)
 
     m_mpvProcess->setProcessChannelMode(QProcess::MergedChannels);
 
-    connect(m_mpvProcess, &QProcess::started, this, []() {
-        qDebug() << "[CameraWidget] mpv started";
-    });
-
     connect(m_mpvProcess, &QProcess::readyReadStandardOutput, this, [this]() {
         const QString output = QString::fromLocal8Bit(m_mpvProcess->readAllStandardOutput()).trimmed();
         if (!output.isEmpty()) {
@@ -72,22 +77,14 @@ CameraWidget::CameraWidget(QWidget *parent)
     });
 
     connect(m_mpvProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        qWarning() << "[CameraWidget] mpv error:" << m_mpvProcess->errorString();
+        qWarning().noquote() << "[CameraWidget] mpv error:" << m_mpvProcess->errorString();
     });
 
     connect(m_mpvProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
             this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
-        if (m_stopping) {
-            return;
-        }
-
-        if (exitStatus == QProcess::CrashExit) {
-            qWarning() << "[CameraWidget] mpv crashed";
-            return;
-        }
-
-        if (exitCode != 0) {
-            qWarning() << "[CameraWidget] mpv exited with code" << exitCode;
+        if (!m_stopping && (exitStatus == QProcess::CrashExit || exitCode != 0)) {
+            qWarning() << "[CameraWidget] mpv stopped unexpectedly. exitCode=" << exitCode
+                       << "exitStatus=" << exitStatus;
         }
     });
 }
@@ -100,20 +97,20 @@ CameraWidget::~CameraWidget()
 void CameraWidget::buildUi()
 {
     setObjectName(QStringLiteral("cameraWidget"));
-    setMinimumSize(260, 190);
+    setMinimumSize(120, 90);
     setAttribute(Qt::WA_StyledBackground, true);
     setWindowTitle(m_title);
 
-    setStyleSheet(
+    setStyleSheet(QStringLiteral(
         "QWidget#cameraWidget {"
         "  background:#05070d;"
-        "  border:none;"
+        "  border:0;"
         "}"
         "QWidget#cameraSurface {"
         "  background:#05070d;"
-        "  border:none;"
+        "  border:0;"
         "}"
-    );
+    ));
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -124,16 +121,14 @@ void CameraWidget::buildUi()
     m_videoSurface->setAttribute(Qt::WA_NativeWindow, true);
     m_videoSurface->setAttribute(Qt::WA_DontCreateNativeAncestors, false);
     m_videoSurface->setAutoFillBackground(true);
-    m_videoSurface->setMinimumSize(80, 60);
     m_videoSurface->winId();
 
     root->addWidget(m_videoSurface, 1);
 
-    // They are intentionally invisible. Keep them for dashboard compatibility only.
-    m_closeButton = makeHiddenCompatibilityButton(this);
-    m_editButton = makeHiddenCompatibilityButton(this);
-    m_reloadButton = makeHiddenCompatibilityButton(this);
-    m_snapshotButton = makeHiddenCompatibilityButton(this);
+    m_closeButton = makeInvisibleCompatibilityButton(this);
+    m_editButton = makeInvisibleCompatibilityButton(this);
+    m_reloadButton = makeInvisibleCompatibilityButton(this);
+    m_snapshotButton = makeInvisibleCompatibilityButton(this);
 }
 
 void CameraWidget::setTitle(const QString &title)
@@ -150,7 +145,7 @@ QString CameraWidget::title() const
 void CameraWidget::setStreamUrl(const QString &url)
 {
     Q_UNUSED(url);
-    m_streamUrl = QString::fromLatin1(kLocalRtspUrl);
+    m_streamUrl = QString::fromLatin1(kForcedLocalRtspUrl);
 }
 
 QString CameraWidget::streamUrl() const
@@ -173,7 +168,7 @@ bool CameraWidget::ensureMpvAvailable()
     m_mpvExecutable = mpvExecutable();
 
     if (QStandardPaths::findExecutable(m_mpvExecutable).isEmpty()) {
-        qWarning() << "[CameraWidget] mpv introuvable. Installe-le avec : sudo apt install mpv";
+        qWarning() << "[CameraWidget] mpv introuvable. Installe-le avec: sudo apt install mpv";
         return false;
     }
 
@@ -192,7 +187,8 @@ bool CameraWidget::isEmbeddingReady() const
 
 void CameraWidget::play()
 {
-    if (m_mpvProcess->state() != QProcess::NotRunning) {
+    if (m_streamUrl.isEmpty()) {
+        qWarning() << "[CameraWidget] URL RTSP vide";
         return;
     }
 
@@ -202,8 +198,13 @@ void CameraWidget::play()
 
     const QString platform = QGuiApplication::platformName().toLower();
     if (platform.contains(QStringLiteral("wayland"))) {
-        qWarning() << "[CameraWidget] Qt tourne encore en Wayland. Lance avec QT_QPA_PLATFORM=xcb.";
+        qWarning() << "[CameraWidget] Qt tourne en Wayland. mpv --wid nécessite xcb."
+                   << "Lance avec: QT_QPA_PLATFORM=xcb ./applicationmalette";
         return;
+    }
+
+    if (m_mpvProcess->state() != QProcess::NotRunning) {
+        stop();
     }
 
     m_playRequested = true;
@@ -218,7 +219,7 @@ void CameraWidget::scheduleStart(int delayMs)
 
 void CameraWidget::startWhenReady()
 {
-    if (!m_playRequested || m_mpvProcess->state() != QProcess::NotRunning) {
+    if (!m_playRequested) {
         return;
     }
 
@@ -229,14 +230,11 @@ void CameraWidget::startWhenReady()
             return;
         }
 
-        qWarning() << "[CameraWidget] surface vidéo pas prête";
+        qWarning() << "[CameraWidget] Surface vidéo pas prête pour mpv --wid";
         return;
     }
 
-    if (!m_videoSurface->testAttribute(Qt::WA_WState_Created)) {
-        m_videoSurface->winId();
-    }
-
+    m_videoSurface->winId();
     QTimer::singleShot(80, this, &CameraWidget::startMpv);
 }
 
@@ -263,7 +261,6 @@ void CameraWidget::startMpv()
     m_stopping = false;
 
     qDebug() << "[CameraWidget] platform" << QGuiApplication::platformName();
-    qDebug() << "[CameraWidget] wid" << windowId << "surface" << m_videoSurface->size();
     qDebug() << "[CameraWidget] start" << m_mpvExecutable << args;
 
     m_mpvProcess->start(m_mpvExecutable, args);
@@ -280,9 +277,9 @@ void CameraWidget::stop()
     m_stopping = true;
     m_mpvProcess->terminate();
 
-    if (!m_mpvProcess->waitForFinished(800)) {
+    if (!m_mpvProcess->waitForFinished(1200)) {
         m_mpvProcess->kill();
-        m_mpvProcess->waitForFinished(800);
+        m_mpvProcess->waitForFinished(1200);
     }
 
     m_stopping = false;
@@ -291,7 +288,7 @@ void CameraWidget::stop()
 void CameraWidget::reloadFrame()
 {
     stop();
-    QTimer::singleShot(150, this, &CameraWidget::play);
+    play();
 }
 
 QPixmap CameraWidget::currentFrame() const
@@ -329,6 +326,8 @@ void CameraWidget::showEvent(QShowEvent *event)
 
     if (m_mpvProcess->state() == QProcess::NotRunning && !m_playRequested) {
         QTimer::singleShot(500, this, &CameraWidget::play);
+    } else if (m_playRequested && m_mpvProcess->state() == QProcess::NotRunning) {
+        scheduleStart(250);
     }
 }
 
