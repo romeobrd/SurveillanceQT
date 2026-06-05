@@ -1,20 +1,14 @@
 #pragma once
 
-#include <QtGlobal>
-
-#if !defined(Q_OS_LINUX)
-#error "CameraWidget is Linux-only. This minimal version intentionally removes Windows support."
-#endif
-
 #include <QPixmap>
 #include <QString>
 #include <QWidget>
 
-class QHideEvent;
-class QProcess;
+class QLabel;
 class QPushButton;
-class QResizeEvent;
+class QProcess;
 class QShowEvent;
+class QResizeEvent;
 
 class CameraWidget : public QWidget
 {
@@ -27,17 +21,14 @@ public:
     void setTitle(const QString &title);
     QString title() const;
 
-    // Compatibility with the existing dashboard.
-    // Any value passed here is ignored: the real stream is local.
     void setStreamUrl(const QString &url);
     QString streamUrl() const;
 
     void play();
     void stop();
     void reloadFrame();
-
-    // Compatibility with old dashboard actions.
     QPixmap currentFrame() const;
+
     QPushButton *closeButton() const;
     QPushButton *editButton() const;
     QPushButton *reloadButton() const;
@@ -45,7 +36,6 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private:
@@ -53,9 +43,9 @@ private:
     void scheduleStart(int delayMs = 250);
     void startWhenReady();
     void startMpv();
-
-    QString mpvExecutable() const;
+    void setStatus(const QString &text, bool error = false);
     bool ensureMpvAvailable();
+    QString mpvExecutable() const;
     bool isEmbeddingReady() const;
 
 private:
@@ -63,14 +53,13 @@ private:
     QString m_streamUrl;
     QString m_mpvExecutable;
 
+    QLabel *m_titleLabel;
+    QLabel *m_statusLabel;
     QWidget *m_videoSurface;
-
-    // Invisible compatibility buttons so dashboardwindow.cpp does not need changes.
     QPushButton *m_closeButton;
     QPushButton *m_editButton;
     QPushButton *m_reloadButton;
     QPushButton *m_snapshotButton;
-
     QProcess *m_mpvProcess;
 
     bool m_playRequested;
