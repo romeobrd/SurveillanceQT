@@ -1,0 +1,111 @@
+\doxysection{raspberrymanager.\+h}
+\hypertarget{raspberrymanager_8h_source}{}\label{raspberrymanager_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QObject>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QJsonDocument>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <QJsonObject>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <QJsonArray>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <QVector>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <QString>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{enum\ class}\ SensorType\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ Temperature\_DHT22,}
+\DoxyCodeLine{00012\ \ \ \ \ Humidity\_DHT22,}
+\DoxyCodeLine{00013\ \ \ \ \ Smoke\_MQ2,}
+\DoxyCodeLine{00014\ \ \ \ \ AirQuality\_PIM480,}
+\DoxyCodeLine{00015\ \ \ \ \ VOC\_PIM480,}
+\DoxyCodeLine{00016\ \ \ \ \ Camera,}
+\DoxyCodeLine{00017\ \ \ \ \ Unknown}
+\DoxyCodeLine{00018\ \};}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_sensor_info}{SensorInfo}}\ \{}
+\DoxyCodeLine{00021\ \ \ \ \ QString\ id;}
+\DoxyCodeLine{00022\ \ \ \ \ QString\ name;}
+\DoxyCodeLine{00023\ \ \ \ \ SensorType\ type;}
+\DoxyCodeLine{00024\ \ \ \ \ QString\ topic;}
+\DoxyCodeLine{00025\ \ \ \ \ QString\ unit;}
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{int}\ warningThreshold;}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{int}\ alarmThreshold;}
+\DoxyCodeLine{00028\ \ \ \ \ QJsonObject\ extraConfig;}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \ \ \ \ QString\ getTypeString()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00031\ \ \ \ \ QString\ getIcon()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00032\ \};}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ \{}
+\DoxyCodeLine{00035\ \ \ \ \ QString\ id;}
+\DoxyCodeLine{00036\ \ \ \ \ QString\ name;}
+\DoxyCodeLine{00037\ \ \ \ \ QString\ ipAddress;}
+\DoxyCodeLine{00038\ \ \ \ \ QString\ macAddress;}
+\DoxyCodeLine{00039\ \ \ \ \ QString\ description;}
+\DoxyCodeLine{00040\ \ \ \ \ QVector<SensorInfo>\ sensors;}
+\DoxyCodeLine{00041\ \ \ \ \ QJsonObject\ extraConfig;}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{bool}\ isOnline;}
+\DoxyCodeLine{00043\ \ \ \ \ qint64\ lastSeen;}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordtype}{bool}\ hasSensors()\textcolor{keyword}{\ const\ }\{\ \textcolor{keywordflow}{return}\ !sensors.isEmpty();\ \}}
+\DoxyCodeLine{00046\ \};}
+\DoxyCodeLine{00047\ }
+\DoxyCodeLine{00048\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_broker_config}{BrokerConfig}}\ \{}
+\DoxyCodeLine{00049\ \ \ \ \ QString\ host;}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keywordtype}{int}\ port;}
+\DoxyCodeLine{00051\ \ \ \ \ QString\ protocol;}
+\DoxyCodeLine{00052\ \ \ \ \ QString\ username;}
+\DoxyCodeLine{00053\ \ \ \ \ QString\ password;}
+\DoxyCodeLine{00054\ \};}
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00056\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_app_config}{AppConfig}}\ \{}
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordtype}{bool}\ autoConnectOnStartup;}
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordtype}{int}\ reconnectIntervalMs;}
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordtype}{int}\ heartbeatIntervalMs;}
+\DoxyCodeLine{00060\ \ \ \ \ QString\ logLevel;}
+\DoxyCodeLine{00061\ \};}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \textcolor{keyword}{class\ }RaspberryManager\ :\ \textcolor{keyword}{public}\ QObject\ \{}
+\DoxyCodeLine{00064\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00065\ }
+\DoxyCodeLine{00066\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00067\ \ \ \ \ \textcolor{keyword}{explicit}\ RaspberryManager(QObject\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordtype}{bool}\ loadConfiguration(\textcolor{keyword}{const}\ QString\ \&filePath\ =\ QString());}
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keywordtype}{bool}\ saveConfiguration(\textcolor{keyword}{const}\ QString\ \&filePath\ =\ QString());}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \ \ \ \ QVector<RaspberryNode>\ nodes()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00073\ \ \ \ \ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ nodeById(\textcolor{keyword}{const}\ QString\ \&\textcolor{keywordtype}{id})\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00074\ \ \ \ \ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ nodeByIp(\textcolor{keyword}{const}\ QString\ \&ip)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \ \ \doxymbox{\hyperlink{struct_broker_config}{BrokerConfig}}\ brokerConfig()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00077\ \ \ \ \ \doxymbox{\hyperlink{struct_app_config}{AppConfig}}\ appConfig()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00078\ }
+\DoxyCodeLine{00079\ \ \ \ \ \textcolor{keywordtype}{void}\ addNode(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ \&node);}
+\DoxyCodeLine{00080\ \ \ \ \ \textcolor{keywordtype}{void}\ updateNode(\textcolor{keyword}{const}\ QString\ \&\textcolor{keywordtype}{id},\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ \&node);}
+\DoxyCodeLine{00081\ \ \ \ \ \textcolor{keywordtype}{void}\ removeNode(\textcolor{keyword}{const}\ QString\ \&\textcolor{keywordtype}{id});}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \ \ \ \ \textcolor{keywordtype}{void}\ setNodeOnline(\textcolor{keyword}{const}\ QString\ \&\textcolor{keywordtype}{id},\ \textcolor{keywordtype}{bool}\ online);}
+\DoxyCodeLine{00084\ }
+\DoxyCodeLine{00085\ \ \ \ \ \textcolor{keyword}{static}\ QString\ defaultConfigPath();}
+\DoxyCodeLine{00086\ \ \ \ \ \textcolor{keyword}{static}\ SensorType\ sensorTypeFromString(\textcolor{keyword}{const}\ QString\ \&type);}
+\DoxyCodeLine{00087\ \ \ \ \ \textcolor{keyword}{static}\ QString\ sensorTypeToString(SensorType\ type);}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00089\ signals:}
+\DoxyCodeLine{00090\ \ \ \ \ \textcolor{keywordtype}{void}\ configurationLoaded();}
+\DoxyCodeLine{00091\ \ \ \ \ \textcolor{keywordtype}{void}\ configurationError(\textcolor{keyword}{const}\ QString\ \&error);}
+\DoxyCodeLine{00092\ \ \ \ \ \textcolor{keywordtype}{void}\ nodeStatusChanged(\textcolor{keyword}{const}\ QString\ \&nodeId,\ \textcolor{keywordtype}{bool}\ online);}
+\DoxyCodeLine{00093\ }
+\DoxyCodeLine{00094\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00095\ \ \ \ \ QVector<RaspberryNode>\ m\_nodes;}
+\DoxyCodeLine{00096\ \ \ \ \ \doxymbox{\hyperlink{struct_broker_config}{BrokerConfig}}\ m\_brokerConfig;}
+\DoxyCodeLine{00097\ \ \ \ \ \doxymbox{\hyperlink{struct_app_config}{AppConfig}}\ m\_appConfig;}
+\DoxyCodeLine{00098\ \ \ \ \ QString\ m\_configFilePath;}
+\DoxyCodeLine{00099\ }
+\DoxyCodeLine{00100\ \ \ \ \ \textcolor{keywordtype}{void}\ parseJson(\textcolor{keyword}{const}\ QJsonDocument\ \&doc);}
+\DoxyCodeLine{00101\ \ \ \ \ QJsonDocument\ toJson()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00102\ \ \ \ \ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ parseNode(\textcolor{keyword}{const}\ QJsonObject\ \&obj);}
+\DoxyCodeLine{00103\ \ \ \ \ \doxymbox{\hyperlink{struct_sensor_info}{SensorInfo}}\ parseSensor(\textcolor{keyword}{const}\ QJsonObject\ \&obj);}
+\DoxyCodeLine{00104\ \ \ \ \ QJsonObject\ nodeToJson(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_raspberry_node}{RaspberryNode}}\ \&node)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00105\ \ \ \ \ QJsonObject\ sensorToJson(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_sensor_info}{SensorInfo}}\ \&sensor)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00106\ \};}
+
+\end{DoxyCode}

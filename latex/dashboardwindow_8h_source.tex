@@ -1,0 +1,103 @@
+\doxysection{dashboardwindow.\+h}
+\hypertarget{dashboardwindow_8h_source}{}\label{dashboardwindow_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}arpscanner.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}databasemanager.h"{}}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <QPoint>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{class\ }QLabel;}
+\DoxyCodeLine{00010\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_login_widget}{LoginWidget}};}
+\DoxyCodeLine{00011\ \textcolor{keyword}{class\ }QMouseEvent;}
+\DoxyCodeLine{00012\ \textcolor{keyword}{class\ }QTimer;}
+\DoxyCodeLine{00013\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_smoke_sensor_widget}{SmokeSensorWidget}};}
+\DoxyCodeLine{00014\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_temperature_widget}{TemperatureWidget}};}
+\DoxyCodeLine{00015\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_camera_widget}{CameraWidget}};}
+\DoxyCodeLine{00016\ \textcolor{keyword}{class\ }QPushButton;}
+\DoxyCodeLine{00017\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_database_manager}{DatabaseManager}};}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{keyword}{class\ }DashboardWindow\ :\ \textcolor{keyword}{public}\ QWidget}
+\DoxyCodeLine{00020\ \{}
+\DoxyCodeLine{00021\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keyword}{explicit}\ DashboardWindow(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{keyword}{protected}:}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{void}\ mousePressEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{void}\ mouseMoveEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordtype}{void}\ mouseReleaseEvent(QMouseEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{void}\ paintEvent(QPaintEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{void}\ resizeEvent(QResizeEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{bool}\ eventFilter(QObject\ *watched,\ QEvent\ *event)\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{void}\ openNetworkScanner();}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordtype}{void}\ onDevicesConnected(\textcolor{keyword}{const}\ QVector<NetworkDevice>\ \&devices);}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordtype}{void}\ updateConnectedDevicesStatus();}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{void}\ openModuleManager();}
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{void}\ onSmokeWidgetEdit();}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordtype}{void}\ onTempWidgetEdit();}
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keywordtype}{void}\ onCameraWidgetEdit();}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{void}\ onRadiationPanelEdit();}
+\DoxyCodeLine{00043\ \ \ \ \ \textcolor{keywordtype}{void}\ onUserAuthenticated(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_user}{User}}\ \&user);}
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{keywordtype}{void}\ onUserLoggedOut();}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordtype}{void}\ showLoginDialog();}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keywordtype}{void}\ logout();}
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keywordtype}{void}\ onAddSensor();}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00050\ \ \ \ \ QWidget\ *createTitleBar();}
+\DoxyCodeLine{00051\ \ \ \ \ QWidget\ *createBottomBar();}
+\DoxyCodeLine{00052\ \ \ \ \ QWidget\ *createRadiationPanel();}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keywordtype}{void}\ handleLogin();}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordtype}{void}\ updateBottomStatus();}
+\DoxyCodeLine{00055\ \ \ \ \ \textcolor{keywordtype}{void}\ showCameraFullscreen();}
+\DoxyCodeLine{00056\ \ \ \ \ \textcolor{keywordtype}{void}\ setupNetworkFeatures();}
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordtype}{void}\ setupWidgetEditButtons();}
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordtype}{void}\ addSensorToGrid(QWidget\ *widget,\ \textcolor{keywordtype}{int}\ rowSpan\ =\ 1,\ \textcolor{keywordtype}{int}\ colSpan\ =\ 1);}
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordtype}{void}\ setWidgetSize(QWidget\ *widget,\ \textcolor{keyword}{const}\ QSize\ \&size);}
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{keywordtype}{void}\ resetWidgetSize(QWidget\ *widget);}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordtype}{void}\ enableWidgetDragging(QWidget\ *widget);}
+\DoxyCodeLine{00062\ \ \ \ \ \textcolor{keywordtype}{void}\ setupAuthentication();}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordtype}{void}\ createLockOverlay();}
+\DoxyCodeLine{00064\ \ \ \ \ \textcolor{keywordtype}{void}\ updateUIBasedOnRole();}
+\DoxyCodeLine{00065\ \ \ \ \ \textcolor{keywordtype}{void}\ setWidgetsEnabled(\textcolor{keywordtype}{bool}\ enabled);}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \ \ \ \ \doxymbox{\hyperlink{class_login_widget}{LoginWidget}}\ *m\_loginWidget;}
+\DoxyCodeLine{00068\ \ \ \ \ \doxymbox{\hyperlink{class_smoke_sensor_widget}{SmokeSensorWidget}}\ *m\_smokeWidget;}
+\DoxyCodeLine{00069\ \ \ \ \ \doxymbox{\hyperlink{class_temperature_widget}{TemperatureWidget}}\ *m\_temperatureWidget;}
+\DoxyCodeLine{00070\ \ \ \ \ \doxymbox{\hyperlink{class_camera_widget}{CameraWidget}}\ *m\_cameraWidget;}
+\DoxyCodeLine{00071\ \ \ \ \ QWidget\ *m\_radiationPanel;}
+\DoxyCodeLine{00072\ }
+\DoxyCodeLine{00073\ \ \ \ \ QLabel\ *m\_userStatusLabel;}
+\DoxyCodeLine{00074\ \ \ \ \ QLabel\ *m\_activeValueLabel;}
+\DoxyCodeLine{00075\ \ \ \ \ QLabel\ *m\_alarmValueLabel;}
+\DoxyCodeLine{00076\ \ \ \ \ QLabel\ *m\_warningValueLabel;}
+\DoxyCodeLine{00077\ \ \ \ \ QLabel\ *m\_defaultValueLabel;}
+\DoxyCodeLine{00078\ }
+\DoxyCodeLine{00079\ \ \ \ \ QLabel\ *m\_networkStatusLabel;}
+\DoxyCodeLine{00080\ \ \ \ \ QPushButton\ *m\_scanNetworkButton;}
+\DoxyCodeLine{00081\ \ \ \ \ QPushButton\ *m\_logoutButton;}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \ \ \ \ QTimer\ *m\_statusTimer;}
+\DoxyCodeLine{00084\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_dragging;}
+\DoxyCodeLine{00085\ \ \ \ \ QPoint\ m\_dragOffset;}
+\DoxyCodeLine{00086\ }
+\DoxyCodeLine{00087\ \ \ \ \ QVector<NetworkDevice>\ m\_connectedDevices;}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00089\ \ \ \ \ \textcolor{comment}{//\ Authentication}}
+\DoxyCodeLine{00090\ \ \ \ \ \doxymbox{\hyperlink{class_database_manager}{DatabaseManager}}\ *m\_dbManager;}
+\DoxyCodeLine{00091\ \ \ \ \ \doxymbox{\hyperlink{struct_user}{User}}\ m\_currentUser;}
+\DoxyCodeLine{00092\ \ \ \ \ QWidget\ *m\_lockOverlay;}
+\DoxyCodeLine{00093\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_isAuthenticated;}
+\DoxyCodeLine{00094\ }
+\DoxyCodeLine{00095\ \ \ \ \ \textcolor{comment}{//\ Dynamic\ sensor\ container\ (positionnement\ absolu)}}
+\DoxyCodeLine{00096\ \ \ \ \ QWidget\ *m\_sensorContainer;}
+\DoxyCodeLine{00097\ \ \ \ \ QVector<QWidget*>\ m\_dynamicSensors;}
+\DoxyCodeLine{00098\ \};}
+
+\end{DoxyCode}

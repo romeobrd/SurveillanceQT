@@ -1,0 +1,56 @@
+\doxysection{modulemanager.\+h}
+\hypertarget{modulemanager_8h_source}{}\label{modulemanager_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QDialog>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QVector>}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{keyword}{class\ }QListWidget;}
+\DoxyCodeLine{00007\ \textcolor{keyword}{class\ }QPushButton;}
+\DoxyCodeLine{00008\ \textcolor{keyword}{class\ }QLabel;}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_module_info}{ModuleInfo}}\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordtype}{int}\ id;}
+\DoxyCodeLine{00012\ \ \ \ \ QString\ name;}
+\DoxyCodeLine{00013\ \ \ \ \ QString\ type;}
+\DoxyCodeLine{00014\ \ \ \ \ QString\ ipAddress;}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordtype}{bool}\ enabled;}
+\DoxyCodeLine{00016\ \};}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ \textcolor{keyword}{class\ }ModuleManager\ :\ \textcolor{keyword}{public}\ QDialog\ \{}
+\DoxyCodeLine{00019\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00022\ \ \ \ \ \textcolor{keyword}{explicit}\ ModuleManager(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \ \ \ \ QVector<ModuleInfo>\ modules()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{void}\ onAddModule();}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{void}\ onEditModule();}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordtype}{void}\ onDeleteModule();}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{void}\ onModuleSelectionChanged();}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{void}\ onMoveUp();}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{void}\ onMoveDown();}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{void}\ setupUi();}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordtype}{void}\ refreshModuleList();}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordtype}{void}\ loadModules();}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{void}\ saveModules();}
+\DoxyCodeLine{00039\ \ \ \ \ QString\ getModuleIcon(\textcolor{keyword}{const}\ QString\ \&type)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00040\ \ \ \ \ QString\ formatModuleText(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_module_info}{ModuleInfo}}\ \&module)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00041\ }
+\DoxyCodeLine{00042\ \ \ \ \ QListWidget\ *m\_moduleList;}
+\DoxyCodeLine{00043\ \ \ \ \ QPushButton\ *m\_addButton;}
+\DoxyCodeLine{00044\ \ \ \ \ QPushButton\ *m\_editButton;}
+\DoxyCodeLine{00045\ \ \ \ \ QPushButton\ *m\_deleteButton;}
+\DoxyCodeLine{00046\ \ \ \ \ QPushButton\ *m\_moveUpButton;}
+\DoxyCodeLine{00047\ \ \ \ \ QPushButton\ *m\_moveDownButton;}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \ \ \ \ QVector<ModuleInfo>\ m\_modules;}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keywordtype}{int}\ m\_nextId;}
+\DoxyCodeLine{00051\ \};}
+
+\end{DoxyCode}

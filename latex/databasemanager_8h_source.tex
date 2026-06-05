@@ -1,0 +1,92 @@
+\doxysection{databasemanager.\+h}
+\hypertarget{databasemanager_8h_source}{}\label{databasemanager_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QObject>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QString>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <QSqlDatabase>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <QSqlQuery>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <QDateTime>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{enum\ class}\ UserRole\ \{}
+\DoxyCodeLine{00010\ \ \ \ \ Admin,\ \ \ \ \ \ \textcolor{comment}{//\ Tous\ les\ droits}}
+\DoxyCodeLine{00011\ \ \ \ \ Operator,\ \ \ \textcolor{comment}{//\ Droits\ moyens\ (modifier\ certains\ paramètres)}}
+\DoxyCodeLine{00012\ \ \ \ \ Viewer\ \ \ \ \ \ \textcolor{comment}{//\ Lecture\ seule}}
+\DoxyCodeLine{00013\ \};}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_user}{User}}\ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{int}\ id;}
+\DoxyCodeLine{00017\ \ \ \ \ QString\ username;}
+\DoxyCodeLine{00018\ \ \ \ \ QString\ password;}
+\DoxyCodeLine{00019\ \ \ \ \ UserRole\ role;}
+\DoxyCodeLine{00020\ \ \ \ \ QString\ fullName;}
+\DoxyCodeLine{00021\ \ \ \ \ QString\ email;}
+\DoxyCodeLine{00022\ \ \ \ \ \textcolor{keywordtype}{bool}\ isActive;}
+\DoxyCodeLine{00023\ \ \ \ \ QDateTime\ lastLogin;}
+\DoxyCodeLine{00024\ \ \ \ \ QDateTime\ createdAt;}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{bool}\ hasPermission(\textcolor{keyword}{const}\ QString\ \&permission)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00027\ \ \ \ \ QString\ getRoleString()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{bool}\ canEditWidgets()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordtype}{bool}\ canManageModules()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{bool}\ canConfigureSystem()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{bool}\ canViewSensors()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00032\ \};}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keyword}{class\ }DatabaseManager\ :\ \textcolor{keyword}{public}\ QObject\ \{}
+\DoxyCodeLine{00035\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keyword}{explicit}\ DatabaseManager(QObject\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00039\ \ \ \ \ \string~DatabaseManager();}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keywordtype}{bool}\ initialize();}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{bool}\ isInitialized()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{comment}{//\ User\ management}}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordtype}{bool}\ createUser(\textcolor{keyword}{const}\ QString\ \&username,\ \textcolor{keyword}{const}\ QString\ \&password,}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ UserRole\ role,\ \textcolor{keyword}{const}\ QString\ \&fullName\ =\ QString(),}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ QString\ \&email\ =\ QString());}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keywordtype}{bool}\ authenticateUser(\textcolor{keyword}{const}\ QString\ \&username,\ \textcolor{keyword}{const}\ QString\ \&password);}
+\DoxyCodeLine{00049\ \ \ \ \ \doxymbox{\hyperlink{struct_user}{User}}\ getUser(\textcolor{keyword}{const}\ QString\ \&username);}
+\DoxyCodeLine{00050\ \ \ \ \ \doxymbox{\hyperlink{struct_user}{User}}\ getCurrentUser()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordtype}{bool}\ updateLastLogin(\textcolor{keyword}{const}\ QString\ \&username);}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordtype}{bool}\ changePassword(\textcolor{keyword}{const}\ QString\ \&username,\ \textcolor{keyword}{const}\ QString\ \&oldPassword,}
+\DoxyCodeLine{00053\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ QString\ \&newPassword);}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordtype}{bool}\ deactivateUser(\textcolor{keyword}{const}\ QString\ \&username);}
+\DoxyCodeLine{00055\ \ \ \ \ QVector<User>\ getAllUsers();}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{comment}{//\ Default\ users\ initialization}}
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordtype}{void}\ createDefaultUsers();}
+\DoxyCodeLine{00059\ }
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{comment}{//\ Session\ management}}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordtype}{void}\ setCurrentUser(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_user}{User}}\ \&user);}
+\DoxyCodeLine{00062\ \ \ \ \ \textcolor{keywordtype}{void}\ clearCurrentUser();}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordtype}{bool}\ isUserLoggedIn()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00065\ \ \ \ \ \textcolor{comment}{//\ Audit\ log}}
+\DoxyCodeLine{00066\ \ \ \ \ \textcolor{keywordtype}{bool}\ logAction(\textcolor{keyword}{const}\ QString\ \&username,\ \textcolor{keyword}{const}\ QString\ \&action,}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ QString\ \&details\ =\ QString());}
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keyword}{static}\ QString\ roleToString(UserRole\ role);}
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keyword}{static}\ UserRole\ stringToRole(\textcolor{keyword}{const}\ QString\ \&role);}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ signals:}
+\DoxyCodeLine{00073\ \ \ \ \ \textcolor{keywordtype}{void}\ userAuthenticated(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_user}{User}}\ \&user);}
+\DoxyCodeLine{00074\ \ \ \ \ \textcolor{keywordtype}{void}\ userLoggedOut();}
+\DoxyCodeLine{00075\ \ \ \ \ \textcolor{keywordtype}{void}\ authenticationFailed(\textcolor{keyword}{const}\ QString\ \&reason);}
+\DoxyCodeLine{00076\ \ \ \ \ \textcolor{keywordtype}{void}\ databaseError(\textcolor{keyword}{const}\ QString\ \&error);}
+\DoxyCodeLine{00077\ }
+\DoxyCodeLine{00078\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00079\ \ \ \ \ \textcolor{keywordtype}{bool}\ createTables();}
+\DoxyCodeLine{00080\ \ \ \ \ \textcolor{keywordtype}{bool}\ openDatabase();}
+\DoxyCodeLine{00081\ \ \ \ \ \textcolor{keywordtype}{void}\ closeDatabase();}
+\DoxyCodeLine{00082\ \ \ \ \ QString\ hashPassword(\textcolor{keyword}{const}\ QString\ \&password);}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ \ \ \ \ QSqlDatabase\ m\_db;}
+\DoxyCodeLine{00085\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_initialized;}
+\DoxyCodeLine{00086\ \ \ \ \ \doxymbox{\hyperlink{struct_user}{User}}\ m\_currentUser;}
+\DoxyCodeLine{00087\ \};}
+
+\end{DoxyCode}

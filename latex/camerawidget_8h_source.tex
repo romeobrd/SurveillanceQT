@@ -1,0 +1,44 @@
+\doxysection{camerawidget.\+h}
+\hypertarget{camerawidget_8h_source}{}\label{camerawidget_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QFrame>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <QPixmap>}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{keyword}{class\ }QLabel;}
+\DoxyCodeLine{00007\ \textcolor{keyword}{class\ }QPushButton;}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{class\ }CameraWidget\ :\ \textcolor{keyword}{public}\ QFrame}
+\DoxyCodeLine{00010\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00012\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keyword}{explicit}\ CameraWidget(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \ \ \ \ QPushButton\ *editButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00016\ \ \ \ \ QPushButton\ *closeButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00017\ \ \ \ \ QPushButton\ *reloadButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00018\ \ \ \ \ QPushButton\ *snapshotButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00019\ \ \ \ \ QPushButton\ *fullscreenButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00020\ \ \ \ \ QPushButton\ *recordButton()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \ \ \ \ QPixmap\ currentFrame()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keywordtype}{bool}\ reloadFrame();}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keywordtype}{bool}\ isRecording()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{keywordtype}{void}\ setTitle(\textcolor{keyword}{const}\ QString\ \&title);}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{void}\ setResizable(\textcolor{keywordtype}{bool}\ enabled);}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00030\ \ \ \ \ QLabel\ *m\_imageLabel;}
+\DoxyCodeLine{00031\ \ \ \ \ QLabel\ *m\_titleLabel;}
+\DoxyCodeLine{00032\ \ \ \ \ QPushButton\ *m\_editButton;}
+\DoxyCodeLine{00033\ \ \ \ \ QPushButton\ *m\_closeButton;}
+\DoxyCodeLine{00034\ \ \ \ \ QPushButton\ *m\_reloadButton;}
+\DoxyCodeLine{00035\ \ \ \ \ QPushButton\ *m\_snapshotButton;}
+\DoxyCodeLine{00036\ \ \ \ \ QPushButton\ *m\_fullscreenButton;}
+\DoxyCodeLine{00037\ \ \ \ \ QPushButton\ *m\_recordButton;}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{bool}\ m\_isRecording;}
+\DoxyCodeLine{00039\ \};}
+
+\end{DoxyCode}

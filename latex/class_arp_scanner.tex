@@ -1,0 +1,77 @@
+\doxysection{Arp\+Scanner Class Reference}
+\hypertarget{class_arp_scanner}{}\label{class_arp_scanner}\index{ArpScanner@{ArpScanner}}
+Inheritance diagram for Arp\+Scanner:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_arp_scanner}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Signals}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_arp_scanner_a7f8d3af75d47decbd96de51568c4b605}\label{class_arp_scanner_a7f8d3af75d47decbd96de51568c4b605} 
+void {\bfseries scan\+Started} ()
+\item 
+\Hypertarget{class_arp_scanner_a2e027bce093a174c5359436c9ea9a079}\label{class_arp_scanner_a2e027bce093a174c5359436c9ea9a079} 
+void {\bfseries scan\+Progress} (int current, int total)
+\item 
+\Hypertarget{class_arp_scanner_a47bffefc0a400e5da7fb40a0daae1883}\label{class_arp_scanner_a47bffefc0a400e5da7fb40a0daae1883} 
+void {\bfseries device\+Found} (const \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} \&device)
+\item 
+\Hypertarget{class_arp_scanner_adb8a025b7a0e3d3936fd1f565a394a82}\label{class_arp_scanner_adb8a025b7a0e3d3936fd1f565a394a82} 
+void {\bfseries scan\+Finished} (const QVector$<$ \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} $>$ \&devices)
+\item 
+\Hypertarget{class_arp_scanner_a4b9591a2b575f8817878cd0d3b0c4891}\label{class_arp_scanner_a4b9591a2b575f8817878cd0d3b0c4891} 
+void {\bfseries scan\+Error} (const QString \&error)
+\item 
+\Hypertarget{class_arp_scanner_a1537623b47fa5fbeff228aa132ea3d9f}\label{class_arp_scanner_a1537623b47fa5fbeff228aa132ea3d9f} 
+void {\bfseries raspberry\+Pi\+Found} (const \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} \&device, const \doxymbox{\hyperlink{struct_known_raspberry_pi}{Known\+Raspberry\+Pi}} \&known\+Info)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_arp_scanner_aca4bf5724e002d5df815caf216f0219e}\label{class_arp_scanner_aca4bf5724e002d5df815caf216f0219e} 
+{\bfseries Arp\+Scanner} (QObject \texorpdfstring{$\ast$}{*}parent=nullptr)
+\item 
+\Hypertarget{class_arp_scanner_acd2e7a5e75283cf2ca16105043146bae}\label{class_arp_scanner_acd2e7a5e75283cf2ca16105043146bae} 
+void {\bfseries start\+Scan} (const QString \&subnet=QString())
+\item 
+\Hypertarget{class_arp_scanner_a1c8cdfdeebb7bc3cc0043e0a17b4453f}\label{class_arp_scanner_a1c8cdfdeebb7bc3cc0043e0a17b4453f} 
+void {\bfseries start\+Scan\+Known\+Devices} ()
+\item 
+\Hypertarget{class_arp_scanner_a6c4badc015c7c50d51a739879fa9c8c4}\label{class_arp_scanner_a6c4badc015c7c50d51a739879fa9c8c4} 
+void {\bfseries stop\+Scan} ()
+\item 
+\Hypertarget{class_arp_scanner_ac9846f045ec70a58c16a50f74a499043}\label{class_arp_scanner_ac9846f045ec70a58c16a50f74a499043} 
+bool {\bfseries is\+Scanning} () const
+\item 
+\Hypertarget{class_arp_scanner_ae4fec1643ea7cfd4bc774d5d6b3a7cdc}\label{class_arp_scanner_ae4fec1643ea7cfd4bc774d5d6b3a7cdc} 
+QVector$<$ \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} $>$ {\bfseries detected\+Devices} () const
+\item 
+\Hypertarget{class_arp_scanner_a25b7a0932464c391c5260375be370a91}\label{class_arp_scanner_a25b7a0932464c391c5260375be370a91} 
+QVector$<$ \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} $>$ {\bfseries surveillance\+Modules} () const
+\item 
+\Hypertarget{class_arp_scanner_ad0c55e7ca5d527aa264b841cf22e1cd3}\label{class_arp_scanner_ad0c55e7ca5d527aa264b841cf22e1cd3} 
+QVector$<$ \doxymbox{\hyperlink{struct_network_device}{Network\+Device}} $>$ {\bfseries known\+Raspberry\+Pi\+Devices} () const
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_arp_scanner_ad4bab222c072692bc2fdcaea11bf7b88}\label{class_arp_scanner_ad4bab222c072692bc2fdcaea11bf7b88} 
+static QString {\bfseries get\+Local\+Subnet} ()
+\item 
+\Hypertarget{class_arp_scanner_a385eea90d0b9b3310fb46b9f8e5ebc91}\label{class_arp_scanner_a385eea90d0b9b3310fb46b9f8e5ebc91} 
+static QString {\bfseries get\+Local\+Ip\+Address} ()
+\item 
+\Hypertarget{class_arp_scanner_a8af62e806e8ac3e9ece3849bfe7a19cd}\label{class_arp_scanner_a8af62e806e8ac3e9ece3849bfe7a19cd} 
+static QVector$<$ \doxymbox{\hyperlink{struct_known_raspberry_pi}{Known\+Raspberry\+Pi}} $>$ {\bfseries get\+Known\+Raspberry\+Pi\+List} ()
+\item 
+\Hypertarget{class_arp_scanner_a7ce8081b3fa8bf7e44a251209a68d2d1}\label{class_arp_scanner_a7ce8081b3fa8bf7e44a251209a68d2d1} 
+static QMap$<$ QString, QString $>$ {\bfseries get\+Raspberry\+Pi\+Descriptions} ()
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+arpscanner.\+h\item 
+arpscanner.\+cpp\end{DoxyCompactItemize}
