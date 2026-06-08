@@ -31,6 +31,8 @@
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QDir>
+#include <QFileInfo>
 #include <QDebug>
 
 namespace {
@@ -1570,51 +1572,121 @@ bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
+static QString findRepositoryRootForMqttCerts()
+{
+    const QStringList startPaths = {
+        QDir::currentPath(),
+        QCoreApplication::applicationDirPath()
+    };
+
+    for (const QString &startPath : startPaths) {
+        QDir dir(startPath);
+
+        for (int depth = 0; depth < 10; ++depth) {
+            const bool hasCa = QFileInfo::exists(dir.filePath(QStringLiteral("ca.crt")));
+            const bool hasAdminCert = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.crt")));
+            const bool hasAdminKey = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.key")));
+
+            if (hasCa && hasAdminCert && hasAdminKey) {
+                return dir.absolutePath();
+            }
+
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
+    }
+
+    return QDir::currentPath();
+}
+
+/*
+    dashboardwindow.cpp - bloc MQTT corrigé pour certificats à la racine du repo
+
+    ⚠️ IMPORTANT
+    Ce fichier n'est PAS le dashboardwindow.cpp complet du projet.
+    Il contient uniquement le bloc C++ à intégrer dans ton dashboardwindow.cpp existant.
+
+    Objectif : faire pointer l'application Qt vers les certificats placés à la racine du repo :
+      - ca.crt
+      - admin-console.crt
+      - admin-console.key
+
+    À faire :
+      1. Ajoute les includes ci-dessous en haut de dashboardwindow.cpp si absents.
+      2. Ajoute findRepositoryRootForMqttCerts() dans le namespace { ... }.
+      3. Remplace complètement ta fonction DashboardWindow::setupMqtt() par celle ci-dessous.
+*/
+
+#include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
+#include <QDebug>
+
+/*
+    À coller dans le namespace anonyme existant :
+
+    namespace {
+        ...
+        QString findRepositoryRootForMqttCerts()
+        {
+            ...
+        }
+    }
+*/
+
+
+/*
+    Remplace complètement ta fonction existante par celle-ci.
+*/
 void DashboardWindow::setupMqtt()
 {
-    qDebug() << "=== DashboardWindow::setupMqtt() called ===";
+    if (m_mqttClient) {
+        return;
+    }
+
     m_mqttClient = new MqttClient(this);
+
+    const QString repoRoot = findRepositoryRootForMqttCerts();
+
+    const QString caCertPath = repoRoot + QStringLiteral("certs/ca.crt");
+    const QString clientCertPath = repoRoot + QStringLiteral("certs/admin-console.crt");
+    const QString clientKeyPath = repoRoot + QStringLiteral("certs/admin-console.key");
+
+    qDebug() << "MQTT: repository root:" << repoRoot;
+    qDebug() << "MQTT: CA certificate:" << caCertPath;
+    qDebug() << "MQTT: client certificate:" << clientCertPath;
+    qDebug() << "MQTT: client key:" << clientKeyPath;
+
+    if (!QFileInfo::exists(caCertPath)) {
+        qWarning() << "MQTT: ca.crt introuvable à la racine du projet:" << caCertPath;
+    }
+
+    if (!QFileInfo::exists(clientCertPath)) {
+        qWarning() << "MQTT: admin-console.crt introuvable à la racine du projet:" << clientCertPath;
+    }
+
+    if (!QFileInfo::exists(clientKeyPath)) {
+        qWarning() << "MQTT: admin-console.key introuvable à la racine du projet:" << clientKeyPath;
+    }
+
+    m_mqttClient->setCaCertificate(caCertPath);
+    m_mqttClient->setClientCertificate(clientCertPath, clientKeyPath);
 
     connect(m_mqttClient, &MqttClient::connected,
             this, &DashboardWindow::onMqttConnected);
+
     connect(m_mqttClient, &MqttClient::disconnected,
             this, &DashboardWindow::onMqttDisconnected);
+
     connect(m_mqttClient, &MqttClient::error,
             this, &DashboardWindow::onMqttError);
+
     connect(m_mqttClient, &MqttClient::temperatureReceived,
             this, &DashboardWindow::onMqttTemperatureReceived);
+
     connect(m_mqttClient, &MqttClient::smokeReceived,
             this, &DashboardWindow::onMqttSmokeReceived);
-    connect(m_mqttClient, &MqttClient::gasDataReceived,
-            this, [this](int eco2, int tvoc, bool detected, const QString &sensorId) {
-                qDebug() << "MQTT: Gas data — eCO2:" << eco2 << "ppm  TVOC:" << tvoc
-                         << "ppb  detected:" << detected << "  sensor:" << sensorId;
-
-                // Persist gas reading to database history
-                if (m_dbManager) {
-                    QString sid = sensorId.isEmpty() ? QStringLiteral("rpi-003") : sensorId;
-                    m_dbManager->saveGasReading(sid, eco2, tvoc, detected);
-                }
-
-                if (m_smokeWidget) {
-                    m_smokeWidget->updateFromGasData(eco2, tvoc, detected);
-                }
-            });
-
-    // Certificates are loaded here, but connection is deferred
-    // until the user selects devices via the network scanner.
-    QString caCertPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/ca.crt");
-    m_mqttClient->setCaCertificate(caCertPath);
-
-    // Load client certificate and private key (for mTLS authentication)
-    QString clientCertPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/admin-console.crt");
-    QString clientKeyPath = QCoreApplication::applicationDirPath() + QStringLiteral("/certs/admin-console.key");
-    m_mqttClient->setClientCertificate(clientCertPath, clientKeyPath);
-
-    // Accept self-signed CA certificate (known broker)
-    m_mqttClient->setIgnoreSslErrors(true);
-
-    qDebug() << "MQTT: Client prepared, waiting for device selection before connecting";
 }
 
 void DashboardWindow::onMqttConnected()
