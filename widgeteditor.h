@@ -17,7 +17,8 @@ struct WidgetConfig {
     bool enabled;
 };
 
-class WidgetEditor : public QDialog {
+class WidgetEditor : public QDialog
+{
     Q_OBJECT
 
 public:
@@ -37,4 +38,8 @@ private:
 
     WidgetConfig m_originalConfig;
     bool m_cameraMode;
+    private slots:
+    void onaccept();
+
+
 };

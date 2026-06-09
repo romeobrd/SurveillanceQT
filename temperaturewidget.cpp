@@ -415,8 +415,9 @@ void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
     }
 
     refreshUi();
-    qDebug() << "TemperatureWidget: Updated from MQTT" << temperature << humidity;
+    qDebug() << "TemperatureWidget:toto Updated from MQTT" << temperature << humidity;
 }
+
 
 
 

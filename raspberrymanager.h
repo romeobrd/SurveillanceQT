@@ -1,4 +1,4 @@
-#pragma once
+/*#pragma once
 
 #include <QObject>
 #include <QJsonDocument>
@@ -104,3 +104,4 @@ private:
     QJsonObject nodeToJson(const RaspberryNode &node) const;
     QJsonObject sensorToJson(const SensorInfo &sensor) const;
 };
+*/

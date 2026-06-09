@@ -1,4 +1,4 @@
-#include "raspberrymanager.h"
+/*#include "raspberrymanager.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -328,3 +328,4 @@ QString SensorInfo::getIcon() const
     default: return QStringLiteral("📟");
     }
 }
+*/

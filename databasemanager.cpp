@@ -56,20 +56,21 @@ bool DatabaseManager::openDatabase()
     // ---- Try MySQL (WAMP) first ----
     if (QSqlDatabase::isDriverAvailable(QStringLiteral("QMYSQL"))) {
         m_db = QSqlDatabase::addDatabase("QMYSQL", "surveillance");
-        m_db.setHostName("localhost");
+        m_db.setHostName("200.26.16.168");
         m_db.setPort(3306);
         m_db.setDatabaseName("surveillance_db");
-        m_db.setUserName("root");
-        m_db.setPassword("");
+        m_db.setUserName("surveillance_user");
+        m_db.setPassword("Mot2PassefgazhtkM:--_fort(tybrther)");
+        m_db.setConnectOptions("MYSQL_OPT_SSL_MODE=SSL_MODE_DISABLED");
 
         if (m_db.open()) {
-            qDebug() << "DatabaseManager: Connected to MySQL"
+            qDebug() << "DatabaseManager:coco Connected to MySQL"
                      << m_db.hostName() << ":" << m_db.port()
                      << "/" << m_db.databaseName();
             return true;
         }
 
-        qDebug() << "DatabaseManager: MySQL open() failed:"
+        qDebug() << "DatabaseManager:lili MySQL open() failed:"
                  << m_db.lastError().nativeErrorCode()
                  << m_db.lastError().driverText()
                  << "|" << m_db.lastError().databaseText();
@@ -79,21 +80,8 @@ bool DatabaseManager::openDatabase()
         qDebug() << "DatabaseManager: QMYSQL driver not available, skipping MySQL.";
     }
 
-    // ---- SQLite fallback ----
-    qDebug() << "DatabaseManager: trying SQLite fallback";
-    m_db = QSqlDatabase::addDatabase("QSQLITE", "surveillance");
 
-    QString dbPath = QCoreApplication::applicationDirPath() + "/surveillance.db";
-    m_db.setDatabaseName(dbPath);
 
-    if (!m_db.open()) {
-        const QString err = m_db.lastError().text();
-        qDebug() << "DatabaseManager: SQLite open() failed at" << dbPath << ":" << err;
-        emit databaseError(QStringLiteral("Cannot open database: %1").arg(err));
-        return false;
-    }
-
-    qDebug() << "DatabaseManager: Connected to SQLite at" << dbPath;
     return true;
 }
 
@@ -284,7 +272,6 @@ void DatabaseManager::createDefaultUsers()
 
     // Register default sensors (topics match raspberry_nodes.json + publisher scripts)
     registerSensor("rpi-001", "Raspberry 1 Temperature", "200.26.16.10", "temperature", "rpi-001/sensors/temperature");
-    registerSensor("rpi-002", "Raspberry 2 Camera",      "200.26.16.20", "camera",      "rpi-002/camera/stream");
     registerSensor("rpi-003", "Raspberry 3 Smoke",       "200.26.16.30", "smoke",       "rpi-003/sensors/smoke");
     registerSensor("rpi-004", "Raspberry 4 Display",     "200.26.16.40", "display",     "");
 
@@ -571,7 +558,7 @@ bool DatabaseManager::updateSensorValue(const QString &id, double value)
         qDebug() << "DatabaseManager: Failed to update sensor value:" << query.lastError().text();
         return false;
     }
-
+    qDebug() <<"ecrituredonne";
     return true;
 }
 
