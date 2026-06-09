@@ -75,6 +75,35 @@ QLabel *createStatusBubble(const QString &text, const QString &color)
     return label;
 }
 
+QString findRepositoryRootForMqttCerts()
+{
+    const QStringList startPaths = {
+        QDir::currentPath(),
+        QCoreApplication::applicationDirPath()
+    };
+
+    for (const QString &startPath : startPaths) {
+        QDir dir(startPath);
+
+        for (int depth = 0; depth < 10; ++depth) {
+            const bool hasCa       = QFileInfo::exists(dir.filePath(QStringLiteral("ca.crt")));
+            const bool hasCert     = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.crt")));
+            const bool hasKey      = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.key")));
+
+            if (hasCa && hasCert && hasKey) {
+                return dir.absolutePath() + QStringLiteral("/");
+            }
+
+            if (!dir.cdUp()) {
+                break;
+            }
+        }
+    }
+
+    // Fallback : répertoire courant
+    return QDir::currentPath() + QStringLiteral("/");
+}
+
 } // namespace
 
 DashboardWindow::DashboardWindow(QWidget *parent)
@@ -206,7 +235,7 @@ DashboardWindow::DashboardWindow(QWidget *parent)
         "QTabWidget#dashboardTabs QTabBar::tab:hover {"
         "  background: rgba(45, 108, 223, 0.35);"
         "}"
-    );
+        );
     tabs->addTab(m_sensorContainer, tr("Capteurs"));
 
     m_dbViewer = new DatabaseViewerWidget(tabs);
@@ -508,7 +537,7 @@ QWidget *DashboardWindow::createBottomBar()
             "QMenu::item:selected {"
             "  background: #4a90d9;"
             "}"
-        );
+            );
 
         auto *smallAction = menu.addAction(QStringLiteral("🔹 Petit (1x1)"));
         auto *mediumAction = menu.addAction(QStringLiteral("🔸 Moyen (2x1)"));
@@ -702,7 +731,7 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
 
     for (const auto &device : devices) {
         deviceNames.append(QStringLiteral("%1 (%2)")
-                           .arg(device.ipAddress, device.deviceType));
+                               .arg(device.ipAddress, device.deviceType));
 
         QWidget *newWidget = nullptr;
         QString cleanType = device.deviceType.trimmed();
@@ -720,9 +749,9 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
 
             connect(tempWidget->closeButton(), &QPushButton::clicked,
                     this, [this, tempWidget]() {
-                tempWidget->hide();
-                updateBottomStatus();
-            });
+                        tempWidget->hide();
+                        updateBottomStatus();
+                    });
             connect(tempWidget->editButton(), &QPushButton::clicked,
                     this, &DashboardWindow::onTempWidgetEdit);
         }
@@ -741,9 +770,9 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
 
             connect(smokeWidget->closeButton(), &QPushButton::clicked,
                     this, [this, smokeWidget]() {
-                smokeWidget->hide();
-                updateBottomStatus();
-            });
+                        smokeWidget->hide();
+                        updateBottomStatus();
+                    });
             connect(smokeWidget->editButton(), &QPushButton::clicked,
                     this, &DashboardWindow::onSmokeWidgetEdit);
         }
@@ -762,9 +791,9 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
 
             connect(camWidget->closeButton(), &QPushButton::clicked,
                     this, [this, camWidget]() {
-                camWidget->hide();
-                updateBottomStatus();
-            });
+                        camWidget->hide();
+                        updateBottomStatus();
+                    });
             connect(camWidget->editButton(), &QPushButton::clicked,
                     this, &DashboardWindow::onCameraWidgetEdit);
         }
@@ -780,8 +809,8 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
         QMessageBox::information(this,
                                  QStringLiteral("Modules Connect\u00e9s"),
                                  QStringLiteral("%1 module(s) connect\u00e9(s):\n\n%2")
-                                 .arg(devices.size())
-                                 .arg(deviceNames.join(QStringLiteral("\n"))));
+                                     .arg(devices.size())
+                                     .arg(deviceNames.join(QStringLiteral("\n"))));
 
         updateConnectedDevicesStatus();
         updateBottomStatus();
@@ -807,7 +836,7 @@ void DashboardWindow::updateConnectedDevicesStatus()
         if (moduleCount > 0) {
             m_networkStatusLabel->setText(
                 QStringLiteral(" %1 | %2 |  %3 module(s)")
-                .arg(localIp, subnet).arg(moduleCount));
+                    .arg(localIp, subnet).arg(moduleCount));
         } else {
             m_networkStatusLabel->setText(
                 QStringLiteral(" %1 | %2").arg(localIp, subnet));
@@ -845,7 +874,7 @@ void DashboardWindow::onSmokeWidgetEdit()
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
                                  QStringLiteral("Nouveau nom: %1\nType: %2")
-                                 .arg(newConfig.name, newConfig.type));
+                                     .arg(newConfig.name, newConfig.type));
     }
 }
 
@@ -866,7 +895,7 @@ void DashboardWindow::onTempWidgetEdit()
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
                                  QStringLiteral("Nouveau nom: %1\nType: %2")
-                                 .arg(newConfig.name, newConfig.type));
+                                     .arg(newConfig.name, newConfig.type));
     }
 }
 
@@ -876,7 +905,7 @@ void DashboardWindow::onCameraWidgetEdit()
     WidgetConfig config;
     config.id = QStringLiteral("cam-001");
     config.name = m_cameraWidget->windowTitle().isEmpty() ?
-                  QStringLiteral("Caméra Salle Serveur") : m_cameraWidget->windowTitle();
+                      QStringLiteral("Caméra Salle Serveur") : m_cameraWidget->windowTitle();
     config.type = QStringLiteral("Caméra");
     config.warningThreshold = 0;  // Pas utilisé pour caméra
     config.alarmThreshold = 0;    // Pas utilisé pour caméra
@@ -889,7 +918,7 @@ void DashboardWindow::onCameraWidgetEdit()
         QMessageBox::information(this,
                                  QStringLiteral("Caméra modifiée"),
                                  QStringLiteral("Nouveau nom: %1")
-                                 .arg(newConfig.name));
+                                     .arg(newConfig.name));
     }
 }
 
@@ -909,7 +938,7 @@ void DashboardWindow::onRadiationPanelEdit()
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
                                  QStringLiteral("Nouveau nom: %1\nType: %2")
-                                 .arg(newConfig.name, newConfig.type));
+                                     .arg(newConfig.name, newConfig.type));
     }
 }
 
@@ -925,7 +954,7 @@ void DashboardWindow::onUserAuthenticated(const User &user)
     m_isAuthenticated = true;
 
     m_userStatusLabel->setText(QStringLiteral("%1 (%2)")
-                               .arg(user.username, user.getRoleString()));
+                                   .arg(user.username, user.getRoleString()));
 
     updateUIBasedOnRole();
     setWidgetsEnabled(true);
@@ -937,8 +966,8 @@ void DashboardWindow::onUserAuthenticated(const User &user)
     QMessageBox::information(this,
                              QStringLiteral("Bienvenue"),
                              QStringLiteral("Connecté en tant que %1\nRôle: %2")
-                             .arg(user.fullName.isEmpty() ? user.username : user.fullName,
-                                  user.getRoleString()));
+                                 .arg(user.fullName.isEmpty() ? user.username : user.fullName,
+                                      user.getRoleString()));
 }
 
 void DashboardWindow::onUserLoggedOut()
@@ -1062,7 +1091,7 @@ void DashboardWindow::createLockOverlay()
         "  font-size: 13px;"
         "}"
         "QPushButton#quitBtn:hover { color: #e74c3c; border-color: #e74c3c; }"
-    );
+        );
 
     auto *overlayLayout = new QVBoxLayout(m_lockOverlay);
     overlayLayout->setAlignment(Qt::AlignCenter);
@@ -1170,9 +1199,9 @@ void DashboardWindow::createLockOverlay()
 
         connect(m_dbManager, &DatabaseManager::authenticationFailed,
                 errorLabel, [errorLabel](const QString &msg) {
-            errorLabel->setText(QStringLiteral("⚠  %1").arg(msg));
-            errorLabel->show();
-        }, Qt::SingleShotConnection);
+                    errorLabel->setText(QStringLiteral("⚠  %1").arg(msg));
+                    errorLabel->show();
+                }, Qt::SingleShotConnection);
 
         m_dbManager->authenticateUser(user, pass);
     };
@@ -1277,36 +1306,36 @@ void DashboardWindow::onAddSensor()
             newWidget = SensorFactory::createSmokeSensor(this, config.name);
             connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                     this, [this, newWidget]() {
-                // TODO: Gérer l'édition des capteurs dynamiques
-                QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
-            });
+                        // TODO: Gérer l'édition des capteurs dynamiques
+                        QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
+                    });
             connect(static_cast<SmokeSensorWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
                     this, [newWidget, this]() {
-                newWidget->hide();
-                updateBottomStatus();
-            });
+                        newWidget->hide();
+                        updateBottomStatus();
+                    });
             break;
 
         case SensorType::Temperature:
             newWidget = SensorFactory::createTemperatureSensor(this, config.name);
             connect(static_cast<TemperatureWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                     this, [this, newWidget]() {
-                QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
-            });
+                        QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
+                    });
             connect(static_cast<TemperatureWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
                     this, [newWidget, this]() {
-                newWidget->hide();
-                updateBottomStatus();
-            });
+                        newWidget->hide();
+                        updateBottomStatus();
+                    });
             break;
 
         case SensorType::Camera:
             newWidget = SensorFactory::createCamera(this, config.name);
             connect(static_cast<CameraWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
                     this, [newWidget, this]() {
-                newWidget->hide();
-                updateBottomStatus();
-            });
+                        newWidget->hide();
+                        updateBottomStatus();
+                    });
             break;
 
         default:
@@ -1326,25 +1355,25 @@ void DashboardWindow::onAddSensor()
             if (config.type == SensorType::Smoke || config.type == SensorType::Temperature) {
                 connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
                         this, [this, newWidget, config]() {
-                    WidgetConfig wc;
-                    wc.id = config.id;
-                    wc.name = static_cast<SmokeSensorWidget*>(newWidget)->currentSummary();
-                    wc.type = SensorFactory::sensorTypeToString(config.type);
-                    wc.warningThreshold = config.warningThreshold;
-                    wc.alarmThreshold = config.alarmThreshold;
-                    wc.unit = config.unit;
+                            WidgetConfig wc;
+                            wc.id = config.id;
+                            wc.name = static_cast<SmokeSensorWidget*>(newWidget)->currentSummary();
+                            wc.type = SensorFactory::sensorTypeToString(config.type);
+                            wc.warningThreshold = config.warningThreshold;
+                            wc.alarmThreshold = config.alarmThreshold;
+                            wc.unit = config.unit;
 
-                    WidgetEditor editor(wc, this);
-                    if (editor.exec() == QDialog::Accepted) {
-                        WidgetConfig newConfig = editor.getConfig();
-                        static_cast<SmokeSensorWidget*>(newWidget)->setTitle(newConfig.name);
-                    }
-                });
+                            WidgetEditor editor(wc, this);
+                            if (editor.exec() == QDialog::Accepted) {
+                                WidgetConfig newConfig = editor.getConfig();
+                                static_cast<SmokeSensorWidget*>(newWidget)->setTitle(newConfig.name);
+                            }
+                        });
             }
 
             QMessageBox::information(this, QStringLiteral("Capteur ajouté"),
                                      QStringLiteral("Le capteur '%1' a été ajouté au dashboard.")
-                                     .arg(config.name));
+                                         .arg(config.name));
         }
     }
 }
@@ -1574,45 +1603,6 @@ bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
 
 
 
-/*
-    dashboardwindow.cpp - bloc MQTT corrigé pour certificats à la racine du repo
-
-    ⚠️ IMPORTANT
-    Ce fichier n'est PAS le dashboardwindow.cpp complet du projet.
-    Il contient uniquement le bloc C++ à intégrer dans ton dashboardwindow.cpp existant.
-
-    Objectif : faire pointer l'application Qt vers les certificats placés à la racine du repo :
-      - ca.crt
-      - admin-console.crt
-      - admin-console.key
-
-    À faire :
-      1. Ajoute les includes ci-dessous en haut de dashboardwindow.cpp si absents.
-      2. Ajoute findRepositoryRootForMqttCerts() dans le namespace { ... }.
-      3. Remplace complètement ta fonction DashboardWindow::setupMqtt() par celle ci-dessous.
-*/
-
-#include <QCoreApplication>
-#include <QDir>
-#include <QFileInfo>
-#include <QDebug>
-
-/*
-    À coller dans le namespace anonyme existant :
-
-    namespace {
-        ...
-        QString findRepositoryRootForMqttCerts()
-        {
-            ...
-        }
-    }
-*/
-
-
-/*
-    Remplace complètement ta fonction existante par celle-ci.
-*/
 void DashboardWindow::setupMqtt()
 {
     if (m_mqttClient) {
@@ -1623,9 +1613,9 @@ void DashboardWindow::setupMqtt()
 
     const QString repoRoot = findRepositoryRootForMqttCerts();
 
-    const QString caCertPath    = repoRoot + QStringLiteral("/ca.crt");
-    const QString clientCertPath = repoRoot + QStringLiteral("/admin-console.crt");
-    const QString clientKeyPath  = repoRoot + QStringLiteral("/admin-console.key");
+    const QString caCertPath     = repoRoot + QStringLiteral("ca.crt");
+    const QString clientCertPath = repoRoot + QStringLiteral("admin-console.crt");
+    const QString clientKeyPath  = repoRoot + QStringLiteral("admin-console.key");
 
     qDebug() << "MQTT: repository root:" << repoRoot;
     qDebug() << "MQTT: CA certificate:" << caCertPath;
