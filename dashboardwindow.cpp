@@ -1572,33 +1572,7 @@ bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-static QString findRepositoryRootForMqttCerts()
-{
-    const QStringList startPaths = {
-        QDir::currentPath(),
-        QCoreApplication::applicationDirPath()
-    };
 
-    for (const QString &startPath : startPaths) {
-        QDir dir(startPath);
-
-        for (int depth = 0; depth < 10; ++depth) {
-            const bool hasCa = QFileInfo::exists(dir.filePath(QStringLiteral("ca.crt")));
-            const bool hasAdminCert = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.crt")));
-            const bool hasAdminKey = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.key")));
-
-            if (hasCa && hasAdminCert && hasAdminKey) {
-                return dir.absolutePath();
-            }
-
-            if (!dir.cdUp()) {
-                break;
-            }
-        }
-    }
-
-    return QDir::currentPath();
-}
 
 /*
     dashboardwindow.cpp - bloc MQTT corrigé pour certificats à la racine du repo
@@ -1649,9 +1623,9 @@ void DashboardWindow::setupMqtt()
 
     const QString repoRoot = findRepositoryRootForMqttCerts();
 
-    const QString caCertPath = repoRoot + QStringLiteral("certs/ca.crt");
-    const QString clientCertPath = repoRoot + QStringLiteral("certs/admin-console.crt");
-    const QString clientKeyPath = repoRoot + QStringLiteral("certs/admin-console.key");
+    const QString caCertPath    = repoRoot + QStringLiteral("/ca.crt");
+    const QString clientCertPath = repoRoot + QStringLiteral("/admin-console.crt");
+    const QString clientKeyPath  = repoRoot + QStringLiteral("/admin-console.key");
 
     qDebug() << "MQTT: repository root:" << repoRoot;
     qDebug() << "MQTT: CA certificate:" << caCertPath;

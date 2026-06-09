@@ -48,3 +48,7 @@ INCLUDEPATH += $$PWD
 
 DISTFILES += \
     $$PWD/assets/server_room.jpg
+
+
+
+DEFINES += PROJECT_ROOT_PATH=\\\"$$PWD\\\
