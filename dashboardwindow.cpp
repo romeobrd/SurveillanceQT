@@ -75,33 +75,39 @@ QLabel *createStatusBubble(const QString &text, const QString &color)
     return label;
 }
 
+// Cherche le dossier contenant les 3 fichiers certs MQTT.
+// Teste à chaque niveau : le dossier lui-meme, puis son sous-dossier "certs/".
+// Remonte jusqu'a 12 niveaux depuis l'exe et depuis currentPath.
 QString findRepositoryRootForMqttCerts()
 {
+    auto certsExistIn = [](const QString &path) -> bool {
+        return QFileInfo::exists(path + QStringLiteral("/ca.crt"))
+        && QFileInfo::exists(path + QStringLiteral("/admin-console.crt"))
+            && QFileInfo::exists(path + QStringLiteral("/admin-console.key"));
+    };
+
     const QStringList startPaths = {
-        QDir::currentPath(),
-        QCoreApplication::applicationDirPath()
+        QCoreApplication::applicationDirPath(),
+        QDir::currentPath()
     };
 
     for (const QString &startPath : startPaths) {
         QDir dir(startPath);
-
-        for (int depth = 0; depth < 10; ++depth) {
-            const bool hasCa       = QFileInfo::exists(dir.filePath(QStringLiteral("ca.crt")));
-            const bool hasCert     = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.crt")));
-            const bool hasKey      = QFileInfo::exists(dir.filePath(QStringLiteral("admin-console.key")));
-
-            if (hasCa && hasCert && hasKey) {
-                return dir.absolutePath() + QStringLiteral("/");
-            }
-
-            if (!dir.cdUp()) {
+        for (int depth = 0; depth < 12; ++depth) {
+            const QString abs = dir.absolutePath();
+            // Test direct dans ce dossier
+            if (certsExistIn(abs))
+                return abs + QStringLiteral("/");
+            // Test dans le sous-dossier certs/
+            if (certsExistIn(abs + QStringLiteral("/certs")))
+                return abs + QStringLiteral("/certs/");
+            if (!dir.cdUp())
                 break;
-            }
         }
     }
 
-    // Fallback : répertoire courant
-    return QDir::currentPath() + QStringLiteral("/");
+    qWarning() << "MQTT: certificats introuvables, fallback sur applicationDirPath";
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/");
 }
 
 } // namespace
