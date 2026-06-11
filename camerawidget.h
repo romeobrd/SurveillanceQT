@@ -1,15 +1,21 @@
 #pragma once
 
-#include <QPixmap>
 #include <QString>
 #include <QWidget>
 
 class QLabel;
-class QPushButton;
 class QProcess;
-class QShowEvent;
+class QPushButton;
 class QResizeEvent;
+class QShowEvent;
 
+/**
+ * CameraWidget — affichage du flux RTSP de la caméra de surveillance.
+ *
+ * La vidéo est lue par le lecteur externe "mpv", dont la fenêtre est
+ * incrustée dans le widget grâce à l'option --wid (nécessite X11 :
+ * le code force la plateforme Qt "xcb" si l'on est sous Wayland).
+ */
 class CameraWidget : public QWidget
 {
     Q_OBJECT
@@ -19,20 +25,15 @@ public:
     ~CameraWidget() override;
 
     void setTitle(const QString &title);
-    QString title() const;
-
     void setStreamUrl(const QString &url);
-    QString streamUrl() const;
 
     void play();
     void stop();
     void reloadFrame();
-    QPixmap currentFrame() const;
 
+    // Boutons exposés pour que le dashboard puisse s'y connecter
     QPushButton *closeButton() const;
     QPushButton *editButton() const;
-    QPushButton *reloadButton() const;
-    QPushButton *snapshotButton() const;
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -45,24 +46,21 @@ private:
     void startMpv();
     void setStatus(const QString &text, bool error = false);
     bool ensureMpvAvailable();
-    QString mpvExecutable() const;
     bool isEmbeddingReady() const;
 
-private:
     QString m_title;
     QString m_streamUrl;
     QString m_mpvExecutable;
 
-    QLabel *m_titleLabel;
-    QLabel *m_statusLabel;
-    QWidget *m_videoSurface;
+    QLabel      *m_titleLabel;
+    QLabel      *m_statusLabel;
+    QWidget     *m_videoSurface;   // surface native dans laquelle mpv dessine
     QPushButton *m_closeButton;
     QPushButton *m_editButton;
     QPushButton *m_reloadButton;
-    QPushButton *m_snapshotButton;
-    QProcess *m_mpvProcess;
+    QProcess    *m_mpvProcess;
 
-    bool m_playRequested;
-    bool m_stopping;
-    int m_startAttempts;
+    bool m_playRequested;   // l'utilisateur veut voir le flux
+    bool m_stopping;        // arrêt volontaire en cours (pas une erreur)
+    int  m_startAttempts;   // tentatives en attendant que la surface soit prête
 };

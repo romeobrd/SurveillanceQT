@@ -1,16 +1,12 @@
 #include "temperaturewidget.h"
 
+#include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
-#include <QRandomGenerator>
-#include <QStringList>
-#include <QTimer>
 #include <QVBoxLayout>
-
-#include <algorithm>
 
 namespace {
 
@@ -32,6 +28,8 @@ QPushButton *createToolButton(const QString &text, QWidget *parent)
     return button;
 }
 
+// Courbe de température : échelle fixe de 20 à 65 °C, ligne de seuil
+// d'alarme à 58 °C, tracé orange avec effet de halo.
 class TemperatureChartWidget : public QWidget
 {
 public:
@@ -44,55 +42,45 @@ public:
     void setValues(const QVector<double> &values)
     {
         m_values = values;
-        update();
-    }
-
-    void setHumidity(double humidity)
-    {
-        m_humidity = humidity;
-        update();
+        update();   // demande un redessin
     }
 
 protected:
     void resizeEvent(QResizeEvent *event) override
     {
         QWidget::resizeEvent(event);
-        update();  // Forcer le redessin quand on redimensionne
+        update();   // redessiner quand le widget change de taille
     }
+
     void paintEvent(QPaintEvent *) override
     {
-        const QVector<double> values = m_values;
-
-        const QStringList xLabels {
-            QStringLiteral("16:40"),
-            QStringLiteral("16:25"),
-            QStringLiteral("16:30"),
-            QStringLiteral("16:35"),
-            QStringLiteral("16:50"),
-            QStringLiteral("16:55")
-        };
-
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
         const QRectF plotRect = rect().adjusted(38, 18, -20, -34);
 
+        // Fond en dégradé (chaud en haut, froid en bas)
         QLinearGradient zoneGradient(plotRect.topLeft(), plotRect.bottomLeft());
         zoneGradient.setColorAt(0.0, QColor(195, 107, 29, 50));
         zoneGradient.setColorAt(0.45, QColor(171, 102, 42, 65));
         zoneGradient.setColorAt(1.0, QColor(82, 112, 165, 35));
         p.fillRect(plotRect, zoneGradient);
 
+        // Lignes horizontales de repère
         p.setPen(QPen(QColor(197, 208, 231, 50), 1, Qt::DashLine));
         for (int i = 0; i < 4; ++i) {
             const qreal y = plotRect.top() + i * plotRect.height() / 3.0;
             p.drawLine(QPointF(plotRect.left(), y), QPointF(plotRect.right(), y));
         }
 
+        // Ligne du seuil d'alarme (58 °C)
         p.setPen(QPen(QColor(255, 130, 64, 3), 3));
         const qreal thresholdY = plotRect.bottom() - ((58.0 - 20.0) / 45.0) * plotRect.height();
         p.drawLine(QPointF(plotRect.left(), thresholdY), QPointF(plotRect.right(), thresholdY));
 
+        // Conversion valeur -> position dans le graphique
+        // (échelle : 20 °C en bas, 65 °C en haut)
+        const QVector<double> &values = m_values;
         auto valueToPoint = [&](int index, double value) {
             const qreal x = plotRect.left() + (plotRect.width() * index) / qMax(1, values.size() - 1);
             const qreal y = plotRect.bottom() - ((value - 20.0) / 45.0) * plotRect.height();
@@ -101,16 +89,16 @@ protected:
 
         QVector<QPointF> points;
         points.reserve(values.size());
-        for (int i = 0; i < values.size(); ++i) {
+        for (int i = 0; i < values.size(); ++i)
             points.push_back(valueToPoint(i, values[i]));
-        }
 
+        // Tracé de la courbe : un trait large translucide (halo) puis le
+        // trait principal par-dessus.
         if (!points.isEmpty()) {
             QPainterPath path;
             path.moveTo(points.front());
-            for (int i = 1; i < points.size(); ++i) {
+            for (int i = 1; i < points.size(); ++i)
                 path.lineTo(points[i]);
-            }
 
             p.setPen(QPen(QColor(255, 164, 74, 55), 10, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
             p.drawPath(path);
@@ -118,6 +106,7 @@ protected:
             p.drawPath(path);
         }
 
+        // Graduations de l'axe vertical (°C)
         p.setPen(QColor(226, 234, 250));
         p.setFont(QFont(QStringLiteral("Segoe UI"), 9, QFont::Medium));
 
@@ -129,13 +118,7 @@ protected:
                        QString::number(value));
         }
 
-        for (int i = 0; i < xLabels.size(); ++i) {
-            const qreal x = plotRect.left() + i * plotRect.width() / qMax(1, xLabels.size() - 1);
-            p.drawText(QRectF(x - 22, plotRect.bottom() + 8, 48, 18),
-                       Qt::AlignHCenter | Qt::AlignTop,
-                       xLabels[i]);
-        }
-
+        // Axes
         p.setPen(QPen(QColor(220, 229, 250, 75), 1));
         p.drawLine(QPointF(plotRect.left(), plotRect.bottom()), QPointF(plotRect.right(), plotRect.bottom()));
         p.drawLine(QPointF(plotRect.right(), plotRect.top()), QPointF(plotRect.right(), plotRect.bottom()));
@@ -145,27 +128,24 @@ protected:
 
 private:
     QVector<double> m_values;
-    double m_humidity = 0.0;
 };
 
 } // namespace
 
+// =====================================================================
+//  CONSTRUCTION DE L'INTERFACE
+// =====================================================================
 TemperatureWidget::TemperatureWidget(QWidget *parent)
     : QFrame(parent)
     , m_editButton(nullptr)
     , m_closeButton(nullptr)
+    , m_titleLabel(nullptr)
     , m_stateLabel(nullptr)
     , m_valueLabel(nullptr)
     , m_chart(nullptr)
-    , m_timer(new QTimer(this))
-    , m_values()
-    , m_currentValue(0)
-    , m_peakValue(0)
     , m_severity(Normal)
     , m_warningThreshold(45)
     , m_alarmThreshold(58)
-    , m_realTimeMode(false)
-    , m_humidity(0.0)
 {
     setObjectName(QStringLiteral("panelTemperature"));
     setStyleSheet(
@@ -183,6 +163,7 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     mainLayout->setContentsMargins(16, 12, 16, 14);
     mainLayout->setSpacing(8);
 
+    // --- En-tête : titre + boutons éditer / fermer ---
     auto *headerLayout = new QHBoxLayout;
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(8);
@@ -193,11 +174,12 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
-    m_editButton = createToolButton(QStringLiteral("✎"), this);
+    m_editButton  = createToolButton(QStringLiteral("✎"), this);
     m_closeButton = createToolButton(QStringLiteral("✕"), this);
     headerLayout->addWidget(m_editButton);
     headerLayout->addWidget(m_closeButton);
 
+    // --- Sous-en-tête : valeur courante + badge d'état ---
     auto *subHeaderLayout = new QHBoxLayout;
     subHeaderLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -223,22 +205,21 @@ TemperatureWidget::TemperatureWidget(QWidget *parent)
     subHeaderLayout->addStretch();
     subHeaderLayout->addWidget(m_stateLabel);
 
+    // --- Courbe d'historique ---
     auto *chart = new TemperatureChartWidget(this);
     m_chart = chart;
     chart->setMinimumHeight(100);
 
     mainLayout->addLayout(headerLayout);
     mainLayout->addLayout(subHeaderLayout);
-    mainLayout->addWidget(chart, 1);  // Le 1 fait que le chart prend tout l'espace disponible
-
-    QObject::connect(m_timer, &QTimer::timeout, this, [this]() {
-        simulateStep();
-    });
-    // Don't auto-start simulation timer; real values come from MQTT.
+    mainLayout->addWidget(chart, 1);   // le graphique prend l'espace restant
 
     refreshUi();
 }
 
+// =====================================================================
+//  ACCESSEURS
+// =====================================================================
 QPushButton *TemperatureWidget::editButton() const
 {
     return m_editButton;
@@ -249,85 +230,53 @@ QPushButton *TemperatureWidget::closeButton() const
     return m_closeButton;
 }
 
-QString TemperatureWidget::currentSummary() const
-{
-    QString stateText = QStringLiteral("Normal");
-    if (m_severity == Warning)
-        stateText = QStringLiteral("Avertissement");
-    else if (m_severity == Alarm)
-        stateText = QStringLiteral("Alerte");
-
-    return QStringLiteral(
-               "Valeur actuelle: %1 °C\n"
-               "Pic détecté: %2 °C\n"
-               "Seuil avertissement: %3 °C\n"
-               "Seuil critique: %4 °C\n"
-               "État actuel: %5")
-        .arg(m_currentValue)
-        .arg(m_peakValue)
-        .arg(m_warningThreshold)
-        .arg(m_alarmThreshold)
-        .arg(stateText);
-}
-
-int TemperatureWidget::currentValue() const
-{
-    return m_currentValue;
-}
-
 TemperatureWidget::Severity TemperatureWidget::severity() const
 {
     return m_severity;
 }
 
-void TemperatureWidget::simulateStep()
+void TemperatureWidget::setTitle(const QString &title)
 {
-    int delta = QRandomGenerator::global()->bounded(-3, 5);
+    if (m_titleLabel)
+        m_titleLabel->setText(title);
+}
 
-    if (QRandomGenerator::global()->bounded(100) < 10) {
-        delta += QRandomGenerator::global()->bounded(4, 10);
-    }
-
-    m_currentValue += delta;
-    m_currentValue = qBound(24, m_currentValue, 65);
-
-    m_peakValue = qMax(m_peakValue, m_currentValue);
-
-    m_values.push_back(m_currentValue);
-    while (m_values.size() > 60) {
+// =====================================================================
+//  MISE À JOUR DEPUIS LES DONNÉES MQTT
+// =====================================================================
+void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
+{
+    // Historique limité aux 60 dernières mesures
+    m_values.push_back(temperature);
+    while (m_values.size() > 60)
         m_values.removeFirst();
-    }
 
-    if (m_currentValue >= m_alarmThreshold) {
-        setSeverity(Alarm);
-    } else if (m_currentValue >= m_warningThreshold) {
-        setSeverity(Warning);
-    } else {
-        setSeverity(Normal);
-    }
+    // État selon les seuils d'avertissement et d'alarme
+    if (temperature >= m_alarmThreshold)
+        m_severity = Alarm;
+    else if (temperature >= m_warningThreshold)
+        m_severity = Warning;
+    else
+        m_severity = Normal;
+
+    // Valeur affichée avec une décimale
+    if (m_valueLabel)
+        m_valueLabel->setText(QString::number(temperature, 'f', 1) + QStringLiteral(" °C"));
 
     refreshUi();
+    qDebug() << "TemperatureWidget: mise à jour MQTT" << temperature << humidity;
 }
 
-void TemperatureWidget::resetSensor()
-{
-    m_currentValue = 0;
-    m_peakValue = 0;
-    m_values.clear();
-    setSeverity(Normal);
-    refreshUi();
-}
-
+// =====================================================================
+//  RAFRAÎCHISSEMENT DE L'AFFICHAGE
+// =====================================================================
 void TemperatureWidget::refreshUi()
 {
-    if (m_chart) {
-        auto *chart = static_cast<TemperatureChartWidget *>(m_chart);
-        chart->setValues(m_values);
-    }
+    if (m_chart)
+        static_cast<TemperatureChartWidget *>(m_chart)->setValues(m_values);
 
-    if (!m_stateLabel) {
+    if (!m_stateLabel)
         return;
-    }
 
     QString text;
     QString background;
@@ -359,78 +308,3 @@ void TemperatureWidget::refreshUi()
                                     "}"
                                     ).arg(background));
 }
-
-void TemperatureWidget::setSeverity(TemperatureWidget::Severity severity)
-{
-    m_severity = severity;
-}
-
-void TemperatureWidget::setTitle(const QString &title)
-{
-    if (m_titleLabel) {
-        m_titleLabel->setText(title);
-    }
-}
-
-void TemperatureWidget::setResizable(bool enabled)
-{
-    // Pour l'instant, cette méthode ne fait rien
-    // Le redimensionnement sera implémenté différemment
-    Q_UNUSED(enabled)
-}
-
-void TemperatureWidget::setRealTimeMode(bool enabled)
-{
-    m_realTimeMode = enabled;
-
-    // Always keep simulation timer stopped; real-time values come from MQTT.
-    m_timer->stop();
-}
-
-void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
-{
-    // Use the actual MQTT value (no rounding for storage / display)
-    m_currentValue = qRound(temperature);
-    m_peakValue = qMax(m_peakValue, m_currentValue);
-    m_humidity = humidity;
-
-    // Add real value to history
-    m_values.push_back(temperature);
-    while (m_values.size() > 60) {
-        m_values.removeFirst();
-    }
-
-    // Update severity based on thresholds
-    if (m_currentValue >= m_alarmThreshold) {
-        setSeverity(Alarm);
-    } else if (m_currentValue >= m_warningThreshold) {
-        setSeverity(Warning);
-    } else {
-        setSeverity(Normal);
-    }
-
-    // Display the actual MQTT value (one decimal)
-    if (m_valueLabel) {
-        m_valueLabel->setText(QString::number(temperature, 'f', 1) + QStringLiteral(" °C"));
-    }
-
-    refreshUi();
-    qDebug() << "TemperatureWidget:toto Updated from MQTT" << temperature << humidity;
-}
-
-
-
-
-void TemperatureWidget::setHumidity(double humidity)
-{
-    m_humidity = humidity;
-    // Humidity is stored but chart update happens via refreshUi()
-    // The chart widget will use this value when repainting
-}
-void TemperatureWidget:: addtemperature (double value){
-    m_values.push_back(value);
-    while (m_values.size() > 60) {
-        m_values.removeFirst();
-    }
-    refreshUi();
-};

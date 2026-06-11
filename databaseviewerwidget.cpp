@@ -1,7 +1,5 @@
 #include "databaseviewerwidget.h"
 
-#include "databasemanager.h"
-
 #include <QComboBox>
 #include <QDebug>
 #include <QHBoxLayout>
@@ -12,12 +10,10 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QTableWidget>
-#include <QTableWidgetItem>
-#include <QTimer>
 #include <QVBoxLayout>
-#include <QVariant>
 
 namespace {
+// Indices des colonnes du tableau (pour rester lisible plus bas).
 constexpr int kColTimestamp = 0;
 constexpr int kColSensorId  = 1;
 constexpr int kColTemp      = 2;
@@ -29,14 +25,11 @@ constexpr int kColDetected  = 7;
 constexpr int kColCount     = 8;
 } // namespace
 
+// =====================================================================
+//  CONSTRUCTION
+// =====================================================================
 DatabaseViewerWidget::DatabaseViewerWidget(QWidget *parent)
-    : DatabaseViewerWidget(nullptr, parent)
-{
-}
-
-DatabaseViewerWidget::DatabaseViewerWidget(DatabaseManager *dbManager, QWidget *parent)
     : QWidget(parent)
-    , m_dbManager(dbManager)
     , m_table(nullptr)
     , m_refreshButton(nullptr)
     , m_statusLabel(nullptr)
@@ -47,17 +40,6 @@ DatabaseViewerWidget::DatabaseViewerWidget(DatabaseManager *dbManager, QWidget *
 {
     buildUi();
     applyStyle();
-
-    if (m_dbManager) {
-        // Defer the first load until after the widget is fully constructed
-        QTimer::singleShot(0, this, &DatabaseViewerWidget::refresh);
-    }
-}
-
-void DatabaseViewerWidget::setDatabaseManager(DatabaseManager *dbManager)
-{
-    m_dbManager = dbManager;
-    refresh();
 }
 
 void DatabaseViewerWidget::buildUi()
@@ -66,7 +48,7 @@ void DatabaseViewerWidget::buildUi()
     root->setContentsMargins(12, 10, 12, 10);
     root->setSpacing(8);
 
-    // ---------- Toolbar ----------
+    // --- Barre d'outils : titre, filtre, limite, bouton actualiser ---
     auto *toolbar = new QHBoxLayout;
     toolbar->setSpacing(8);
 
@@ -75,18 +57,16 @@ void DatabaseViewerWidget::buildUi()
     toolbar->addWidget(title);
     toolbar->addStretch();
 
-    auto *filterLabel = new QLabel(tr("Type :"), this);
-    toolbar->addWidget(filterLabel);
+    toolbar->addWidget(new QLabel(tr("Type :"), this));
 
     m_filterCombo = new QComboBox(this);
-    m_filterCombo->addItem(tr("Tous"),         QStringLiteral("all"));
-    m_filterCombo->addItem(tr("Température"),  QStringLiteral("temperature"));
-    m_filterCombo->addItem(tr("Fumée"),        QStringLiteral("smoke"));
+    m_filterCombo->addItem(tr("Tous"),            QStringLiteral("all"));
+    m_filterCombo->addItem(tr("Température"),     QStringLiteral("temperature"));
+    m_filterCombo->addItem(tr("Fumée"),           QStringLiteral("smoke"));
     m_filterCombo->addItem(tr("Gaz (eCO2/TVOC)"), QStringLiteral("gas"));
     toolbar->addWidget(m_filterCombo);
 
-    auto *limitLabel = new QLabel(tr("Lignes :"), this);
-    toolbar->addWidget(limitLabel);
+    toolbar->addWidget(new QLabel(tr("Lignes :"), this));
 
     m_limitCombo = new QComboBox(this);
     m_limitCombo->addItem(QStringLiteral("50"),  50);
@@ -101,7 +81,7 @@ void DatabaseViewerWidget::buildUi()
 
     root->addLayout(toolbar);
 
-    // ---------- Table ----------
+    // --- Tableau des mesures ---
     m_table = new QTableWidget(this);
     m_table->setObjectName(QStringLiteral("dbViewerTable"));
     m_table->setColumnCount(kColCount);
@@ -125,17 +105,17 @@ void DatabaseViewerWidget::buildUi()
     m_table->setSortingEnabled(false);
     root->addWidget(m_table, 1);
 
-    // ---------- Status bar ----------
+    // --- Barre d'état ---
     m_statusLabel = new QLabel(tr("Prêt."), this);
     m_statusLabel->setObjectName(QStringLiteral("dbViewerStatus"));
     root->addWidget(m_statusLabel);
 
-    // ---------- Connections ----------
+    // --- Connexions ---
     connect(m_refreshButton, &QPushButton::clicked,
             this, &DatabaseViewerWidget::refresh);
-    connect(m_limitCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(m_limitCombo, &QComboBox::currentIndexChanged,
             this, &DatabaseViewerWidget::onLimitChanged);
-    connect(m_filterCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(m_filterCombo, &QComboBox::currentIndexChanged,
             this, &DatabaseViewerWidget::onFilterChanged);
 }
 
@@ -183,72 +163,58 @@ void DatabaseViewerWidget::applyStyle()
     );
 }
 
-void DatabaseViewerWidget::onLimitChanged(int /*index*/)
+// =====================================================================
+//  SLOTS DES FILTRES
+// =====================================================================
+void DatabaseViewerWidget::onLimitChanged()
 {
-    if (!m_limitCombo) return;
     m_rowLimit = m_limitCombo->currentData().toInt();
-    if (m_rowLimit <= 0) m_rowLimit = 50;
+    if (m_rowLimit <= 0)
+        m_rowLimit = 50;
     refresh();
 }
 
-void DatabaseViewerWidget::onFilterChanged(int /*index*/)
+void DatabaseViewerWidget::onFilterChanged()
 {
-    if (!m_filterCombo) return;
     m_filter = m_filterCombo->currentData().toString();
-    if (m_filter.isEmpty()) m_filter = QStringLiteral("all");
+    if (m_filter.isEmpty())
+        m_filter = QStringLiteral("all");
     refresh();
 }
 
+// =====================================================================
+//  CHARGEMENT DES DONNÉES
+// =====================================================================
 void DatabaseViewerWidget::refresh()
 {
-    if (!m_table) return;
+    if (!m_table)
+        return;
 
     m_table->setRowCount(0);
 
-    // Try to get the named connection. The DatabaseManager creates it as
-    // "surveillance" once initialize() succeeds. The viewer does NOT need
-    // a pointer to DatabaseManager: as long as the connection exists and
-    // is open, we can query it.
+    // Connexion nommée créée par le DatabaseManager.
     QSqlDatabase db = QSqlDatabase::database(QStringLiteral("surveillance"),
                                              /*open=*/false);
 
     if (!db.isValid()) {
-        if (m_statusLabel) {
-            m_statusLabel->setText(tr("Base de données non disponible — connectez-vous d'abord."));
-        }
-        qDebug() << "DatabaseViewerWidget: connection 'surveillance' is not yet registered";
+        m_statusLabel->setText(tr("Base de données non disponible — connectez-vous d'abord."));
         return;
     }
 
-    if (!db.isOpen()) {
-        if (!db.open()) {
-            if (m_statusLabel) {
-                m_statusLabel->setText(tr("Connexion fermée : %1").arg(db.lastError().text()));
-            }
-            qDebug() << "DatabaseViewerWidget: connection 'surveillance' is not open and reopen failed:"
-                     << db.lastError().text();
-            return;
-        }
+    if (!db.isOpen() && !db.open()) {
+        m_statusLabel->setText(tr("Connexion fermée : %1").arg(db.lastError().text()));
+        return;
     }
 
-    qDebug() << "DatabaseViewerWidget: refreshing — driver:" << db.driverName()
-             << " db:" << db.databaseName()
-             << " filter:" << m_filter << " limit:" << m_rowLimit;
-
-    // Diagnostic: total rows in the table regardless of filter
+    // Nombre total de lignes (affiché dans la barre d'état)
     int totalRows = -1;
-    {
-        QSqlQuery countQuery(db);
-        if (countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM sensor_readings"))
-            && countQuery.next()) {
-            totalRows = countQuery.value(0).toInt();
-        } else {
-            qDebug() << "DatabaseViewerWidget: COUNT(*) failed:"
-                     << countQuery.lastError().text();
-        }
+    QSqlQuery countQuery(db);
+    if (countQuery.exec(QStringLiteral("SELECT COUNT(*) FROM sensor_readings"))
+        && countQuery.next()) {
+        totalRows = countQuery.value(0).toInt();
     }
-    qDebug() << "DatabaseViewerWidget: total rows in sensor_readings =" << totalRows;
 
+    // Construction de la requête selon le filtre sélectionné
     QString sql = QStringLiteral(
         "SELECT timestamp, sensor_id, temperature, humidity, smoke_level, "
         "       eco2_ppm, tvoc_ppb, smoke_detected "
@@ -270,36 +236,33 @@ void DatabaseViewerWidget::refresh()
 
     if (!query.exec()) {
         const QString err = query.lastError().text();
-        if (m_statusLabel) {
-            m_statusLabel->setText(tr("Erreur SQL : %1").arg(err));
-        }
-        qWarning() << "DatabaseViewerWidget: SELECT failed:" << err;
+        m_statusLabel->setText(tr("Erreur SQL : %1").arg(err));
+        qWarning() << "DatabaseViewerWidget: échec du SELECT:" << err;
         return;
     }
 
+    // Remplissage du tableau ligne par ligne
     int row = 0;
     while (query.next()) {
         m_table->insertRow(row);
 
-        const QVariant ts        = query.value(0);
-        const QString  sensorId  = query.value(1).toString();
-        const QVariant temp      = query.value(2);
-        const QVariant humidity  = query.value(3);
-        const QVariant smokeLvl  = query.value(4);
-        const QVariant eco2      = query.value(5);
-        const QVariant tvoc      = query.value(6);
-        const QVariant detected  = query.value(7);
+        const QVariant ts       = query.value(0);
+        const QString  sensorId = query.value(1).toString();
+        const QVariant temp     = query.value(2);
+        const QVariant humidity = query.value(3);
+        const QVariant smokeLvl = query.value(4);
+        const QVariant eco2     = query.value(5);
+        const QVariant tvoc     = query.value(6);
+        const QVariant detected = query.value(7);
 
         auto setCell = [&](int col, const QString &text, bool numeric = false) {
             auto *item = new QTableWidgetItem(text);
-            if (numeric) {
-                item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            } else {
-                item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            }
+            item->setTextAlignment(numeric ? (Qt::AlignRight | Qt::AlignVCenter)
+                                           : (Qt::AlignLeft  | Qt::AlignVCenter));
             m_table->setItem(row, col, item);
         };
 
+        // Les valeurs absentes (NULL) sont affichées avec un tiret.
         setCell(kColTimestamp, ts.toString());
         setCell(kColSensorId,  sensorId);
         setCell(kColTemp,      temp.isNull()     ? QStringLiteral("—")
@@ -320,16 +283,11 @@ void DatabaseViewerWidget::refresh()
 
     m_table->resizeColumnsToContents();
 
-    qDebug() << "DatabaseViewerWidget: fetched" << row << "row(s) for filter" << m_filter;
-
-    if (m_statusLabel) {
-        const QString totalText = (totalRows >= 0)
-                ? tr("total : %1").arg(totalRows)
-                : tr("total : ?");
-        m_statusLabel->setText(tr("%1 ligne(s) chargée(s) — filtre : %2 — limite : %3 — %4")
-                               .arg(row)
-                               .arg(m_filterCombo ? m_filterCombo->currentText() : tr("Tous"))
-                               .arg(m_rowLimit)
-                               .arg(totalText));
-    }
+    const QString totalText = (totalRows >= 0) ? tr("total : %1").arg(totalRows)
+                                               : tr("total : ?");
+    m_statusLabel->setText(tr("%1 ligne(s) chargée(s) — filtre : %2 — limite : %3 — %4")
+                           .arg(row)
+                           .arg(m_filterCombo->currentText())
+                           .arg(m_rowLimit)
+                           .arg(totalText));
 }

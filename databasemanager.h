@@ -1,121 +1,104 @@
 #pragma once
 
-#include <QObject>
-#include <QString>
-#include <QSqlDatabase>
-#include <QSqlQuery>
 #include <QDateTime>
-#include <QPair>
+#include <QObject>
+#include <QSqlDatabase>
+#include <QString>
 #include <QVector>
 
+/** Rôles des utilisateurs, du plus au moins privilégié. */
 enum class UserRole {
-    Admin,      // Tous les droits
-    Operator,   // Droits moyens (modifier certains paramètres)
-    Viewer      // Lecture seule
+    Admin,      // tous les droits
+    Operator,   // droits moyens (modifier les widgets)
+    Viewer      // lecture seule
 };
 
+/** Utilisateur tel que stocké dans la table `users`. */
 struct User {
-    int id;
+    int id = 0;
     QString username;
-    QString password;
-    UserRole role;
+    UserRole role = UserRole::Viewer;
     QString fullName;
     QString email;
-    bool isActive;
+    bool isActive = false;
     QDateTime lastLogin;
     QDateTime createdAt;
 
-    bool hasPermission(const QString &permission) const;
     QString getRoleString() const;
     bool canEditWidgets() const;
-    bool canManageModules() const;
-    bool canConfigureSystem() const;
-    bool canViewSensors() const;
 };
 
+/** Capteur tel que stocké dans la table `sensors`. */
 struct Sensor {
     QString id;
     QString name;
     QString ipAddress;
-    QString type;  // "temperature", "smoke", "camera"
-    QString topic;
-    double lastValue;
+    QString type;      // "temperature", "smoke", "camera", ...
+    QString topic;     // topic MQTT sur lequel le capteur publie
+    double lastValue = 0.0;
     QDateTime lastUpdate;
-    bool isOnline;
+    bool isOnline = false;
 };
 
+/**
+ * DatabaseManager — accès à la base MySQL du système de surveillance.
+ *
+ * Responsabilités :
+ *   - connexion à la base et création des tables si besoin ;
+ *   - authentification des utilisateurs (mot de passe haché en SHA-256) ;
+ *   - enregistrement des capteurs et de leurs mesures (historique) ;
+ *   - lecture des dernières mesures pour l'affichage du dashboard ;
+ *   - journal d'audit (connexions, échecs d'authentification...).
+ */
 class DatabaseManager : public QObject {
     Q_OBJECT
 
 public:
     explicit DatabaseManager(QObject *parent = nullptr);
-    ~DatabaseManager();
+    ~DatabaseManager() override;
 
     bool initialize();
     bool isInitialized() const;
 
-    // User management
+    // === UTILISATEURS ===
     bool createUser(const QString &username, const QString &password,
                     UserRole role, const QString &fullName = QString(),
                     const QString &email = QString());
     bool authenticateUser(const QString &username, const QString &password);
-    User getUser(const QString &username);
-    User getCurrentUser() const;
-    bool updateLastLogin(const QString &username);
-    bool changePassword(const QString &username, const QString &oldPassword,
-                        const QString &newPassword);
-    bool deactivateUser(const QString &username);
-    QVector<User> getAllUsers();
 
-    // Sensor management
+    // === CAPTEURS ===
     bool registerSensor(const QString &id, const QString &name, const QString &ip,
                         const QString &type, const QString &topic);
-    bool updateSensorValue(const QString &id, double value);
-    bool setSensorOnline(const QString &id, bool online);
     QVector<Sensor> getAllSensors();
-    Sensor getSensor(const QString &id);
 
-    // Sensor readings history
+    // === HISTORIQUE DES MESURES ===
     bool saveTemperatureReading(const QString &sensorId, double temperature, double humidity);
     bool saveSmokeReading(const QString &sensorId, int smokeLevel);
     bool saveGasReading(const QString &sensorId, int eco2Ppm, int tvocPpb, bool smokeDetected);
-    QVector<QPair<QDateTime, double>> getTemperatureHistory(const QString &sensorId, int hours = 24);
-    QVector<QPair<QDateTime, int>> getSmokeHistory(const QString &sensorId, int hours = 24);
 
-    // Latest sensor data (for display)
-    double getLatestTemperature(const QString &sensorId);
-    double getLatestHumidity(const QString &sensorId);
-    int getLatestSmokeLevel(const QString &sensorId);
-    QDateTime getLastUpdateTime(const QString &sensorId);
-
-    // Default users initialization
-    void createDefaultUsers();
-
-    // Session management
-    void setCurrentUser(const User &user);
-    void clearCurrentUser();
-    bool isUserLoggedIn() const;
-
-    // Audit log
-    bool logAction(const QString &username, const QString &action,
-                   const QString &details = QString());
-
-    static QString roleToString(UserRole role);
-    static UserRole stringToRole(const QString &role);
+    // === DERNIÈRES MESURES (pour l'affichage) ===
+    double getLatestTemperature(const QString &sensorId);   // -999 si aucune
+    double getLatestHumidity(const QString &sensorId);      // -999 si aucune
+    int getLatestSmokeLevel(const QString &sensorId);       // -1 si aucune
 
 signals:
     void userAuthenticated(const User &user);
-    void userLoggedOut();
     void authenticationFailed(const QString &reason);
     void databaseError(const QString &error);
 
 private:
-    bool createTables();
     bool openDatabase();
     void closeDatabase();
-    QString hashPassword(const QString &password);
+    bool createTables();
+    void createDefaultUsers();
+    bool updateLastLogin(const QString &username);
+    bool updateSensorValue(const QString &id, double value);
+    bool logAction(const QString &username, const QString &action,
+                   const QString &details = QString());
+    static QString hashPassword(const QString &password);
+    static QString roleToString(UserRole role);
+    static UserRole stringToRole(const QString &role);
 
     QSqlDatabase m_db;
     bool m_initialized;
-    User m_currentUser;
 };

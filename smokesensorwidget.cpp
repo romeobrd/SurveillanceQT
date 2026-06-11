@@ -4,8 +4,6 @@
 #include <QLabel>
 #include <QPainter>
 #include <QPushButton>
-#include <QRandomGenerator>
-#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -28,7 +26,8 @@ QPushButton *createToolButton(const QString &text, QWidget *parent)
     return button;
 }
 
-// Binary detection timeline: red bars when smoke is detected, gray otherwise.
+// Historique des détections : barre rouge quand de la fumée a été
+// détectée, petite barre verte sinon.
 class SmokeChartWidget : public QWidget
 {
 public:
@@ -41,7 +40,7 @@ public:
     void setValues(const QVector<int> &values)
     {
         m_values = values;
-        update();
+        update();   // demande un redessin
     }
 
 protected:
@@ -52,14 +51,14 @@ protected:
 
         const QRectF plotRect = rect().adjusted(38, 10, -10, -30);
 
-        // Background gradient (calm green at bottom, alert red on top)
+        // Fond en dégradé : vert apaisant en bas, rouge alerte en haut
         QLinearGradient zoneGradient(plotRect.topLeft(), plotRect.bottomLeft());
         zoneGradient.setColorAt(0.0, QColor(133, 28, 52, 55));
         zoneGradient.setColorAt(0.5, QColor(171, 80, 44, 55));
         zoneGradient.setColorAt(1.0, QColor(111, 146, 78, 55));
         p.fillRect(plotRect, zoneGradient);
 
-        // Mid line (separator between "no smoke" and "smoke")
+        // Ligne médiane (séparation "sain" / "fumée")
         p.setPen(QPen(QColor(197, 208, 231, 80), 1, Qt::DashLine));
         const qreal midY = plotRect.center().y();
         p.drawLine(QPointF(plotRect.left(), midY), QPointF(plotRect.right(), midY));
@@ -72,26 +71,24 @@ protected:
             return;
         }
 
-        // Bar chart: each value is 0 (no smoke) or 1 (smoke detected)
-        const int n = m_values.size();
+        // Une barre par mesure : 0 (pas de fumée) ou 1 (fumée détectée)
+        const int   n    = m_values.size();
         const qreal barW = plotRect.width() / qMax(1, n);
 
         for (int i = 0; i < n; ++i) {
-            const bool detected = (m_values[i] >= 1);
+            const bool  detected = (m_values[i] >= 1);
             const qreal x = plotRect.left() + i * barW;
             const qreal h = detected ? plotRect.height() : plotRect.height() * 0.12;
             const qreal y = plotRect.bottom() - h;
 
-            QColor barColor = detected ? QColor(255, 90, 71, 220)
-                                       : QColor(46, 213, 115, 160);
+            const QColor barColor = detected ? QColor(255, 90, 71, 220)
+                                             : QColor(46, 213, 115, 160);
             p.setBrush(barColor);
             p.setPen(Qt::NoPen);
-            p.drawRoundedRect(QRectF(x + barW * 0.15, y,
-                                     barW * 0.7, h),
-                              2, 2);
+            p.drawRoundedRect(QRectF(x + barW * 0.15, y, barW * 0.7, h), 2, 2);
         }
 
-        // Y-axis labels
+        // Légendes de l'axe vertical
         p.setPen(QColor(226, 234, 250));
         p.setFont(QFont(QStringLiteral("Segoe UI"), 8));
         p.drawText(QRectF(2, plotRect.top() - 8, 34, 16),
@@ -101,7 +98,7 @@ protected:
                    Qt::AlignRight | Qt::AlignVCenter,
                    QStringLiteral("Sain"));
 
-        // X-axis label
+        // Légende de l'axe horizontal
         p.drawText(QRectF(plotRect.left(), plotRect.bottom() + 5,
                           plotRect.width(), 20),
                    Qt::AlignCenter,
@@ -114,6 +111,9 @@ private:
 
 } // namespace
 
+// =====================================================================
+//  CONSTRUCTION DE L'INTERFACE
+// =====================================================================
 SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     : QFrame(parent)
     , m_editButton(nullptr)
@@ -124,17 +124,10 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     , m_detailLabel(nullptr)
     , m_ppmLabel(nullptr)
     , m_chartWidget(nullptr)
-    , m_timer(new QTimer(this))
-    , m_currentValue(0)
-    , m_peakValue(0)
-    , m_eco2Ppm(0)
-    , m_tvocPpb(0)
     , m_smokeDetected(false)
     , m_detectionCount(0)
     , m_severity(Normal)
-    , m_warningThreshold(40)
     , m_alarmThreshold(60)
-    , m_realTimeMode(false)
 {
     setObjectName(QStringLiteral("panelSmoke"));
     setStyleSheet(
@@ -155,7 +148,7 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     mainLayout->setContentsMargins(16, 12, 16, 14);
     mainLayout->setSpacing(8);
 
-    // Header
+    // --- En-tête : titre + boutons éditer / fermer ---
     auto *headerLayout = new QHBoxLayout;
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(8);
@@ -166,16 +159,15 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
 
-    m_editButton = createToolButton(QStringLiteral("✎"), this);
+    m_editButton  = createToolButton(QStringLiteral("✎"), this);
     m_closeButton = createToolButton(QStringLiteral("✕"), this);
     headerLayout->addWidget(m_editButton);
     headerLayout->addWidget(m_closeButton);
 
-    // Subtitle
     auto *subTitle = new QLabel(QStringLiteral("Capteur Flying-Fish — sortie numérique"), this);
     subTitle->setObjectName(QStringLiteral("subtitle"));
 
-    // Status zone : icon + text
+    // --- Zone d'état : icône + texte ("AIR SAIN" / "FUMÉE DÉTECTÉE") ---
     auto *statusLayout = new QHBoxLayout;
     statusLayout->setSpacing(14);
 
@@ -204,12 +196,12 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     statusLayout->addLayout(textCol);
     statusLayout->addStretch();
 
-    // Chart
+    // --- Graphique d'historique ---
     auto *chart = new SmokeChartWidget(this);
     m_chartWidget = chart;
     chart->setMinimumHeight(120);
 
-    // PPM / ppb readout
+    // --- Affichage eCO2 / TVOC ---
     m_ppmLabel = new QLabel(QStringLiteral("eCO₂: -- ppm    TVOC: -- ppb"), this);
     m_ppmLabel->setStyleSheet(
         "QLabel {"
@@ -227,20 +219,17 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     mainLayout->addWidget(m_ppmLabel);
     mainLayout->addWidget(chart, 1);
 
-    // Initialize history with "no smoke" values
-    for (int i = 0; i < 30; ++i) {
+    // Historique initial : 30 mesures "pas de fumée"
+    for (int i = 0; i < 30; ++i)
         m_historyValues.append(0);
-    }
     updateChart();
-
-    QObject::connect(m_timer, &QTimer::timeout, this, [this]() {
-        simulateStep();
-    });
-    // Don't auto-start simulation; real values come from MQTT.
 
     refreshUi();
 }
 
+// =====================================================================
+//  ACCESSEURS
+// =====================================================================
 QPushButton *SmokeSensorWidget::editButton() const
 {
     return m_editButton;
@@ -258,80 +247,27 @@ QString SmokeSensorWidget::currentSummary() const
             : QStringLiteral("Fumée: aucune");
 }
 
-int SmokeSensorWidget::currentValue() const
-{
-    return m_smokeDetected ? 1 : 0;
-}
-
-bool SmokeSensorWidget::isSmokeDetected() const
-{
-    return m_smokeDetected;
-}
-
 SmokeSensorWidget::Severity SmokeSensorWidget::severity() const
 {
     return m_severity;
 }
 
-void SmokeSensorWidget::simulateStep()
-{
-    if (m_realTimeMode) {
-        return;
-    }
-
-    // 90% no smoke, 10% chance of detection (simulation)
-    const int draw = QRandomGenerator::global()->bounded(100);
-    const bool detected = (draw < 10);
-
-    updateFromMqttDetection(detected);
-}
-
-void SmokeSensorWidget::resetSensor()
-{
-    m_currentValue = 0;
-    m_peakValue = 0;
-    m_smokeDetected = false;
-    m_detectionCount = 0;
-    m_severity = Normal;
-    m_historyValues.clear();
-    for (int i = 0; i < 30; ++i) {
-        m_historyValues.append(0);
-    }
-    updateChart();
-    refreshUi();
-}
-
 void SmokeSensorWidget::setTitle(const QString &title)
 {
-    if (m_titleLabel) {
+    if (m_titleLabel)
         m_titleLabel->setText(title);
-    }
 }
 
-void SmokeSensorWidget::setResizable(bool enabled)
+// =====================================================================
+//  MISE À JOUR DEPUIS LES DONNÉES MQTT
+// =====================================================================
+void SmokeSensorWidget::updateFromGasData(int eco2Ppm, int tvocPpb, bool detected)
 {
-    Q_UNUSED(enabled)
-}
-
-void SmokeSensorWidget::setRealTimeMode(bool enabled)
-{
-    m_realTimeMode = enabled;
-    // Always keep simulation timer stopped; real values come from MQTT.
-    m_timer->stop();
-}
-
-void SmokeSensorWidget::updateFromGasData(int eco2_ppm, int tvoc_ppb, bool detected)
-{
-    m_eco2Ppm = eco2_ppm;
-    m_tvocPpb = tvoc_ppb;
-    m_currentValue = eco2_ppm;
-    if (m_currentValue > m_peakValue) {
-        m_peakValue = m_currentValue;
-    }
-
+    // Données complètes du capteur de gaz : on affiche les mesures
+    // eCO2/TVOC puis on traite la détection binaire.
     if (m_ppmLabel) {
         m_ppmLabel->setText(QStringLiteral("eCO₂: %1 ppm    TVOC: %2 ppb")
-                                .arg(eco2_ppm).arg(tvoc_ppb));
+                                .arg(eco2Ppm).arg(tvocPpb));
     }
 
     updateFromMqttDetection(detected);
@@ -339,36 +275,33 @@ void SmokeSensorWidget::updateFromGasData(int eco2_ppm, int tvoc_ppb, bool detec
 
 void SmokeSensorWidget::updateFromMqtt(int smokeLevel)
 {
-    // Legacy path: convert ppm to a binary detection using the alarm threshold.
-    m_currentValue = smokeLevel;
-    if (m_currentValue > m_peakValue) {
-        m_peakValue = m_currentValue;
-    }
+    // Niveau numérique (ppm) : converti en détection binaire en le
+    // comparant au seuil d'alarme.
     updateFromMqttDetection(smokeLevel >= m_alarmThreshold);
 }
 
 void SmokeSensorWidget::updateFromMqttDetection(bool detected)
 {
     m_smokeDetected = detected;
-    if (detected) {
+    if (detected)
         ++m_detectionCount;
-    }
 
-    // Add to history
+    // On garde les 30 dernières mesures pour le graphique.
     m_historyValues.append(detected ? 1 : 0);
-    if (m_historyValues.size() > 30) {
+    if (m_historyValues.size() > 30)
         m_historyValues.removeFirst();
-    }
 
     updateChart();
     refreshUi();
 }
 
+// =====================================================================
+//  RAFRAÎCHISSEMENT DE L'AFFICHAGE
+// =====================================================================
 void SmokeSensorWidget::updateChart()
 {
-    if (m_chartWidget) {
-        static_cast<SmokeChartWidget*>(m_chartWidget)->setValues(m_historyValues);
-    }
+    if (m_chartWidget)
+        static_cast<SmokeChartWidget *>(m_chartWidget)->setValues(m_historyValues);
 }
 
 void SmokeSensorWidget::refreshUi()
@@ -379,38 +312,29 @@ void SmokeSensorWidget::refreshUi()
     QString detailText;
 
     if (m_smokeDetected) {
-        setSeverity(Alarm);
-        iconText  = QStringLiteral("Détection de fumée");
-        stateText = QStringLiteral("FUMÉE DÉTECTÉE");
+        m_severity = Alarm;
+        iconText   = QStringLiteral("Détection de fumée");
+        stateText  = QStringLiteral("FUMÉE DÉTECTÉE");
         stateStyle = "QLabel#state { color: #ff4757; }";
         detailText = QStringLiteral("Alerte ! %1 détection(s) au total")
                        .arg(m_detectionCount);
     } else {
-        setSeverity(Normal);
-        iconText  = QStringLiteral("normal");
-        stateText = QStringLiteral("AIR SAIN");
+        m_severity = Normal;
+        iconText   = QStringLiteral("normal");
+        stateText  = QStringLiteral("AIR SAIN");
         stateStyle = "QLabel#state { color: #2ed573; }";
-        detailText = (m_detectionCount == 0) 
+        detailText = (m_detectionCount == 0)
                 ? QStringLiteral("Aucune détection")
                 : QStringLiteral("Dernier état : OK   |   %1 détection(s) historique(s)")
                     .arg(m_detectionCount);
     }
 
-    if (m_iconLabel) {
+    if (m_iconLabel)
         m_iconLabel->setText(iconText);
-    }
     if (m_stateLabel) {
         m_stateLabel->setText(stateText);
         m_stateLabel->setStyleSheet(stateStyle);
     }
-    if (m_detailLabel) {
+    if (m_detailLabel)
         m_detailLabel->setText(detailText);
-    }
-}
-
-void SmokeSensorWidget::setSeverity(Severity severity)
-{
-    if (m_severity != severity) {
-        m_severity = severity;
-    }
 }

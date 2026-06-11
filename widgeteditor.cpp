@@ -1,7 +1,6 @@
 #include "widgeteditor.h"
 
 #include <QFormLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QComboBox>
@@ -110,7 +109,7 @@ void WidgetEditor::setupUi()
     buttonBox->button(QDialogButtonBox::Save)->setText(QStringLiteral("💾 Enregistrer"));
     buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("❌ Annuler"));
 
-    connect(buttonBox, &QDialogButtonBox::accepted, this, &WidgetEditor::onaccept);
+    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     layout->addWidget(buttonBox);
@@ -125,11 +124,4 @@ WidgetConfig WidgetEditor::getConfig() const
     config.alarmThreshold = m_alarmSpin->value();
     config.unit = m_unitEdit->text();
     return config;
-}
-
-void WidgetEditor::onaccept()
-{
-    /* ecriture en base de donne pour les seuil alarmes*/
-
-    accept();
 }
