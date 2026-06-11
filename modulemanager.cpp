@@ -1,18 +1,15 @@
 #include "modulemanager.h"
 
-#include "widgeteditor.h"
-
-#include <QVBoxLayout>
+#include <QComboBox>
+#include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QListWidget>
-#include <QPushButton>
-#include <QMessageBox>
-#include <QInputDialog>
-#include <QComboBox>
 #include <QLineEdit>
-#include <QFormLayout>
-#include <QDialogButtonBox>
+#include <QListWidget>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QVBoxLayout>
 
 ModuleManager::ModuleManager(QWidget *parent)
     : QDialog(parent)
@@ -139,10 +136,6 @@ void ModuleManager::loadModules()
 
     m_nextId = 5;
     refreshModuleList();
-}
-
-void ModuleManager::saveModules()
-{
 }
 
 void ModuleManager::refreshModuleList()
@@ -323,9 +316,4 @@ void ModuleManager::onMoveDown()
         refreshModuleList();
         m_moduleList->setCurrentRow(currentRow + 1);
     }
-}
-
-QVector<ModuleInfo> ModuleManager::modules() const
-{
-    return m_modules;
 }

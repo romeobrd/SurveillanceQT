@@ -21,8 +21,6 @@ class ModuleManager : public QDialog {
 public:
     explicit ModuleManager(QWidget *parent = nullptr);
 
-    QVector<ModuleInfo> modules() const;
-
 private slots:
     void onAddModule();
     void onEditModule();
@@ -35,7 +33,6 @@ private:
     void setupUi();
     void refreshModuleList();
     void loadModules();
-    void saveModules();
     QString getModuleIcon(const QString &type) const;
     QString formatModuleText(const ModuleInfo &module) const;
 

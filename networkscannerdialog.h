@@ -3,21 +3,27 @@
 #include "arpscanner.h"
 
 #include <QDialog>
-#include <QTimer>
 
+class QLabel;
 class QListWidget;
 class QListWidgetItem;
 class QProgressBar;
 class QPushButton;
-class QLabel;
 
+/**
+ * NetworkScannerDialog — boîte de dialogue de détection des Raspberry Pi.
+ *
+ * Affiche la liste des 4 Raspberry Pi connus, lance le scan (ArpScanner)
+ * et met à jour leur état en ligne / hors ligne. Les appareils en ligne
+ * sont automatiquement cochés et connectés à la fin du scan.
+ */
 class NetworkScannerDialog : public QDialog {
     Q_OBJECT
 
 public:
     explicit NetworkScannerDialog(QWidget *parent = nullptr);
-    ~NetworkScannerDialog();
 
+    /** Appareils sélectionnés par l'utilisateur (après accept()). */
     QVector<NetworkDevice> selectedDevices() const;
 
 private slots:
@@ -30,27 +36,23 @@ private slots:
     void onDeviceItemChanged(QListWidgetItem *item);
     void onSelectAllClicked();
     void onDeselectAllClicked();
-    void updateStatusLabel();
 
 private:
     void setupUi();
     void displayKnownRaspberryPiList();
     void updateRaspberryPiInList(const NetworkDevice &device);
-    void addDeviceToList(const NetworkDevice &device);
-    QString formatDeviceInfo(const NetworkDevice &device) const;
-    QString getSignalIcon(int rssi) const;
+    void updateStatusLabel();
 
-    ArpScanner *m_arpScanner;
-    QListWidget *m_deviceList;
+    ArpScanner   *m_arpScanner;
+    QListWidget  *m_deviceList;
     QProgressBar *m_progressBar;
-    QPushButton *m_scanButton;
-    QPushButton *m_connectButton;
-    QPushButton *m_selectAllButton;
-    QPushButton *m_deselectAllButton;
-    QLabel *m_statusLabel;
-    QLabel *m_subnetLabel;
+    QPushButton  *m_scanButton;
+    QPushButton  *m_connectButton;
+    QPushButton  *m_selectAllButton;
+    QPushButton  *m_deselectAllButton;
+    QLabel       *m_statusLabel;
+    QLabel       *m_subnetLabel;
 
     QVector<NetworkDevice> m_detectedDevices;
     QVector<NetworkDevice> m_selectedDevices;
-    int m_surveillanceModuleCount;
 };
