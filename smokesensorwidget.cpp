@@ -127,7 +127,9 @@ SmokeSensorWidget::SmokeSensorWidget(QWidget *parent)
     , m_smokeDetected(false)
     , m_detectionCount(0)
     , m_severity(Normal)
+    , m_warningThreshold(28)
     , m_alarmThreshold(60)
+    , m_lastLevel(-1)
 {
     setObjectName(QStringLiteral("panelSmoke"));
     setStyleSheet(
@@ -259,6 +261,23 @@ void SmokeSensorWidget::setTitle(const QString &title)
 }
 
 // =====================================================================
+//  SEUILS D'ALARME
+// =====================================================================
+void SmokeSensorWidget::setThresholds(int warningThreshold, int alarmThreshold)
+{
+    m_warningThreshold = warningThreshold;
+    m_alarmThreshold   = alarmThreshold;
+
+    // Réévalue tout de suite la dernière mesure numérique connue avec le
+    // nouveau seuil (sans toucher à l'historique : seules les vraies
+    // mesures y entrent).
+    if (m_lastLevel >= 0) {
+        m_smokeDetected = (m_lastLevel >= m_alarmThreshold);
+        refreshUi();
+    }
+}
+
+// =====================================================================
 //  MISE À JOUR DEPUIS LES DONNÉES MQTT
 // =====================================================================
 void SmokeSensorWidget::updateFromGasData(int eco2Ppm, int tvocPpb, bool detected)
@@ -275,8 +294,10 @@ void SmokeSensorWidget::updateFromGasData(int eco2Ppm, int tvocPpb, bool detecte
 
 void SmokeSensorWidget::updateFromMqtt(int smokeLevel)
 {
-    // Niveau numérique (ppm) : converti en détection binaire en le
-    // comparant au seuil d'alarme.
+    // Niveau numérique (ppm) : mémorisé puis converti en détection
+    // binaire en le comparant au seuil d'alarme. C'est ICI que la mesure
+    // est comparée au seuil.
+    m_lastLevel = smokeLevel;
     updateFromMqttDetection(smokeLevel >= m_alarmThreshold);
 }
 

@@ -149,6 +149,8 @@ bool DatabaseManager::createTables()
         "`topic` VARCHAR(255),"
         "`last_value` DOUBLE,"
         "`last_update` DATETIME NULL,"
+        "`warning_threshold` INT NULL,"
+        "`alarm_threshold` INT NULL,"
         "`is_online` TINYINT(1) DEFAULT 0"
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
@@ -158,6 +160,11 @@ bool DatabaseManager::createTables()
         qWarning() << "DatabaseManager: création table sensors impossible (on continue):"
                    << query.lastError().text();
     }
+
+    // Migration : ajout des colonnes de seuils sur les anciennes tables
+    // (erreurs normales et ignorées si les colonnes existent déjà).
+    query.exec(QStringLiteral("ALTER TABLE `sensors` ADD COLUMN `warning_threshold` INT NULL"));
+    query.exec(QStringLiteral("ALTER TABLE `sensors` ADD COLUMN `alarm_threshold` INT NULL"));
 
     // ---- Table sensor_readings : historique des mesures ----
     const QString sqlReadings = QStringLiteral(
@@ -379,6 +386,65 @@ QVector<Sensor> DatabaseManager::getAllSensors()
     }
 
     return sensors;
+}
+
+// =====================================================================
+//  SEUILS D'ALARME
+// =====================================================================
+bool DatabaseManager::saveSensorThresholds(const QString &id, int warningThreshold, int alarmThreshold)
+{
+    // Le capteur doit avoir une ligne dans le registre : on vérifie
+    // d'abord son existence pour choisir entre UPDATE et INSERT.
+    QSqlQuery check(m_db);
+    check.prepare(QStringLiteral("SELECT COUNT(*) FROM sensors WHERE id = :id"));
+    check.bindValue(QStringLiteral(":id"), id);
+    if (!check.exec() || !check.next()) {
+        qWarning() << "DatabaseManager: échec lecture du registre des capteurs:"
+                   << check.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    if (check.value(0).toInt() > 0) {
+        query.prepare(QStringLiteral(
+            "UPDATE sensors SET warning_threshold = :warning, alarm_threshold = :alarm "
+            "WHERE id = :id"));
+    } else {
+        query.prepare(QStringLiteral(
+            "INSERT INTO sensors (id, name, type, warning_threshold, alarm_threshold) "
+            "VALUES (:id, :id, 'unknown', :warning, :alarm)"));
+    }
+    query.bindValue(QStringLiteral(":warning"), warningThreshold);
+    query.bindValue(QStringLiteral(":alarm"), alarmThreshold);
+    query.bindValue(QStringLiteral(":id"), id);
+
+    if (!query.exec()) {
+        qWarning() << "DatabaseManager: échec sauvegarde des seuils:" << query.lastError().text();
+        return false;
+    }
+
+    qDebug() << "DatabaseManager: seuils enregistrés pour" << id
+             << "- avertissement:" << warningThreshold << "- alarme:" << alarmThreshold;
+    return true;
+}
+
+bool DatabaseManager::getSensorThresholds(const QString &id, int &warningThreshold, int &alarmThreshold)
+{
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "SELECT warning_threshold, alarm_threshold FROM sensors WHERE id = :id"));
+    query.bindValue(QStringLiteral(":id"), id);
+
+    if (!query.exec() || !query.next())
+        return false;
+
+    // Colonnes NULL = aucun seuil enregistré pour ce capteur.
+    if (query.value(0).isNull() || query.value(1).isNull())
+        return false;
+
+    warningThreshold = query.value(0).toInt();
+    alarmThreshold   = query.value(1).toInt();
+    return true;
 }
 
 // =====================================================================
