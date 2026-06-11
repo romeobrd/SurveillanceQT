@@ -3,7 +3,6 @@
 #include "addsensordialog.h"
 #include "camerawidget.h"
 #include "databaseviewerwidget.h"
-#include "loginwidget.h"
 #include "modulemanager.h"
 #include "mqttclient.h"
 #include "networkscannerdialog.h"
@@ -12,30 +11,31 @@
 #include "temperaturewidget.h"
 #include "widgeteditor.h"
 
+#include <QDebug>
 #include <QDialog>
-#include <QFile>
-#include <QCoreApplication>
-#include <QFileDialog>
 #include <QFrame>
-#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
-#include <QNetworkInterface>
-#include <QPixmap>
 #include <QPushButton>
 #include <QShowEvent>
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <QDir>
-#include <QFileInfo>
-#include <QDebug>
 
 namespace {
+
+// === CONFIGURATION MQTT ===
+// Adresse du broker Mosquitto (mTLS sur le port 8883).
+const QString kBrokerHost = QStringLiteral("200.26.16.180");
+constexpr quint16 kBrokerPort = 8883;
+
+// Identifiants par défaut des capteurs quand le message MQTT n'en donne pas.
+const QString kDefaultTempSensorId  = QStringLiteral("rpi-001");
+const QString kDefaultSmokeSensorId = QStringLiteral("rpi-003");
 
 QPushButton *createWindowButton(const QString &text, QWidget *parent, bool danger = false)
 {
@@ -59,66 +59,17 @@ QPushButton *createWindowButton(const QString &text, QWidget *parent, bool dange
     return button;
 }
 
-QLabel *createStatusBubble(const QString &text, const QString &color)
-{
-    auto *label = new QLabel(text);
-    label->setStyleSheet(QString(
-                             "QLabel {"
-                             "  color: white;"
-                             "  background: %1;"
-                             "  border-radius: 10px;"
-                             "  padding: 6px 12px;"
-                             "  font-size: 15px;"
-                             "  font-weight: 700;"
-                             "}"
-                             ).arg(color));
-    return label;
-}
-
-// Cherche le dossier contenant les 3 fichiers certs MQTT.
-// Teste à chaque niveau : le dossier lui-meme, puis son sous-dossier "certs/".
-// Remonte jusqu'a 12 niveaux depuis l'exe et depuis currentPath.
-QString findRepositoryRootForMqttCerts()
-{
-    auto certsExistIn = [](const QString &path) -> bool {
-        return QFileInfo::exists(path + QStringLiteral("/ca.crt"))
-        && QFileInfo::exists(path + QStringLiteral("/admin-console.crt"))
-            && QFileInfo::exists(path + QStringLiteral("/admin-console.key"));
-    };
-
-    const QStringList startPaths = {
-        QCoreApplication::applicationDirPath(),
-        QDir::currentPath()
-    };
-
-    for (const QString &startPath : startPaths) {
-        QDir dir(startPath);
-        for (int depth = 0; depth < 12; ++depth) {
-            const QString abs = dir.absolutePath();
-            // Test direct dans ce dossier
-            if (certsExistIn(abs))
-                return abs + QStringLiteral("/");
-            // Test dans le sous-dossier certs/
-            if (certsExistIn(abs + QStringLiteral("/certs")))
-                return abs + QStringLiteral("/certs/");
-            if (!dir.cdUp())
-                break;
-        }
-    }
-
-    qWarning() << "MQTT: certificats introuvables, fallback sur applicationDirPath";
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/");
-}
-
 } // namespace
 
+// =====================================================================
+//  CONSTRUCTION DE LA FENÊTRE
+// =====================================================================
 DashboardWindow::DashboardWindow(QWidget *parent)
     : QWidget(parent)
-    , m_loginWidget(nullptr)
     , m_smokeWidget(nullptr)
     , m_temperatureWidget(nullptr)
     , m_cameraWidget(nullptr)
-    , m_radiationPanel(nullptr)
+    , m_sensorContainer(nullptr)
     , m_userStatusLabel(new QLabel(QStringLiteral("Non connecté"), this))
     , m_activeValueLabel(nullptr)
     , m_alarmValueLabel(nullptr)
@@ -126,19 +77,19 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     , m_defaultValueLabel(nullptr)
     , m_networkStatusLabel(nullptr)
     , m_scanNetworkButton(nullptr)
-    , m_logoutButton(nullptr)
     , m_statusTimer(new QTimer(this))
+    , m_dataRefreshTimer(nullptr)
     , m_dragging(false)
     , m_dbManager(nullptr)
     , m_lockOverlay(nullptr)
     , m_isAuthenticated(false)
-    , m_sensorContainer(nullptr)
     , m_dbViewer(nullptr)
     , m_mqttClient(nullptr)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     resize(800, 600);
 
+    // --- Feuille de style globale de la fenêtre ---
     setStyleSheet(
         "DashboardWindow, QWidget {"
         "  font-family: 'Segoe UI', 'Arial';"
@@ -171,13 +122,9 @@ DashboardWindow::DashboardWindow(QWidget *parent)
         "  font-weight: 800;"
         "}"
         "QLabel { color: #edf4ff; }"
-        "QFrame#statusPanel {"
-        "  background: rgba(31, 49, 92, 0.88);"
-        "  border: 1px solid rgba(142, 165, 215, 0.12);"
-        "  border-radius: 16px;"
-        "}"
         );
 
+    // --- Structure générale : chrome > rootPanel > (titre, corps, bas) ---
     auto *chromeLayout = new QVBoxLayout(this);
     chromeLayout->setContentsMargins(12, 12, 12, 12);
     chromeLayout->setSpacing(0);
@@ -202,18 +149,13 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     bodyLayout->setContentsMargins(12, 10, 12, 6);
     bodyLayout->setSpacing(8);
 
-    auto *contentLayout = new QHBoxLayout;
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(18);
-
-    // Container pour les capteurs avec positionnement absolu
+    // Conteneur des capteurs : positionnement absolu pour permettre le
+    // glisser-déposer. Le dashboard démarre vide — les widgets sont créés
+    // quand l'utilisateur scanne le réseau et connecte les Raspberry Pi.
     m_sensorContainer = new QWidget(bodyArea);
     m_sensorContainer->setObjectName(QStringLiteral("sensorContainer"));
 
-    // Dashboard starts empty — widgets are created when the user
-    // scans the network and selects Raspberry Pis to connect.
-
-    // Wrap the sensor container and the database viewer in a tab widget
+    // Deux onglets : les capteurs et la visionneuse d'historique BDD.
     auto *tabs = new QTabWidget(bodyArea);
     tabs->setObjectName(QStringLiteral("dashboardTabs"));
     tabs->setStyleSheet(
@@ -247,6 +189,8 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     m_dbViewer = new DatabaseViewerWidget(tabs);
     tabs->addTab(m_dbViewer, tr("Historique BDD"));
 
+    auto *contentLayout = new QHBoxLayout;
+    contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->addWidget(tabs, 1);
     bodyLayout->addLayout(contentLayout, 1);
 
@@ -256,33 +200,32 @@ DashboardWindow::DashboardWindow(QWidget *parent)
     chromeInner->addWidget(rootPanel, 1);
     chromeLayout->addWidget(chrome, 1);
 
-    // Widget edit buttons will be set up when devices are connected
-    // (widgets start as nullptr, created after ARP scan + selection)
-
-    connect(m_statusTimer, &QTimer::timeout, this, [this]() {
-        updateBottomStatus();
-    });
+    // --- Mise en place des sous-systèmes ---
+    connect(m_statusTimer, &QTimer::timeout,
+            this, &DashboardWindow::updateBottomStatus);
     m_statusTimer->start(1200);
 
     setupNetworkFeatures();
     setupAuthentication();
 
-    // Wire the database viewer once the DatabaseManager is available
-    if (m_dbViewer) {
-        m_dbViewer->setDatabaseManager(m_dbManager);
-    }
+    // Premier chargement de l'historique (la connexion SQL existe désormais)
+    if (m_dbViewer)
+        m_dbViewer->refresh();
 
-    setupMqtt();  // Prepare MQTT client (connection deferred until devices are selected)
-    setupDataRefreshTimer();  // Poll database for sensor data
+    setupMqtt();             // prépare le client (connexion différée au scan)
+    setupDataRefreshTimer(); // relit la BDD toutes les 2 secondes
     updateBottomStatus();
 
-    // Ensure overlay is on top after all widgets are created
+    // L'écran de verrouillage doit rester au-dessus de tout.
     if (m_lockOverlay) {
         m_lockOverlay->setGeometry(0, 0, width(), height());
         m_lockOverlay->raise();
     }
 }
 
+// =====================================================================
+//  GESTION DE L'INTERFACE : BARRE DE TITRE
+// =====================================================================
 QWidget *DashboardWindow::createTitleBar()
 {
     auto *titleBar = new QWidget(this);
@@ -293,6 +236,7 @@ QWidget *DashboardWindow::createTitleBar()
     layout->setContentsMargins(18, 0, 14, 0);
     layout->setSpacing(12);
 
+    // Bouton "✦" : réaffiche les widgets capteurs fermés.
     auto *backButton = new QPushButton(QStringLiteral("✦"), titleBar);
     backButton->setFixedSize(44, 32);
     backButton->setStyleSheet(
@@ -310,15 +254,14 @@ QWidget *DashboardWindow::createTitleBar()
     title->setObjectName(QStringLiteral("mainTitle"));
     title->setAlignment(Qt::AlignCenter);
 
-    auto *minButton = createWindowButton(QStringLiteral("−"), titleBar);
-    auto *maxButton = createWindowButton(QStringLiteral("□"), titleBar);
+    auto *minButton   = createWindowButton(QStringLiteral("−"), titleBar);
+    auto *maxButton   = createWindowButton(QStringLiteral("□"), titleBar);
     auto *closeButton = createWindowButton(QStringLiteral("×"), titleBar, true);
 
     connect(backButton, &QPushButton::clicked, this, [this]() {
-        if (m_smokeWidget) m_smokeWidget->show();
-        if (m_cameraWidget) m_cameraWidget->show();
+        if (m_smokeWidget)       m_smokeWidget->show();
+        if (m_cameraWidget)      m_cameraWidget->show();
         if (m_temperatureWidget) m_temperatureWidget->show();
-        if (m_radiationPanel) m_radiationPanel->show();
         updateBottomStatus();
     });
 
@@ -339,79 +282,9 @@ QWidget *DashboardWindow::createTitleBar()
     return titleBar;
 }
 
-QWidget *DashboardWindow::createRadiationPanel()
-{
-    auto *panel = new QFrame(this);
-    panel->setObjectName(QStringLiteral("statusPanel"));
-
-    auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(16, 12, 16, 14);
-    layout->setSpacing(10);
-
-    auto *header = new QHBoxLayout;
-    auto *title = new QLabel(QStringLiteral("Niveau de Radiation"), panel);
-    title->setStyleSheet("font-size:20px;font-weight:700;color:#edf4ff;");
-    header->addWidget(title);
-    header->addStretch();
-
-    auto *editBtn = new QPushButton(QStringLiteral("✎"), panel);
-    editBtn->setFixedSize(28, 28);
-    auto *closeBtn = new QPushButton(QStringLiteral("✕"), panel);
-    closeBtn->setFixedSize(28, 28);
-
-    const QString buttonStyle =
-        "QPushButton { color:#eef3ff; background:rgba(117,140,188,0.18); border:1px solid rgba(169,191,235,0.12); border-radius:6px; font-size:15px; font-weight:700; }";
-
-    editBtn->setStyleSheet(buttonStyle);
-    closeBtn->setStyleSheet(buttonStyle);
-    header->addWidget(editBtn);
-    header->addWidget(closeBtn);
-    layout->addLayout(header);
-
-    auto *valueRow = new QHBoxLayout;
-    auto *value = new QLabel(QStringLiteral("1.2 μSv/h"), panel);
-    value->setStyleSheet("font-size:28px;font-weight:300;color:#fff6eb;");
-    auto *warning = createStatusBubble(QStringLiteral("⚠ Avertissement"), QStringLiteral("rgba(240, 135, 35, 0.92)"));
-    valueRow->addWidget(value);
-    valueRow->addStretch();
-    valueRow->addWidget(warning);
-    layout->addLayout(valueRow);
-
-    auto *chart = new QLabel(panel);
-    chart->setMinimumHeight(120);
-    chart->setStyleSheet(
-        "QLabel {"
-        "  border-radius: 10px;"
-        "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(203,117,38,0.62), stop:1 rgba(25,37,69,0.15));"
-        "  border: 1px solid rgba(255,255,255,0.06);"
-        "}"
-        );
-    layout->addWidget(chart);
-
-    auto *legend = new QVBoxLayout;
-    legend->setSpacing(8);
-    auto makeLegendLine = [panel](const QString &dot, const QString &text, const QString &color) {
-        auto *label = new QLabel(dot + QStringLiteral("  ") + text, panel);
-        label->setStyleSheet(QString("font-size:15px;color:%1;").arg(color));
-        return label;
-    };
-    legend->addWidget(makeLegendLine(QStringLiteral("🟢"), QStringLiteral("< 1 μSv/h : Normal"), QStringLiteral("#ffe7b8")));
-    legend->addWidget(makeLegendLine(QStringLiteral("🟠"), QStringLiteral("1-3 μSv/h : Avertissement"), QStringLiteral("#ffe7b8")));
-    legend->addWidget(makeLegendLine(QStringLiteral("🔴"), QStringLiteral("> 3 μSv/h : Alarme"), QStringLiteral("#ffe7b8")));
-    legend->addStretch();
-    layout->addLayout(legend);
-
-    connect(editBtn, &QPushButton::clicked, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Radiation"), QStringLiteral("Paramètres radiation bientôt disponibles."));
-    });
-    connect(closeBtn, &QPushButton::clicked, this, [this, panel]() {
-        panel->hide();
-        updateBottomStatus();
-    });
-
-    return panel;
-}
-
+// =====================================================================
+//  GESTION DE L'INTERFACE : BARRE D'ÉTAT DU BAS
+// =====================================================================
 QWidget *DashboardWindow::createBottomBar()
 {
     auto *bottomBar = new QFrame(this);
@@ -422,30 +295,29 @@ QWidget *DashboardWindow::createBottomBar()
     layout->setContentsMargins(18, 0, 18, 0);
     layout->setSpacing(10);
 
+    // --- Compteurs de capteurs (actifs / alarmes / avertissements) ---
     auto *activeLabel = new QLabel(QStringLiteral("▼  Capteurs Actifs:"), bottomBar);
     activeLabel->setStyleSheet("font-size:16px;");
 
     m_activeValueLabel = new QLabel(QStringLiteral("0"), bottomBar);
     m_activeValueLabel->setStyleSheet("font-size:16px;font-weight:800;color:#ffd76a;");
 
-    auto *pipe1 = new QLabel(QStringLiteral("|"), bottomBar);
-    pipe1->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
+    auto makePipe = [bottomBar]() {
+        auto *pipe = new QLabel(QStringLiteral("|"), bottomBar);
+        pipe->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
+        return pipe;
+    };
 
     m_alarmValueLabel = new QLabel(QStringLiteral("0  Alarme"), bottomBar);
     m_alarmValueLabel->setStyleSheet("color:#ff626f;font-size:16px;font-weight:700;");
 
-    auto *pipe2 = new QLabel(QStringLiteral("|"), bottomBar);
-    pipe2->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
-
     m_warningValueLabel = new QLabel(QStringLiteral("0  Avertissements"), bottomBar);
     m_warningValueLabel->setStyleSheet("color:#ffb130;font-size:16px;font-weight:700;");
-
-    auto *pipe3 = new QLabel(QStringLiteral("|"), bottomBar);
-    pipe3->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
 
     m_defaultValueLabel = new QLabel(QStringLiteral("0  Défaut"), bottomBar);
     m_defaultValueLabel->setStyleSheet("color:#a6d94d;font-size:16px;font-weight:700;");
 
+    // --- Bouton réglages (gestion des modules) ---
     auto *settingsButton = new QPushButton(QStringLiteral("⚙"), bottomBar);
     settingsButton->setFixedSize(32, 32);
     settingsButton->setStyleSheet(
@@ -463,12 +335,10 @@ QWidget *DashboardWindow::createBottomBar()
     connect(settingsButton, &QPushButton::clicked,
             this, &DashboardWindow::openModuleManager);
 
+    // --- État réseau + bouton de scan ---
     m_userStatusLabel->setStyleSheet("font-size:16px;");
     auto *account = new QLabel(QStringLiteral("◌"), bottomBar);
     account->setStyleSheet("font-size:18px;");
-
-    auto *pipe4 = new QLabel(QStringLiteral("|"), bottomBar);
-    pipe4->setStyleSheet("color:rgba(255,255,255,0.45);font-size:18px;");
 
     m_networkStatusLabel = new QLabel(QStringLiteral("Scanning..."), bottomBar);
     m_networkStatusLabel->setStyleSheet("font-size:14px;color:#7ec8e3;");
@@ -491,7 +361,7 @@ QWidget *DashboardWindow::createBottomBar()
     connect(m_scanNetworkButton, &QPushButton::clicked,
             this, &DashboardWindow::openNetworkScanner);
 
-    // Bouton pour ajouter un nouveau capteur
+    // --- Bouton d'ajout d'un capteur ---
     auto *addSensorButton = new QPushButton(QStringLiteral("➕"), bottomBar);
     addSensorButton->setFixedSize(32, 28);
     addSensorButton->setStyleSheet(
@@ -510,7 +380,7 @@ QWidget *DashboardWindow::createBottomBar()
     connect(addSensorButton, &QPushButton::clicked,
             this, &DashboardWindow::onAddSensor);
 
-    // Bouton pour changer la taille des modules
+    // --- Bouton de redimensionnement rapide des modules ---
     auto *resizeButton = new QPushButton(QStringLiteral("📐"), bottomBar);
     resizeButton->setFixedSize(32, 28);
     resizeButton->setStyleSheet(
@@ -527,6 +397,7 @@ QWidget *DashboardWindow::createBottomBar()
         "}"
         );
     connect(resizeButton, &QPushButton::clicked, this, [this, resizeButton]() {
+        // Menu contextuel avec des tailles prédéfinies pour les 3 widgets.
         QMenu menu(this);
         menu.setStyleSheet(
             "QMenu {"
@@ -545,11 +416,11 @@ QWidget *DashboardWindow::createBottomBar()
             "}"
             );
 
-        auto *smallAction = menu.addAction(QStringLiteral("🔹 Petit (1x1)"));
+        auto *smallAction  = menu.addAction(QStringLiteral("🔹 Petit (1x1)"));
         auto *mediumAction = menu.addAction(QStringLiteral("🔸 Moyen (2x1)"));
-        auto *largeAction = menu.addAction(QStringLiteral("🔶 Grand (2x2)"));
+        auto *largeAction  = menu.addAction(QStringLiteral("🔶 Grand (2x2)"));
         menu.addSeparator();
-        auto *autoAction = menu.addAction(QStringLiteral("⚙ Auto (défaut)"));
+        auto *autoAction   = menu.addAction(QStringLiteral("⚙ Auto (défaut)"));
 
         connect(smallAction, &QAction::triggered, this, [this]() {
             setWidgetSize(m_smokeWidget, QSize(300, 200));
@@ -567,7 +438,6 @@ QWidget *DashboardWindow::createBottomBar()
             setWidgetSize(m_cameraWidget, QSize(600, 700));
         });
         connect(autoAction, &QAction::triggered, this, [this]() {
-            // Remettre en mode auto (pas de taille fixe)
             resetWidgetSize(m_smokeWidget);
             resetWidgetSize(m_temperatureWidget);
             resetWidgetSize(m_cameraWidget);
@@ -576,15 +446,16 @@ QWidget *DashboardWindow::createBottomBar()
         menu.exec(resizeButton->mapToGlobal(QPoint(0, -menu.sizeHint().height())));
     });
 
+    // --- Assemblage de la barre ---
     layout->addWidget(activeLabel);
     layout->addWidget(m_activeValueLabel);
-    layout->addWidget(pipe1);
+    layout->addWidget(makePipe());
     layout->addWidget(m_alarmValueLabel);
-    layout->addWidget(pipe2);
+    layout->addWidget(makePipe());
     layout->addWidget(m_warningValueLabel);
-    layout->addWidget(pipe3);
+    layout->addWidget(makePipe());
     layout->addWidget(m_defaultValueLabel);
-    layout->addWidget(pipe4);
+    layout->addWidget(makePipe());
     layout->addWidget(m_networkStatusLabel);
     layout->addSpacing(8);
     layout->addWidget(m_scanNetworkButton);
@@ -598,25 +469,13 @@ QWidget *DashboardWindow::createBottomBar()
     return bottomBar;
 }
 
-void DashboardWindow::handleLogin()
-{
-    const QString user = m_loginWidget->username().trimmed().isEmpty()
-    ? QStringLiteral("admin")
-    : m_loginWidget->username().trimmed();
-
-    m_userStatusLabel->setText(user);
-
-    QMessageBox::information(this,
-                             QStringLiteral("Connexion"),
-                             QStringLiteral("Connexion réussie pour l'utilisateur : %1").arg(user));
-}
-
 void DashboardWindow::updateBottomStatus()
 {
+    // Recompte les capteurs visibles et leurs niveaux d'alerte.
     int activeCount = 0;
     int alarms = 0;
     int warnings = 0;
-    int defaults = 0;
+    const int defaults = 0;
 
     if (m_smokeWidget && m_smokeWidget->isVisible()) {
         ++activeCount;
@@ -634,14 +493,8 @@ void DashboardWindow::updateBottomStatus()
             ++warnings;
     }
 
-    if (m_cameraWidget && m_cameraWidget->isVisible()) {
+    if (m_cameraWidget && m_cameraWidget->isVisible())
         ++activeCount;
-    }
-
-    if (m_radiationPanel && m_radiationPanel->isVisible()) {
-        ++activeCount;
-        ++warnings;
-    }
 
     if (m_activeValueLabel)
         m_activeValueLabel->setText(QString::number(activeCount));
@@ -653,33 +506,13 @@ void DashboardWindow::updateBottomStatus()
         m_defaultValueLabel->setText(QStringLiteral("%1  Défaut").arg(defaults));
 }
 
-void DashboardWindow::showCameraFullscreen()
-{
-    if (!m_cameraWidget) {
-        return;
-    }
-
-    const QPixmap frame = m_cameraWidget->currentFrame();
-    if (frame.isNull()) {
-        QMessageBox::warning(this, QStringLiteral("Caméra"), QStringLiteral("Aucune image disponible."));
-        return;
-    }
-
-    auto *dialog = new QDialog(this);
-    dialog->setWindowTitle(QStringLiteral("Caméra - Plein écran"));
-    dialog->resize(1200, 800);
-
-    auto *layout = new QVBoxLayout(dialog);
-    auto *label = new QLabel(dialog);
-    label->setAlignment(Qt::AlignCenter);
-    label->setPixmap(frame.scaled(1600, 900, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    layout->addWidget(label);
-
-    dialog->exec();
-}
-
+// =====================================================================
+//  DÉPLACEMENT DE LA FENÊTRE SANS BORDURE
+// =====================================================================
 void DashboardWindow::mousePressEvent(QMouseEvent *event)
 {
+    // Un clic gauche dans la zone haute (barre de titre) déclenche le
+    // déplacement de la fenêtre.
     if (event->button() == Qt::LeftButton && event->position().y() <= 90.0) {
         m_dragging = true;
         m_dragOffset = event->globalPosition().toPoint() - frameGeometry().topLeft();
@@ -705,10 +538,33 @@ void DashboardWindow::mouseReleaseEvent(QMouseEvent *event)
     QWidget::mouseReleaseEvent(event);
 }
 
+void DashboardWindow::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    // L'écran de verrouillage doit toujours couvrir toute la fenêtre.
+    if (m_lockOverlay)
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+}
+
+void DashboardWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    // Tant que personne n'est authentifié, le verrouillage reste affiché.
+    if (m_lockOverlay && !m_isAuthenticated) {
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+        m_lockOverlay->show();
+        m_lockOverlay->raise();
+        m_lockOverlay->activateWindow();
+    }
+}
+
+// =====================================================================
+//  RÉSEAU : SCAN ET CONNEXION DES RASPBERRY PI
+// =====================================================================
 void DashboardWindow::setupNetworkFeatures()
 {
-    QString localIp = ArpScanner::getLocalIpAddress();
-    QString subnet = ArpScanner::getLocalSubnet();
+    const QString localIp = ArpScanner::getLocalIpAddress();
+    const QString subnet  = ArpScanner::getLocalSubnet();
 
     if (!subnet.isEmpty()) {
         m_networkStatusLabel->setText(
@@ -721,10 +577,8 @@ void DashboardWindow::setupNetworkFeatures()
 void DashboardWindow::openNetworkScanner()
 {
     NetworkScannerDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QVector<NetworkDevice> selectedDevices = dialog.selectedDevices();
-        onDevicesConnected(selectedDevices);
-    }
+    if (dialog.exec() == QDialog::Accepted)
+        onDevicesConnected(dialog.selectedDevices());
 }
 
 void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
@@ -732,15 +586,17 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
     m_connectedDevices = devices;
 
     QStringList deviceNames;
-    int xOffset = 15;
+    const int xOffset = 15;
     int yOffset = 15;
 
+    // Pour chaque Raspberry Pi connecté, on crée le widget correspondant
+    // à son type de capteur, on le positionne et on branche ses boutons.
     for (const auto &device : devices) {
         deviceNames.append(QStringLiteral("%1 (%2)")
                                .arg(device.ipAddress, device.deviceType));
 
         QWidget *newWidget = nullptr;
-        QString cleanType = device.deviceType.trimmed();
+        const QString cleanType = device.deviceType.trimmed();
 
         if (cleanType.contains(QStringLiteral("Temperature"), Qt::CaseInsensitive) ||
             cleanType.contains(QStringLiteral("DHT"), Qt::CaseInsensitive)) {
@@ -763,7 +619,7 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
         }
         else if (cleanType.contains(QStringLiteral("Smoke"), Qt::CaseInsensitive) ||
                  cleanType.contains(QStringLiteral("MQ-2"), Qt::CaseInsensitive) ||
-                 cleanType.contains(QStringLiteral("Fum\u00e9e"), Qt::CaseInsensitive) ||
+                 cleanType.contains(QStringLiteral("Fumée"), Qt::CaseInsensitive) ||
                  cleanType.contains(QStringLiteral("AirQuality"), Qt::CaseInsensitive)) {
 
             auto *smokeWidget = new SmokeSensorWidget(m_sensorContainer);
@@ -788,9 +644,7 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
             auto *camWidget = new CameraWidget(m_sensorContainer);
             camWidget->move(295, 15);
             camWidget->resize(320, 240);
-
-            QString rtspUrl = QStringLiteral("rtsp://%1:8554/cam").arg(device.ipAddress);
-            camWidget->setStreamUrl(rtspUrl);
+            camWidget->setStreamUrl(QStringLiteral("rtsp://%1:8554/cam").arg(device.ipAddress));
 
             m_cameraWidget = camWidget;
             newWidget = camWidget;
@@ -804,7 +658,6 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
                     this, &DashboardWindow::onCameraWidgetEdit);
         }
 
-        // Show and enable dragging
         if (newWidget) {
             enableWidgetDragging(newWidget);
             newWidget->show();
@@ -813,56 +666,44 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
 
     if (!devices.isEmpty()) {
         QMessageBox::information(this,
-                                 QStringLiteral("Modules Connect\u00e9s"),
-                                 QStringLiteral("%1 module(s) connect\u00e9(s):\n\n%2")
+                                 QStringLiteral("Modules Connectés"),
+                                 QStringLiteral("%1 module(s) connecté(s):\n\n%2")
                                      .arg(devices.size())
                                      .arg(deviceNames.join(QStringLiteral("\n"))));
 
         updateConnectedDevicesStatus();
         updateBottomStatus();
 
-        // Now that widgets exist, connect to MQTT broker
+        // Les widgets existent : on peut se connecter au broker MQTT.
         if (m_mqttClient && !m_mqttClient->isConnected()) {
-            QString brokerHost = QStringLiteral("200.26.16.180");
-            quint16 brokerPort = 8883;
-            qDebug() << "MQTT: Connecting to" << brokerHost << ":" << brokerPort;
-            m_mqttClient->connectToBroker(brokerHost, brokerPort, true);
+            qDebug() << "MQTT: connexion à" << kBrokerHost << ":" << kBrokerPort;
+            m_mqttClient->connectToBroker(kBrokerHost, kBrokerPort, true);
         }
     }
 }
 
 void DashboardWindow::updateConnectedDevicesStatus()
 {
-    int moduleCount = m_connectedDevices.size();
+    if (!m_networkStatusLabel)
+        return;
 
-    if (m_networkStatusLabel) {
-        QString localIp = ArpScanner::getLocalIpAddress();
-        QString subnet = ArpScanner::getLocalSubnet();
+    const int moduleCount = m_connectedDevices.size();
+    const QString localIp = ArpScanner::getLocalIpAddress();
+    const QString subnet  = ArpScanner::getLocalSubnet();
 
-        if (moduleCount > 0) {
-            m_networkStatusLabel->setText(
-                QStringLiteral(" %1 | %2 |  %3 module(s)")
-                    .arg(localIp, subnet).arg(moduleCount));
-        } else {
-            m_networkStatusLabel->setText(
-                QStringLiteral(" %1 | %2").arg(localIp, subnet));
-        }
+    if (moduleCount > 0) {
+        m_networkStatusLabel->setText(
+            QStringLiteral(" %1 | %2 |  %3 module(s)")
+                .arg(localIp, subnet).arg(moduleCount));
+    } else {
+        m_networkStatusLabel->setText(
+            QStringLiteral(" %1 | %2").arg(localIp, subnet));
     }
 }
 
-void DashboardWindow::setupWidgetEditButtons()
-{
-    if (m_smokeWidget)
-        connect(m_smokeWidget->editButton(), &QPushButton::clicked,
-                this, &DashboardWindow::onSmokeWidgetEdit);
-    if (m_temperatureWidget)
-        connect(m_temperatureWidget->editButton(), &QPushButton::clicked,
-                this, &DashboardWindow::onTempWidgetEdit);
-    if (m_cameraWidget)
-        connect(m_cameraWidget->editButton(), &QPushButton::clicked,
-                this, &DashboardWindow::onCameraWidgetEdit);
-}
-
+// =====================================================================
+//  ÉDITION DES WIDGETS CAPTEURS
+// =====================================================================
 void DashboardWindow::onSmokeWidgetEdit()
 {
     WidgetConfig config;
@@ -875,7 +716,7 @@ void DashboardWindow::onSmokeWidgetEdit()
 
     WidgetEditor editor(config, this);
     if (editor.exec() == QDialog::Accepted) {
-        WidgetConfig newConfig = editor.getConfig();
+        const WidgetConfig newConfig = editor.getConfig();
         m_smokeWidget->setTitle(newConfig.name);
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
@@ -896,7 +737,7 @@ void DashboardWindow::onTempWidgetEdit()
 
     WidgetEditor editor(config, this);
     if (editor.exec() == QDialog::Accepted) {
-        WidgetConfig newConfig = editor.getConfig();
+        const WidgetConfig newConfig = editor.getConfig();
         m_temperatureWidget->setTitle(newConfig.name);
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
@@ -907,44 +748,25 @@ void DashboardWindow::onTempWidgetEdit()
 
 void DashboardWindow::onCameraWidgetEdit()
 {
-    // Éditeur spécifique pour la caméra - sans seuils d'alarme
+    // Éditeur en mode caméra : pas de seuils d'alarme ni d'unité.
     WidgetConfig config;
     config.id = QStringLiteral("cam-001");
-    config.name = m_cameraWidget->windowTitle().isEmpty() ?
-                      QStringLiteral("Caméra Salle Serveur") : m_cameraWidget->windowTitle();
+    config.name = m_cameraWidget->windowTitle().isEmpty()
+                      ? QStringLiteral("Caméra Salle Serveur")
+                      : m_cameraWidget->windowTitle();
     config.type = QStringLiteral("Caméra");
-    config.warningThreshold = 0;  // Pas utilisé pour caméra
-    config.alarmThreshold = 0;    // Pas utilisé pour caméra
-    config.unit = QStringLiteral("");  // Pas d'unité
+    config.warningThreshold = 0;
+    config.alarmThreshold = 0;
+    config.unit = QString();
 
-    WidgetEditor editor(config, this, true);  // true = mode caméra
+    WidgetEditor editor(config, this, /*cameraMode=*/true);
     if (editor.exec() == QDialog::Accepted) {
-        WidgetConfig newConfig = editor.getConfig();
+        const WidgetConfig newConfig = editor.getConfig();
         m_cameraWidget->setTitle(newConfig.name);
         QMessageBox::information(this,
                                  QStringLiteral("Caméra modifiée"),
                                  QStringLiteral("Nouveau nom: %1")
                                      .arg(newConfig.name));
-    }
-}
-
-void DashboardWindow::onRadiationPanelEdit()
-{
-    WidgetConfig config;
-    config.id = QStringLiteral("rad-001");
-    config.name = QStringLiteral("Niveau de Radiation");
-    config.type = QStringLiteral("Radiation");
-    config.warningThreshold = 3;
-    config.alarmThreshold = 10;
-    config.unit = QStringLiteral("μSv/h");
-
-    WidgetEditor editor(config, this);
-    if (editor.exec() == QDialog::Accepted) {
-        WidgetConfig newConfig = editor.getConfig();
-        QMessageBox::information(this,
-                                 QStringLiteral("Widget modifié"),
-                                 QStringLiteral("Nouveau nom: %1\nType: %2")
-                                     .arg(newConfig.name, newConfig.type));
     }
 }
 
@@ -954,89 +776,323 @@ void DashboardWindow::openModuleManager()
     manager.exec();
 }
 
-void DashboardWindow::onUserAuthenticated(const User &user)
+// =====================================================================
+//  AJOUT MANUEL DE CAPTEURS (bouton ➕)
+// =====================================================================
+void DashboardWindow::onAddSensor()
 {
-    m_currentUser = user;
-    m_isAuthenticated = true;
+    AddSensorDialog dialog(this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
 
-    m_userStatusLabel->setText(QStringLiteral("%1 (%2)")
-                                   .arg(user.username, user.getRoleString()));
+    const SensorConfig config = dialog.getSensorConfig();
 
-    updateUIBasedOnRole();
-    setWidgetsEnabled(true);
+    QWidget *newWidget = nullptr;
 
-    if (m_lockOverlay) {
-        m_lockOverlay->hide();
+    // Branche le bouton ✎ d'un capteur dynamique sur l'éditeur de widget.
+    auto connectEditButton = [this, config](QPushButton *editBtn, auto *sensorWidget) {
+        connect(editBtn, &QPushButton::clicked, this, [this, config, sensorWidget]() {
+            WidgetConfig wc;
+            wc.id = config.id;
+            wc.name = config.name;
+            wc.type = SensorFactory::sensorTypeToString(config.type);
+            wc.warningThreshold = config.warningThreshold;
+            wc.alarmThreshold = config.alarmThreshold;
+            wc.unit = config.unit;
+
+            WidgetEditor editor(wc, this);
+            if (editor.exec() == QDialog::Accepted)
+                sensorWidget->setTitle(editor.getConfig().name);
+        });
+    };
+
+    // Branche le bouton ✕ d'un capteur dynamique (masquer le widget).
+    auto connectCloseButton = [this](QPushButton *closeBtn, QWidget *sensorWidget) {
+        connect(closeBtn, &QPushButton::clicked, this, [this, sensorWidget]() {
+            sensorWidget->hide();
+            updateBottomStatus();
+        });
+    };
+
+    switch (config.type) {
+    case SensorType::Smoke: {
+        auto *widget = SensorFactory::createSmokeSensor(this, config.name);
+        connectEditButton(widget->editButton(), widget);
+        connectCloseButton(widget->closeButton(), widget);
+        newWidget = widget;
+        break;
+    }
+    case SensorType::Temperature: {
+        auto *widget = SensorFactory::createTemperatureSensor(this, config.name);
+        connectEditButton(widget->editButton(), widget);
+        connectCloseButton(widget->closeButton(), widget);
+        newWidget = widget;
+        break;
+    }
+    case SensorType::Camera: {
+        auto *widget = SensorFactory::createCamera(this, config.name);
+        connectCloseButton(widget->closeButton(), widget);
+        newWidget = widget;
+        break;
+    }
+    default:
+        QMessageBox::warning(this, QStringLiteral("Non supporté"),
+                             QStringLiteral("Ce type de capteur n'est pas encore supporté."));
+        return;
     }
 
-    QMessageBox::information(this,
-                             QStringLiteral("Bienvenue"),
-                             QStringLiteral("Connecté en tant que %1\nRôle: %2")
-                                 .arg(user.fullName.isEmpty() ? user.username : user.fullName,
-                                      user.getRoleString()));
+    addSensorToGrid(newWidget);
+
+    QMessageBox::information(this, QStringLiteral("Capteur ajouté"),
+                             QStringLiteral("Le capteur '%1' a été ajouté au dashboard.")
+                                 .arg(config.name));
 }
 
-void DashboardWindow::onUserLoggedOut()
+void DashboardWindow::addSensorToGrid(QWidget *widget)
 {
-    m_currentUser = User();
-    m_isAuthenticated = false;
+    if (!m_sensorContainer || !widget)
+        return;
 
-    m_userStatusLabel->setText(QStringLiteral("Non connecté"));
+    // Positionnement automatique : 3 widgets par ligne.
+    const int x = 20 + (m_dynamicSensors.size() % 3) * 370;
+    const int y = 20 + (m_dynamicSensors.size() / 3) * 270;
 
-    setWidgetsEnabled(false);
+    widget->setParent(m_sensorContainer);
+    widget->move(x, y);
+    widget->resize(350, 250);
 
-    if (m_lockOverlay) {
-        m_lockOverlay->show();
+    enableWidgetDragging(widget);
+    m_dynamicSensors.append(widget);
+
+    widget->show();
+}
+
+// =====================================================================
+//  TAILLE ET DÉPLACEMENT DES WIDGETS CAPTEURS
+// =====================================================================
+void DashboardWindow::setWidgetSize(QWidget *widget, const QSize &size)
+{
+    if (!widget)
+        return;
+
+    // Taille figée : minimum = maximum.
+    widget->setMinimumSize(size);
+    widget->setMaximumSize(size);
+
+    if (m_sensorContainer)
+        m_sensorContainer->adjustSize();
+}
+
+void DashboardWindow::resetWidgetSize(QWidget *widget)
+{
+    if (!widget)
+        return;
+
+    // Retour au dimensionnement automatique.
+    widget->setMinimumSize(0, 0);
+    widget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
+    if (m_sensorContainer)
+        m_sensorContainer->adjustSize();
+}
+
+void DashboardWindow::enableWidgetDragging(QWidget *widget)
+{
+    if (!widget)
+        return;
+
+    // L'event filter (ci-dessous) intercepte les clics sur le widget pour
+    // gérer le glisser-déposer et le redimensionnement par les coins.
+    widget->installEventFilter(this);
+    widget->setCursor(Qt::OpenHandCursor);
+}
+
+bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    // Variables statiques : un seul widget peut être déplacé ou
+    // redimensionné à la fois, on mémorise lequel et depuis où.
+    static QWidget *draggedWidget = nullptr;
+    static QWidget *resizedWidget = nullptr;
+    static int resizeCorner = 0; // 1=bas-droit, 2=bas-gauche, 3=haut-droit, 4=haut-gauche
+    static QPoint dragStartPos;
+    static QPoint widgetStartPos;
+    static QSize widgetStartSize;
+
+    // On ne traite que nos widgets capteurs.
+    QWidget *widget = qobject_cast<QWidget *>(watched);
+    if (!widget || (widget != m_smokeWidget && widget != m_temperatureWidget &&
+                    widget != m_cameraWidget && !m_dynamicSensors.contains(widget))) {
+        return QWidget::eventFilter(watched, event);
     }
 
-    showLoginDialog();
-}
+    switch (event->type()) {
+    case QEvent::MouseButtonPress: {
+        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+        if (mouseEvent->button() == Qt::LeftButton) {
+            const QPoint pos = mouseEvent->pos();
+            const int w = widget->width();
+            const int h = widget->height();
 
-void DashboardWindow::showLoginDialog()
-{
-    // Show the built-in lock overlay (already visible)
-    if (m_lockOverlay) {
-        // Set geometry to cover entire widget
-        m_lockOverlay->setGeometry(0, 0, width(), height());
-        m_lockOverlay->show();
-        m_lockOverlay->raise();
-        m_lockOverlay->activateWindow();
-        // Force immediate repaint
-        m_lockOverlay->repaint();
+            // Zone de 15 px près de chaque bord = poignée de redimensionnement
+            const bool nearRight  = pos.x() >= w - 15;
+            const bool nearLeft   = pos.x() <= 15;
+            const bool nearBottom = pos.y() >= h - 15;
+            const bool nearTop    = pos.y() <= 15;
+
+            if (nearRight && nearBottom) {
+                resizedWidget = widget;
+                resizeCorner = 1;
+                dragStartPos = mouseEvent->globalPosition().toPoint();
+                widgetStartSize = widget->size();
+                widget->setCursor(Qt::SizeFDiagCursor);
+                return true;
+            } else if (nearLeft && nearBottom) {
+                resizedWidget = widget;
+                resizeCorner = 2;
+                dragStartPos = mouseEvent->globalPosition().toPoint();
+                widgetStartPos = widget->pos();
+                widgetStartSize = widget->size();
+                widget->setCursor(Qt::SizeBDiagCursor);
+                return true;
+            } else if (nearRight && nearTop) {
+                resizedWidget = widget;
+                resizeCorner = 3;
+                dragStartPos = mouseEvent->globalPosition().toPoint();
+                widgetStartPos = widget->pos();
+                widgetStartSize = widget->size();
+                widget->setCursor(Qt::SizeBDiagCursor);
+                return true;
+            } else if (nearLeft && nearTop) {
+                resizedWidget = widget;
+                resizeCorner = 4;
+                dragStartPos = mouseEvent->globalPosition().toPoint();
+                widgetStartPos = widget->pos();
+                widgetStartSize = widget->size();
+                widget->setCursor(Qt::SizeFDiagCursor);
+                return true;
+            }
+            // Clic dans la zone haute (40 px) = déplacement du widget
+            else if (pos.y() < 40 && !nearLeft && !nearRight) {
+                draggedWidget = widget;
+                dragStartPos = mouseEvent->globalPosition().toPoint();
+                widgetStartPos = widget->pos();
+                widget->setCursor(Qt::ClosedHandCursor);
+                return true;
+            }
+        }
+        break;
     }
-}
+    case QEvent::MouseMove: {
+        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+        const QPoint pos = mouseEvent->pos();
+        const int w = widget->width();
+        const int h = widget->height();
 
-void DashboardWindow::logout()
-{
-    m_dbManager->clearCurrentUser();
-    onUserLoggedOut();
-}
+        // Adapter le curseur à la zone survolée
+        if (draggedWidget != widget && resizedWidget != widget) {
+            const bool nearRight  = pos.x() >= w - 15;
+            const bool nearLeft   = pos.x() <= 15;
+            const bool nearBottom = pos.y() >= h - 15;
+            const bool nearTop    = pos.y() <= 15;
 
-void DashboardWindow::paintEvent(QPaintEvent *event)
-{
-    QWidget::paintEvent(event);
-}
+            if ((nearRight && nearBottom) || (nearLeft && nearTop)) {
+                widget->setCursor(Qt::SizeFDiagCursor);
+            } else if ((nearLeft && nearBottom) || (nearRight && nearTop)) {
+                widget->setCursor(Qt::SizeBDiagCursor);
+            } else if (pos.y() < 40) {
+                widget->setCursor(Qt::OpenHandCursor);
+            } else {
+                widget->setCursor(Qt::ArrowCursor);
+            }
+        }
 
-void DashboardWindow::resizeEvent(QResizeEvent *event)
-{
-    QWidget::resizeEvent(event);
-    if (m_lockOverlay) {
-        m_lockOverlay->setGeometry(0, 0, width(), height());
+        // --- Déplacement en cours ---
+        if (draggedWidget == widget) {
+            const QPoint delta = mouseEvent->globalPosition().toPoint() - dragStartPos;
+            QPoint newPos = widgetStartPos + delta;
+
+            // Rester dans les limites du conteneur
+            if (m_sensorContainer) {
+                newPos.setX(qMax(0, qMin(newPos.x(),
+                                         m_sensorContainer->width() - widget->width())));
+                newPos.setY(qMax(0, qMin(newPos.y(),
+                                         m_sensorContainer->height() - widget->height())));
+            }
+
+            widget->move(newPos);
+            return true;
+        }
+
+        // --- Redimensionnement en cours ---
+        if (resizedWidget == widget) {
+            const QPoint delta = mouseEvent->globalPosition().toPoint() - dragStartPos;
+            int newW = widgetStartSize.width();
+            int newH = widgetStartSize.height();
+            int newX = widgetStartPos.x();
+            int newY = widgetStartPos.y();
+
+            switch (resizeCorner) {
+            case 1: // bas-droit
+                newW = widgetStartSize.width() + delta.x();
+                newH = widgetStartSize.height() + delta.y();
+                break;
+            case 2: // bas-gauche
+                newW = widgetStartSize.width() - delta.x();
+                newH = widgetStartSize.height() + delta.y();
+                newX = widgetStartPos.x() + delta.x();
+                break;
+            case 3: // haut-droit
+                newW = widgetStartSize.width() + delta.x();
+                newH = widgetStartSize.height() - delta.y();
+                newY = widgetStartPos.y() + delta.y();
+                break;
+            case 4: // haut-gauche
+                newW = widgetStartSize.width() - delta.x();
+                newH = widgetStartSize.height() - delta.y();
+                newX = widgetStartPos.x() + delta.x();
+                newY = widgetStartPos.y() + delta.y();
+                break;
+            }
+
+            // Taille minimale puis maximale (limites du conteneur)
+            newW = qMax(200, newW);
+            newH = qMax(150, newH);
+            if (m_sensorContainer) {
+                newW = qMin(m_sensorContainer->width() - newX, newW);
+                newH = qMin(m_sensorContainer->height() - newY, newH);
+            }
+
+            widget->resize(newW, newH);
+            if (resizeCorner >= 2)
+                widget->move(newX, newY);
+            return true;
+        }
+        break;
     }
-}
-
-void DashboardWindow::showEvent(QShowEvent *event)
-{
-    QWidget::showEvent(event);
-    // Ensure login overlay is properly positioned and visible when window shows
-    if (m_lockOverlay && !m_isAuthenticated) {
-        m_lockOverlay->setGeometry(0, 0, width(), height());
-        m_lockOverlay->show();
-        m_lockOverlay->raise();
-        m_lockOverlay->activateWindow();
+    case QEvent::MouseButtonRelease: {
+        if (draggedWidget == widget) {
+            draggedWidget = nullptr;
+            widget->setCursor(Qt::OpenHandCursor);
+            return true;
+        }
+        if (resizedWidget == widget) {
+            resizedWidget = nullptr;
+            resizeCorner = 0;
+            widget->setCursor(Qt::OpenHandCursor);
+            return true;
+        }
+        break;
     }
+    default:
+        break;
+    }
+
+    return QWidget::eventFilter(watched, event);
 }
 
+// =====================================================================
+//  AUTHENTIFICATION ET ÉCRAN DE VERROUILLAGE
+// =====================================================================
 void DashboardWindow::setupAuthentication()
 {
     m_dbManager = new DatabaseManager(this);
@@ -1052,8 +1108,6 @@ void DashboardWindow::setupAuthentication()
 
     connect(m_dbManager, &DatabaseManager::userAuthenticated,
             this, &DashboardWindow::onUserAuthenticated);
-    connect(m_dbManager, &DatabaseManager::userLoggedOut,
-            this, &DashboardWindow::onUserLoggedOut);
 
     createLockOverlay();
     setWidgetsEnabled(false);
@@ -1063,12 +1117,12 @@ void DashboardWindow::setupAuthentication()
 
 void DashboardWindow::createLockOverlay()
 {
-    // Full-size overlay covering the dashboard
+    // Voile sombre couvrant tout le dashboard, avec la carte de connexion
+    // au centre. Il est affiché tant que personne n'est authentifié.
     m_lockOverlay = new QWidget(this);
     m_lockOverlay->setObjectName(QStringLiteral("lockOverlay"));
     m_lockOverlay->setAttribute(Qt::WA_StyledBackground, true);
     m_lockOverlay->setAutoFillBackground(true);
-    m_lockOverlay->setAttribute(Qt::WA_TransparentForMouseEvents, false);
     m_lockOverlay->setFocusPolicy(Qt::StrongFocus);
     m_lockOverlay->setStyleSheet(
         "QWidget#lockOverlay { background: rgba(10, 18, 40, 0.92); }"
@@ -1102,7 +1156,7 @@ void DashboardWindow::createLockOverlay()
     auto *overlayLayout = new QVBoxLayout(m_lockOverlay);
     overlayLayout->setAlignment(Qt::AlignCenter);
 
-    // ── Login card ──────────────────────────────────────
+    // --- Carte de connexion ---
     auto *card = new QFrame(m_lockOverlay);
     card->setObjectName(QStringLiteral("loginCard"));
     card->setFixedWidth(400);
@@ -1111,13 +1165,11 @@ void DashboardWindow::createLockOverlay()
     cardLayout->setContentsMargins(40, 38, 40, 34);
     cardLayout->setSpacing(16);
 
-    // Lock icon
     auto *lockIcon = new QLabel(QStringLiteral("🔒"), card);
     lockIcon->setStyleSheet("font-size: 40px;");
     lockIcon->setAlignment(Qt::AlignCenter);
     cardLayout->addWidget(lockIcon);
 
-    // Title
     auto *titleLbl = new QLabel(QStringLiteral("Système de Surveillance"), card);
     titleLbl->setStyleSheet("font-size: 20px; font-weight: 700; color: #4a90d9;");
     titleLbl->setAlignment(Qt::AlignCenter);
@@ -1128,13 +1180,12 @@ void DashboardWindow::createLockOverlay()
     subLbl->setAlignment(Qt::AlignCenter);
     cardLayout->addWidget(subLbl);
 
-    // Separator
     auto *sep = new QFrame(card);
     sep->setFrameShape(QFrame::HLine);
     sep->setStyleSheet("background: #2d3f6a; max-height: 1px; border: none;");
     cardLayout->addWidget(sep);
 
-    // Error label
+    // Zone d'erreur (masquée tant qu'il n'y a pas d'échec de connexion)
     auto *errorLabel = new QLabel(card);
     errorLabel->setObjectName(QStringLiteral("errorLabel"));
     errorLabel->setStyleSheet(
@@ -1146,24 +1197,21 @@ void DashboardWindow::createLockOverlay()
     errorLabel->hide();
     cardLayout->addWidget(errorLabel);
 
-    // Username
+    // Champs identifiant / mot de passe
     auto *userLbl = new QLabel(QStringLiteral("Identifiant"), card);
     userLbl->setStyleSheet("font-size: 12px; font-weight: 600; color: #7ec8e3;");
     cardLayout->addWidget(userLbl);
 
     auto *usernameEdit = new QLineEdit(card);
-    usernameEdit->setObjectName(QStringLiteral("usernameEdit"));
     usernameEdit->setPlaceholderText(QStringLiteral("admin · operateur · visiteur"));
     usernameEdit->setFixedHeight(42);
     cardLayout->addWidget(usernameEdit);
 
-    // Password
     auto *passLbl = new QLabel(QStringLiteral("Mot de passe"), card);
     passLbl->setStyleSheet("font-size: 12px; font-weight: 600; color: #7ec8e3;");
     cardLayout->addWidget(passLbl);
 
     auto *passwordEdit = new QLineEdit(card);
-    passwordEdit->setObjectName(QStringLiteral("passwordEdit"));
     passwordEdit->setEchoMode(QLineEdit::Password);
     passwordEdit->setPlaceholderText(QStringLiteral("Votre mot de passe…"));
     passwordEdit->setFixedHeight(42);
@@ -1171,14 +1219,12 @@ void DashboardWindow::createLockOverlay()
 
     cardLayout->addSpacing(4);
 
-    // Login button
     auto *loginBtn = new QPushButton(QStringLiteral("Se connecter"), card);
     loginBtn->setObjectName(QStringLiteral("loginBtn"));
     loginBtn->setFixedHeight(46);
     loginBtn->setEnabled(false);
     cardLayout->addWidget(loginBtn);
 
-    // Quit button
     auto *quitBtn = new QPushButton(QStringLiteral("Quitter l'application"), card);
     quitBtn->setObjectName(QStringLiteral("quitBtn"));
     quitBtn->setFixedHeight(38);
@@ -1186,566 +1232,177 @@ void DashboardWindow::createLockOverlay()
 
     overlayLayout->addWidget(card);
 
-    // ── Connections ─────────────────────────────────────
-    connect(usernameEdit, &QLineEdit::textChanged, loginBtn, [loginBtn, usernameEdit, passwordEdit](const QString &) {
+    // --- Connexions ---
+    // Le bouton "Se connecter" n'est actif que si les deux champs sont remplis.
+    auto updateLoginButton = [loginBtn, usernameEdit, passwordEdit]() {
         loginBtn->setEnabled(
             !usernameEdit->text().trimmed().isEmpty() &&
             !passwordEdit->text().isEmpty());
-    });
-    connect(passwordEdit, &QLineEdit::textChanged, loginBtn, [loginBtn, usernameEdit, passwordEdit](const QString &) {
-        loginBtn->setEnabled(
-            !usernameEdit->text().trimmed().isEmpty() &&
-            !passwordEdit->text().isEmpty());
-    });
+    };
+    connect(usernameEdit, &QLineEdit::textChanged, loginBtn, updateLoginButton);
+    connect(passwordEdit, &QLineEdit::textChanged, loginBtn, updateLoginButton);
 
     auto doLogin = [this, usernameEdit, passwordEdit, errorLabel]() {
         errorLabel->hide();
-        QString user = usernameEdit->text().trimmed();
-        QString pass = passwordEdit->text();
 
+        // Connexion "à usage unique" : si l'authentification échoue,
+        // le message d'erreur s'affiche, puis la connexion se détruit.
         connect(m_dbManager, &DatabaseManager::authenticationFailed,
                 errorLabel, [errorLabel](const QString &msg) {
                     errorLabel->setText(QStringLiteral("⚠  %1").arg(msg));
                     errorLabel->show();
                 }, Qt::SingleShotConnection);
 
-        m_dbManager->authenticateUser(user, pass);
+        m_dbManager->authenticateUser(usernameEdit->text().trimmed(),
+                                      passwordEdit->text());
     };
 
     connect(loginBtn, &QPushButton::clicked, this, doLogin);
     connect(passwordEdit, &QLineEdit::returnPressed, this, doLogin);
     connect(quitBtn, &QPushButton::clicked, this, &DashboardWindow::close);
 
-    // Set initial geometry and show
     m_lockOverlay->setGeometry(0, 0, width(), height());
     m_lockOverlay->show();
     m_lockOverlay->raise();
     m_lockOverlay->ensurePolished();
 }
 
+void DashboardWindow::showLoginDialog()
+{
+    if (m_lockOverlay) {
+        m_lockOverlay->setGeometry(0, 0, width(), height());
+        m_lockOverlay->show();
+        m_lockOverlay->raise();
+        m_lockOverlay->activateWindow();
+        m_lockOverlay->repaint();
+    }
+}
+
+void DashboardWindow::onUserAuthenticated(const User &user)
+{
+    m_currentUser = user;
+    m_isAuthenticated = true;
+
+    m_userStatusLabel->setText(QStringLiteral("%1 (%2)")
+                                   .arg(user.username, user.getRoleString()));
+
+    updateUIBasedOnRole();
+    setWidgetsEnabled(true);
+
+    if (m_lockOverlay)
+        m_lockOverlay->hide();
+
+    QMessageBox::information(this,
+                             QStringLiteral("Bienvenue"),
+                             QStringLiteral("Connecté en tant que %1\nRôle: %2")
+                                 .arg(user.fullName.isEmpty() ? user.username : user.fullName,
+                                      user.getRoleString()));
+}
+
 void DashboardWindow::updateUIBasedOnRole()
 {
-    if (!m_isAuthenticated) return;
+    if (!m_isAuthenticated)
+        return;
 
-    // Enable/disable features based on role
-    bool canEdit = m_currentUser.canEditWidgets();
-    bool canConfigure = m_currentUser.canConfigureSystem();
+    // Seuls Admin et Opérateur peuvent éditer les widgets.
+    const bool canEdit = m_currentUser.canEditWidgets();
 
-    // Update edit buttons visibility
-    if (m_smokeWidget) {
-        m_smokeWidget->editButton()->setEnabled(canEdit);
+    if (m_smokeWidget)
         m_smokeWidget->editButton()->setVisible(canEdit);
-    }
-    if (m_temperatureWidget) {
-        m_temperatureWidget->editButton()->setEnabled(canEdit);
+    if (m_temperatureWidget)
         m_temperatureWidget->editButton()->setVisible(canEdit);
-    }
-    if (m_cameraWidget) {
-        m_cameraWidget->editButton()->setEnabled(canEdit);
+    if (m_cameraWidget)
         m_cameraWidget->editButton()->setVisible(canEdit);
-    }
-
-    // Settings button only for admin
-    if (m_logoutButton) {
-        m_logoutButton->setEnabled(canConfigure);
-    }
 }
 
 void DashboardWindow::setWidgetsEnabled(bool enabled)
 {
-    // Disable/enable all interactive widgets
-    if (m_smokeWidget) {
+    if (m_smokeWidget)
         m_smokeWidget->setEnabled(enabled);
-    }
-    if (m_temperatureWidget) {
+    if (m_temperatureWidget)
         m_temperatureWidget->setEnabled(enabled);
-    }
-    if (m_cameraWidget) {
+    if (m_cameraWidget)
         m_cameraWidget->setEnabled(enabled);
-    }
-    if (m_radiationPanel) {
-        m_radiationPanel->setEnabled(enabled);
-    }
-    if (m_scanNetworkButton) {
+    if (m_scanNetworkButton)
         m_scanNetworkButton->setEnabled(enabled);
-    }
-    // Enable/disable dynamic sensors
-    for (auto *sensor : m_dynamicSensors) {
-        if (sensor) sensor->setEnabled(enabled);
-    }
-}
-
-void DashboardWindow::addSensorToGrid(QWidget *widget, int rowSpan, int colSpan)
-{
-    Q_UNUSED(rowSpan)
-    Q_UNUSED(colSpan)
-
-    if (!m_sensorContainer || !widget) return;
-
-    // Positionnement absolu - calculer une position libre
-    int x = 20 + (m_dynamicSensors.size() % 3) * 370;
-    int y = 20 + (m_dynamicSensors.size() / 3) * 270;
-
-    widget->setParent(m_sensorContainer);
-    widget->move(x, y);
-    widget->resize(350, 250);
-
-    // Activer le déplacement
-    enableWidgetDragging(widget);
-
-    // Ajouter à la liste des capteurs dynamiques
-    m_dynamicSensors.append(widget);
-
-    widget->show();
-}
-
-void DashboardWindow::onAddSensor()
-{
-    AddSensorDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        SensorConfig config = dialog.getSensorConfig();
-
-        QWidget *newWidget = nullptr;
-
-        switch (config.type) {
-        case SensorType::Smoke:
-            newWidget = SensorFactory::createSmokeSensor(this, config.name);
-            connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
-                    this, [this, newWidget]() {
-                        // TODO: Gérer l'édition des capteurs dynamiques
-                        QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
-                    });
-            connect(static_cast<SmokeSensorWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
-                    this, [newWidget, this]() {
-                        newWidget->hide();
-                        updateBottomStatus();
-                    });
-            break;
-
-        case SensorType::Temperature:
-            newWidget = SensorFactory::createTemperatureSensor(this, config.name);
-            connect(static_cast<TemperatureWidget*>(newWidget)->editButton(), &QPushButton::clicked,
-                    this, [this, newWidget]() {
-                        QMessageBox::information(this, QStringLiteral("Info"), QStringLiteral("Édition du capteur"));
-                    });
-            connect(static_cast<TemperatureWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
-                    this, [newWidget, this]() {
-                        newWidget->hide();
-                        updateBottomStatus();
-                    });
-            break;
-
-        case SensorType::Camera:
-            newWidget = SensorFactory::createCamera(this, config.name);
-            connect(static_cast<CameraWidget*>(newWidget)->closeButton(), &QPushButton::clicked,
-                    this, [newWidget, this]() {
-                        newWidget->hide();
-                        updateBottomStatus();
-                    });
-            break;
-
-        default:
-            QMessageBox::warning(this, QStringLiteral("Non supporté"),
-                                 QStringLiteral("Ce type de capteur n'est pas encore supporté."));
-            return;
-        }
-
-        if (newWidget) {
-            // Ajouter le widget à la grille dynamique
-            int rowSpan = (config.type == SensorType::Camera) ? 2 : 1;
-            int colSpan = (config.type == SensorType::Camera) ? 1 : 1;
-
-            addSensorToGrid(newWidget, rowSpan, colSpan);
-
-            // Connecter le bouton d'édition pour les capteurs dynamiques
-            if (config.type == SensorType::Smoke || config.type == SensorType::Temperature) {
-                connect(static_cast<SmokeSensorWidget*>(newWidget)->editButton(), &QPushButton::clicked,
-                        this, [this, newWidget, config]() {
-                            WidgetConfig wc;
-                            wc.id = config.id;
-                            wc.name = static_cast<SmokeSensorWidget*>(newWidget)->currentSummary();
-                            wc.type = SensorFactory::sensorTypeToString(config.type);
-                            wc.warningThreshold = config.warningThreshold;
-                            wc.alarmThreshold = config.alarmThreshold;
-                            wc.unit = config.unit;
-
-                            WidgetEditor editor(wc, this);
-                            if (editor.exec() == QDialog::Accepted) {
-                                WidgetConfig newConfig = editor.getConfig();
-                                static_cast<SmokeSensorWidget*>(newWidget)->setTitle(newConfig.name);
-                            }
-                        });
-            }
-
-            QMessageBox::information(this, QStringLiteral("Capteur ajouté"),
-                                     QStringLiteral("Le capteur '%1' a été ajouté au dashboard.")
-                                         .arg(config.name));
-        }
+    for (auto *sensor : std::as_const(m_dynamicSensors)) {
+        if (sensor)
+            sensor->setEnabled(enabled);
     }
 }
 
-void DashboardWindow::setWidgetSize(QWidget *widget, const QSize &size)
-{
-    if (!widget) return;
-
-    // Définir une taille fixe minimale et maximale
-    widget->setMinimumSize(size);
-    widget->setMaximumSize(size);
-
-    // Forcer le recalcul du layout
-    if (m_sensorContainer) {
-        m_sensorContainer->adjustSize();
-    }
-}
-
-void DashboardWindow::resetWidgetSize(QWidget *widget)
-{
-    if (!widget) return;
-
-    // Remettre en mode auto
-    widget->setMinimumSize(0, 0);
-    widget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-
-    // Forcer le recalcul du layout
-    if (m_sensorContainer) {
-        m_sensorContainer->adjustSize();
-    }
-}
-
-void DashboardWindow::enableWidgetDragging(QWidget *widget)
-{
-    if (!widget) return;
-
-    // Installer un event filter pour gérer le drag
-    widget->installEventFilter(this);
-
-    // Changer le curseur pour indiquer que c'est déplaçable
-    widget->setCursor(Qt::OpenHandCursor);
-}
-
-bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
-{
-    static QWidget *draggedWidget = nullptr;
-    static QWidget *resizedWidget = nullptr;
-    static int resizeCorner = 0; // 1=bottom-right, 2=bottom-left, 3=top-right, 4=top-left
-    static QPoint dragStartPos;
-    static QPoint widgetStartPos;
-    static QSize widgetStartSize;
-
-    // Vérifier si c'est un de nos widgets déplaçables
-    QWidget *widget = qobject_cast<QWidget*>(watched);
-    if (!widget || (widget != m_smokeWidget && widget != m_temperatureWidget &&
-                    widget != m_cameraWidget && !m_dynamicSensors.contains(widget))) {
-        return QWidget::eventFilter(watched, event);
-    }
-
-    switch (event->type()) {
-    case QEvent::MouseButtonPress: {
-        auto *mouseEvent = static_cast<QMouseEvent*>(event);
-        if (mouseEvent->button() == Qt::LeftButton) {
-            QPoint pos = mouseEvent->pos();
-            int w = widget->width();
-            int h = widget->height();
-
-            // Vérifier si on clique sur un coin de redimensionnement (15px)
-            bool nearRight = pos.x() >= w - 15;
-            bool nearLeft = pos.x() <= 15;
-            bool nearBottom = pos.y() >= h - 15;
-            bool nearTop = pos.y() <= 15;
-
-            if (nearRight && nearBottom) {
-                resizedWidget = widget;
-                resizeCorner = 1; // bottom-right
-                dragStartPos = mouseEvent->globalPosition().toPoint();
-                widgetStartSize = widget->size();
-                widget->setCursor(Qt::SizeFDiagCursor);
-                return true;
-            } else if (nearLeft && nearBottom) {
-                resizedWidget = widget;
-                resizeCorner = 2; // bottom-left
-                dragStartPos = mouseEvent->globalPosition().toPoint();
-                widgetStartPos = widget->pos();
-                widgetStartSize = widget->size();
-                widget->setCursor(Qt::SizeBDiagCursor);
-                return true;
-            } else if (nearRight && nearTop) {
-                resizedWidget = widget;
-                resizeCorner = 3; // top-right
-                dragStartPos = mouseEvent->globalPosition().toPoint();
-                widgetStartPos = widget->pos();
-                widgetStartSize = widget->size();
-                widget->setCursor(Qt::SizeBDiagCursor);
-                return true;
-            } else if (nearLeft && nearTop) {
-                resizedWidget = widget;
-                resizeCorner = 4; // top-left
-                dragStartPos = mouseEvent->globalPosition().toPoint();
-                widgetStartPos = widget->pos();
-                widgetStartSize = widget->size();
-                widget->setCursor(Qt::SizeFDiagCursor);
-                return true;
-            }
-            // Vérifier si on clique sur la barre de titre (haut du widget)
-            else if (pos.y() < 40 && !nearLeft && !nearRight) {
-                draggedWidget = widget;
-                dragStartPos = mouseEvent->globalPosition().toPoint();
-                widgetStartPos = widget->pos();
-                widget->setCursor(Qt::ClosedHandCursor);
-                return true;
-            }
-        }
-        break;
-    }
-    case QEvent::MouseMove: {
-        auto *mouseEvent = static_cast<QMouseEvent*>(event);
-        QPoint pos = mouseEvent->pos();
-        int w = widget->width();
-        int h = widget->height();
-
-        // Mettre à jour le curseur selon la position
-        if (draggedWidget != widget && resizedWidget != widget) {
-            bool nearRight = pos.x() >= w - 15;
-            bool nearLeft = pos.x() <= 15;
-            bool nearBottom = pos.y() >= h - 15;
-            bool nearTop = pos.y() <= 15;
-
-            if ((nearRight && nearBottom) || (nearLeft && nearTop)) {
-                widget->setCursor(Qt::SizeFDiagCursor);
-            } else if ((nearLeft && nearBottom) || (nearRight && nearTop)) {
-                widget->setCursor(Qt::SizeBDiagCursor);
-            } else if (pos.y() < 40) {
-                widget->setCursor(Qt::OpenHandCursor);
-            } else {
-                widget->setCursor(Qt::ArrowCursor);
-            }
-        }
-
-        // Gérer le déplacement
-        if (draggedWidget == widget) {
-            QPoint delta = mouseEvent->globalPosition().toPoint() - dragStartPos;
-            QPoint newPos = widgetStartPos + delta;
-
-            // Limiter aux bornes du conteneur
-            if (m_sensorContainer) {
-                newPos.setX(qMax(0, qMin(newPos.x(),
-                                         m_sensorContainer->width() - widget->width())));
-                newPos.setY(qMax(0, qMin(newPos.y(),
-                                         m_sensorContainer->height() - widget->height())));
-            }
-
-            widget->move(newPos);
-            return true;
-        }
-
-        // Gérer le redimensionnement
-        if (resizedWidget == widget) {
-            QPoint delta = mouseEvent->globalPosition().toPoint() - dragStartPos;
-            int newW = widgetStartSize.width();
-            int newH = widgetStartSize.height();
-            int newX = widgetStartPos.x();
-            int newY = widgetStartPos.y();
-
-            switch (resizeCorner) {
-            case 1: // bottom-right
-                newW = widgetStartSize.width() + delta.x();
-                newH = widgetStartSize.height() + delta.y();
-                break;
-            case 2: // bottom-left
-                newW = widgetStartSize.width() - delta.x();
-                newH = widgetStartSize.height() + delta.y();
-                newX = widgetStartPos.x() + delta.x();
-                break;
-            case 3: // top-right
-                newW = widgetStartSize.width() + delta.x();
-                newH = widgetStartSize.height() - delta.y();
-                newY = widgetStartPos.y() + delta.y();
-                break;
-            case 4: // top-left
-                newW = widgetStartSize.width() - delta.x();
-                newH = widgetStartSize.height() - delta.y();
-                newX = widgetStartPos.x() + delta.x();
-                newY = widgetStartPos.y() + delta.y();
-                break;
-            }
-
-            // Limites minimales
-            newW = qMax(200, newW);
-            newH = qMax(150, newH);
-
-            // Limites maximales
-            if (m_sensorContainer) {
-                newW = qMin(m_sensorContainer->width() - newX, newW);
-                newH = qMin(m_sensorContainer->height() - newY, newH);
-            }
-
-            widget->resize(newW, newH);
-            if (resizeCorner >= 2) {
-                widget->move(newX, newY);
-            }
-            return true;
-        }
-        break;
-    }
-    case QEvent::MouseButtonRelease: {
-        if (draggedWidget == widget) {
-            draggedWidget = nullptr;
-            widget->setCursor(Qt::OpenHandCursor);
-            return true;
-        }
-        if (resizedWidget == widget) {
-            resizedWidget = nullptr;
-            resizeCorner = 0;
-            widget->setCursor(Qt::OpenHandCursor);
-            return true;
-        }
-        break;
-    }
-    default:
-        break;
-    }
-
-    return QWidget::eventFilter(watched, event);
-}
-
-
-
+// =====================================================================
+//  CONFIGURATION MQTT (certificats + connexions de signaux)
+// =====================================================================
 void DashboardWindow::setupMqtt()
 {
-    if (m_mqttClient) {
+    if (m_mqttClient)
         return;
-    }
 
     m_mqttClient = new MqttClient(this);
 
-    const QString repoRoot = findRepositoryRootForMqttCerts();
+    // Chargement des certificats mTLS depuis le dossier du dépôt.
+    const QString certDir = MqttClient::findCertificateDirectory();
+    qDebug() << "MQTT: dossier des certificats:" << certDir;
 
-    const QString caCertPath     = repoRoot + QStringLiteral("ca.crt");
-    const QString clientCertPath = repoRoot + QStringLiteral("admin-console.crt");
-    const QString clientKeyPath  = repoRoot + QStringLiteral("admin-console.key");
+    m_mqttClient->setCaCertificate(certDir + QStringLiteral("ca.crt"));
+    m_mqttClient->setClientCertificate(certDir + QStringLiteral("admin-console.crt"),
+                                       certDir + QStringLiteral("admin-console.key"));
 
-    qDebug() << "MQTT: repository root:" << repoRoot;
-    qDebug() << "MQTT: CA certificate:" << caCertPath;
-    qDebug() << "MQTT: client certificate:" << clientCertPath;
-    qDebug() << "MQTT: client key:" << clientKeyPath;
-
-    if (!QFileInfo::exists(caCertPath)) {
-        qWarning() << "MQTT: ca.crt introuvable à la racine du projet:" << caCertPath;
-    }
-
-    if (!QFileInfo::exists(clientCertPath)) {
-        qWarning() << "MQTT: admin-console.crt introuvable à la racine du projet:" << clientCertPath;
-    }
-
-    if (!QFileInfo::exists(clientKeyPath)) {
-        qWarning() << "MQTT: admin-console.key introuvable à la racine du projet:" << clientKeyPath;
-    }
-
-    m_mqttClient->setCaCertificate(caCertPath);
-    m_mqttClient->setClientCertificate(clientCertPath, clientKeyPath);
-
+    // Tout ce que le client MQTT décode est relié ici au dashboard.
     connect(m_mqttClient, &MqttClient::connected,
             this, &DashboardWindow::onMqttConnected);
-
     connect(m_mqttClient, &MqttClient::disconnected,
             this, &DashboardWindow::onMqttDisconnected);
-
     connect(m_mqttClient, &MqttClient::error,
             this, &DashboardWindow::onMqttError);
-
     connect(m_mqttClient, &MqttClient::temperatureReceived,
             this, &DashboardWindow::onMqttTemperatureReceived);
-
     connect(m_mqttClient, &MqttClient::smokeReceived,
             this, &DashboardWindow::onMqttSmokeReceived);
+    connect(m_mqttClient, &MqttClient::gasDataReceived,
+            this, &DashboardWindow::onMqttGasReceived);
 }
 
 void DashboardWindow::onMqttConnected()
 {
-    qDebug() << "MQTT: Connected to broker";
+    qDebug() << "MQTT: connecté au broker";
 
-    // Switch sensors to real-time mode
-    if (m_temperatureWidget) {
-        m_temperatureWidget->setRealTimeMode(true);
-    }
-    if (m_smokeWidget) {
-        m_smokeWidget->setRealTimeMode(true);
-    }
-
-    // Subscribe dynamically to each sensor's topic from the database
+    // Abonnement aux topics des capteurs enregistrés en base...
     const QVector<Sensor> sensors = m_dbManager->getAllSensors();
     for (const Sensor &sensor : sensors) {
         if (!sensor.topic.isEmpty()) {
             m_mqttClient->subscribe(sensor.topic);
-            qDebug() << "MQTT: subscribed to sensor" << sensor.id
-                     << "(" << sensor.type << ") on topic:" << sensor.topic;
+            qDebug() << "MQTT: abonné au capteur" << sensor.id
+                     << "(" << sensor.type << ") sur le topic:" << sensor.topic;
         }
     }
 
-    // Also subscribe to node-level wildcards to catch any sub-topic
-    m_mqttClient->subscribe(QStringLiteral("rpi-001/sensors/temperature"));  // Temperature Pi
-    m_mqttClient->subscribe(QStringLiteral("rpi-002/sensors/camera"));  // Camera Pi
-    m_mqttClient->subscribe(QStringLiteral("rpi-003/sensors/smoke"));  // Smoke/CO2 Pi
+    // ... et aux topics connus des 3 Raspberry Pi (au cas où la base
+    // ne contiendrait pas encore les capteurs).
+    m_mqttClient->subscribe(QStringLiteral("rpi-001/sensors/temperature"));
+    m_mqttClient->subscribe(QStringLiteral("rpi-002/sensors/camera"));
+    m_mqttClient->subscribe(QStringLiteral("rpi-003/sensors/smoke"));
 
-    // Update network status
-    if (m_networkStatusLabel) {
+    if (m_networkStatusLabel)
         m_networkStatusLabel->setText(m_networkStatusLabel->text() + QStringLiteral(" | MQTT ✓"));
-    }
 }
 
 void DashboardWindow::onMqttDisconnected()
 {
-    qDebug() << "MQTT: Disconnected from broker";
+    qDebug() << "MQTT: déconnecté du broker";
 
-    // Switch sensors back to simulation mode
-    if (m_temperatureWidget) {
-        m_temperatureWidget->setRealTimeMode(false);
-    }
-    if (m_smokeWidget) {
-        m_smokeWidget->setRealTimeMode(false);
-    }
-
-    // Update network status
     if (m_networkStatusLabel) {
         QString text = m_networkStatusLabel->text();
         text.remove(QStringLiteral(" | MQTT ✓"));
         m_networkStatusLabel->setText(text + QStringLiteral(" | MQTT ✗"));
-    }
-}
-
-void DashboardWindow::setupDataRefreshTimer()
-{
-    m_dataRefreshTimer = new QTimer(this);
-    connect(m_dataRefreshTimer, &QTimer::timeout, this, &DashboardWindow::refreshFromDatabase);
-    m_dataRefreshTimer->start(2000);  // Refresh every 2 seconds
-    qDebug() << "Database refresh timer started (2s interval)";
-}
-
-void DashboardWindow::refreshFromDatabase()
-{
-    if (!m_dbManager || !m_dbManager->isInitialized()) {
-        return;
-    }
-
-    // Get latest temperature from database
-    double temp = m_dbManager->getLatestTemperature("rpi-001");
-    double humidity = m_dbManager->getLatestHumidity("rpi-001");
-    if (temp > -100 && m_temperatureWidget) {
-        m_temperatureWidget->updateFromMqtt(temp, humidity);
-    }
-
-    // Get latest smoke level from database
-    int smoke = m_dbManager->getLatestSmokeLevel("rpi-003");
-
-    if (smoke >= 0 && m_smokeWidget) {
-        m_smokeWidget->updateFromMqtt(smoke);
     }
 }
 
 void DashboardWindow::onMqttError(const QString &error)
 {
-    qWarning() << "MQTT Error:" << error;
+    qWarning() << "MQTT: erreur:" << error;
 
-    // Update network status
     if (m_networkStatusLabel) {
         QString text = m_networkStatusLabel->text();
         text.remove(QStringLiteral(" | MQTT ✓"));
@@ -1753,36 +1410,79 @@ void DashboardWindow::onMqttError(const QString &error)
     }
 }
 
+// =====================================================================
+//  RÉCEPTION DES DONNÉES CAPTEURS (MQTT -> BDD + affichage)
+// =====================================================================
 void DashboardWindow::onMqttTemperatureReceived(double temperature, double humidity, const QString &sensorId)
 {
-    qDebug() << "MQTT: Temperature received:" << temperature << "°C, Humidity:" << humidity << "%, Sensor:" << sensorId;
+    qDebug() << "MQTT: température reçue:" << temperature << "°C, humidité:"
+             << humidity << "%, capteur:" << sensorId;
 
-    QString sid = sensorId.isEmpty() ? "rpi-001" : sensorId;
+    const QString sid = sensorId.isEmpty() ? kDefaultTempSensorId : sensorId;
 
-    // Save to database history
-    if (m_dbManager) {
+    // 1. Sauvegarde dans l'historique BDD
+    if (m_dbManager)
         m_dbManager->saveTemperatureReading(sid, temperature, humidity);
-    }
 
-    // Update UI with the actual MQTT value
-    if (m_temperatureWidget) {
+    // 2. Mise à jour de l'affichage
+    if (m_temperatureWidget)
         m_temperatureWidget->updateFromMqtt(temperature, humidity);
-    }
 }
 
 void DashboardWindow::onMqttSmokeReceived(int smokeLevel, const QString &sensorId)
 {
-    qDebug() << "MQTT: Smoke level received:" << smokeLevel << ", Sensor:" << sensorId;
+    qDebug() << "MQTT: niveau de fumée reçu:" << smokeLevel << ", capteur:" << sensorId;
 
-    QString sid = sensorId.isEmpty() ? "rpi-003" : sensorId;
+    const QString sid = sensorId.isEmpty() ? kDefaultSmokeSensorId : sensorId;
 
-    // Save to database history
-    if (m_dbManager) {
+    if (m_dbManager)
         m_dbManager->saveSmokeReading(sid, smokeLevel);
-    }
 
-    // Update UI
-    if (m_smokeWidget) {
+    if (m_smokeWidget)
         m_smokeWidget->updateFromMqtt(smokeLevel);
-    }
+}
+
+void DashboardWindow::onMqttGasReceived(int eco2Ppm, int tvocPpb, bool smokeDetected, const QString &sensorId)
+{
+    qDebug() << "MQTT: gaz reçu: eCO2" << eco2Ppm << "ppm, TVOC" << tvocPpb
+             << "ppb, fumée:" << smokeDetected << ", capteur:" << sensorId;
+
+    const QString sid = sensorId.isEmpty() ? kDefaultSmokeSensorId : sensorId;
+
+    if (m_dbManager)
+        m_dbManager->saveGasReading(sid, eco2Ppm, tvocPpb, smokeDetected);
+
+    if (m_smokeWidget)
+        m_smokeWidget->updateFromGasData(eco2Ppm, tvocPpb, smokeDetected);
+}
+
+// =====================================================================
+//  RAFRAÎCHISSEMENT DEPUIS LA BASE DE DONNÉES
+// =====================================================================
+void DashboardWindow::setupDataRefreshTimer()
+{
+    // Relit les dernières mesures stockées en base toutes les 2 secondes :
+    // utile quand les données sont insérées par un autre client MQTT.
+    m_dataRefreshTimer = new QTimer(this);
+    connect(m_dataRefreshTimer, &QTimer::timeout,
+            this, &DashboardWindow::refreshFromDatabase);
+    m_dataRefreshTimer->start(2000);
+}
+
+void DashboardWindow::refreshFromDatabase()
+{
+    if (!m_dbManager || !m_dbManager->isInitialized())
+        return;
+
+    // Dernière température connue (getLatestTemperature renvoie -999
+    // s'il n'y a aucune mesure).
+    const double temp     = m_dbManager->getLatestTemperature(kDefaultTempSensorId);
+    const double humidity = m_dbManager->getLatestHumidity(kDefaultTempSensorId);
+    if (temp > -100 && m_temperatureWidget)
+        m_temperatureWidget->updateFromMqtt(temp, humidity);
+
+    // Dernier niveau de fumée connu (-1 = aucune mesure).
+    const int smoke = m_dbManager->getLatestSmokeLevel(kDefaultSmokeSensorId);
+    if (smoke >= 0 && m_smokeWidget)
+        m_smokeWidget->updateFromMqtt(smoke);
 }

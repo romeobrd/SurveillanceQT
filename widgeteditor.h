@@ -38,8 +38,4 @@ private:
 
     WidgetConfig m_originalConfig;
     bool m_cameraMode;
-    private slots:
-    void onaccept();
-
-
 };

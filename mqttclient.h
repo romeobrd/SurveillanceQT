@@ -2,9 +2,6 @@
 
 #include <QObject>
 #include <QSslSocket>
-#include <QSslConfiguration>
-#include <QSslCertificate>
-#include <QSslKey>
 #include <QSslError>
 #include <QTimer>
 #include <QByteArray>
@@ -12,13 +9,14 @@
 #include <QStringList>
 
 /**
- * MqttClient — minimal MQTT 3.1.1 client running on top of QSslSocket.
+ * MqttClient — client MQTT 3.1.1 minimal construit sur QSslSocket.
  *
- * Supports:
- *   - Plain TCP (port 1883) and TLS / mTLS (port 8883).
- *   - CA-only TLS or full mTLS (CA + client cert + client key).
- *   - SUBSCRIBE / PUBLISH (QoS 0/1) and PINGREQ keep-alive.
- *   - JSON payload decoding into temperatureReceived / smokeReceived signals.
+ * C'est la classe qui centralise TOUT ce qui touche au MQTT :
+ *   - connexion TCP simple (port 1883) ou TLS / mTLS (port 8883) ;
+ *   - chargement des certificats (CA + certificat client + clé privée) ;
+ *   - SUBSCRIBE / PUBLISH et keep-alive (PINGREQ) ;
+ *   - décodage des payloads JSON des capteurs, retransmis sous forme
+ *     de signaux Qt faciles à connecter (temperatureReceived, etc.).
  */
 class MqttClient : public QObject
 {
@@ -30,37 +28,36 @@ public:
     explicit MqttClient(QObject *parent = nullptr);
     ~MqttClient() override;
 
-    // ---------------- Connection ----------------
+    // === CONNEXION ===
     void connectToBroker(const QString &host, quint16 port = 8883,
                          bool useSsl = true,
                          const QString &username = QString(),
                          const QString &password = QString());
     void disconnect();
+    bool isConnected() const { return m_state == Connected; }
 
-    // ---------------- Pub / Sub ----------------
+    // === PUB / SUB ===
     void subscribe(const QString &topic);
     void publish(const QString &topic, const QString &message);
 
-    // ---------------- TLS configuration ----------------
-    void setIgnoreSslErrors(bool ignore);
+    // === CERTIFICATS SSL/TLS ===
     void setCaCertificate(const QString &certPath);
     void setClientCertificate(const QString &certPath, const QString &keyPath);
-    void setClientCertificateFiles(const QString &certPath, const QString &keyPath);
 
-    State state() const { return m_state; }
-    bool isConnected() const { return m_state == Connected; }
+    // Cherche le dossier qui contient les 3 fichiers de certificats
+    // (ca.crt, admin-console.crt, admin-console.key). Remonte l'arborescence
+    // depuis l'exécutable et le dossier courant, en testant aussi "certs/".
+    static QString findCertificateDirectory();
 
 signals:
     void connected();
     void disconnected();
     void error(const QString &message);
-    void sslErrors(const QStringList &errors);
 
-    // High-level sensor data decoded from JSON payloads
+    // Données capteurs décodées depuis les payloads JSON
     void temperatureReceived(double temp, double humidity, const QString &sensorId);
     void smokeReceived(int level, const QString &sensorId);
-    void gasDataReceived(int eco2_ppm, int tvoc_ppb, bool smokeDetected, const QString &sensorId);
-    void rawDataReceived(const QString &topic, const QString &payload);
+    void gasDataReceived(int eco2Ppm, int tvocPpb, bool smokeDetected, const QString &sensorId);
 
 private slots:
     void onSocketEncrypted();
@@ -71,17 +68,19 @@ private slots:
     void onKeepAlive();
 
 private:
-    void   sendConnect();
-    void   sendSubscribe(const QString &topic);
-    void   sendPing();
-    void   processData();
-    QString readString(const QByteArray &data, int &pos);
+    // Construction / décodage des trames MQTT
+    void sendConnect();
+    void sendSubscribe(const QString &topic);
+    void sendPing();
+    void processData();
+    void handlePublish(const QByteArray &data);
+    static QString readString(const QByteArray &data, int &pos);
     static QByteArray encodeRemainingLength(int len);
     static QByteArray encodeString(const QString &s);
 
     QSslSocket *m_socket = nullptr;
-    QTimer     *m_timer  = nullptr;
-    QByteArray  m_buffer;
+    QTimer     *m_timer  = nullptr;   // keep-alive (PINGREQ)
+    QByteArray  m_buffer;             // octets reçus en attente de décodage
     QString     m_host;
     quint16     m_port  = 8883;
     QString     m_user;
@@ -89,10 +88,10 @@ private:
     QString     m_clientId;
     State       m_state = Disconnected;
     int         m_packetId    = 1;
-    bool        m_ignoreSsl   = false;
     bool        m_connectSent = false;
     bool        m_useSsl      = true;
 
-    // Pending subscriptions issued before CONNACK
+    // Abonnements demandés avant la réception du CONNACK : ils sont mis
+    // en file d'attente puis rejoués dès que la connexion est confirmée.
     QStringList m_pendingSubscriptions;
 };

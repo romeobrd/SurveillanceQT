@@ -1,18 +1,17 @@
 #include "networkscannerdialog.h"
 
-#include <QCheckBox>
-#include <QDialogButtonBox>
-#include <QGroupBox>
 #include <QHBoxLayout>
-#include <QHeaderView>
+#include <QGroupBox>
 #include <QLabel>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
-#include <QSplitter>
 #include <QVBoxLayout>
 
+// =====================================================================
+//  CONSTRUCTION
+// =====================================================================
 NetworkScannerDialog::NetworkScannerDialog(QWidget *parent)
     : QDialog(parent)
     , m_arpScanner(new ArpScanner(this))
@@ -24,12 +23,12 @@ NetworkScannerDialog::NetworkScannerDialog(QWidget *parent)
     , m_deselectAllButton(nullptr)
     , m_statusLabel(nullptr)
     , m_subnetLabel(nullptr)
-    , m_surveillanceModuleCount(0)
 {
     setWindowTitle(QStringLiteral("Scanner Réseau - Raspberry Pi Dédiés"));
     setMinimumSize(600, 450);
     setupUi();
 
+    // Le scanner remonte ses résultats par signaux.
     connect(m_arpScanner, &ArpScanner::deviceFound,
             this, &NetworkScannerDialog::onDeviceFound);
     connect(m_arpScanner, &ArpScanner::scanProgress,
@@ -43,25 +42,6 @@ NetworkScannerDialog::NetworkScannerDialog(QWidget *parent)
 
     displayKnownRaspberryPiList();
 }
-
-void NetworkScannerDialog::displayKnownRaspberryPiList()
-{
-    auto knownRpi = ArpScanner::getKnownRaspberryPiList();
-
-    for (const auto &rpi : knownRpi) {
-        auto *item = new QListWidgetItem();
-        item->setText(QStringLiteral(" %1 | %2 | En attente de scan...")
-                      .arg(rpi.name, rpi.ipAddress));
-        item->setData(Qt::UserRole, rpi.ipAddress);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        item->setCheckState(Qt::Unchecked);
-        item->setForeground(QColor(150, 150, 150));
-
-        m_deviceList->addItem(item);
-    }
-}
-
-NetworkScannerDialog::~NetworkScannerDialog() = default;
 
 void NetworkScannerDialog::setupUi()
 {
@@ -105,10 +85,9 @@ void NetworkScannerDialog::setupUi()
         "  border: 1px solid #2d3a5c; border-radius: 8px; margin-top: 10px; padding-top: 10px;"
         "}"
         "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }"
-        "QCheckBox { color: #eee; font-size: 13px; spacing: 8px; }"
-        "QCheckBox::indicator { width: 18px; height: 18px; }"
         );
 
+    // --- En-tête explicatif ---
     auto *headerLabel = new QLabel(QStringLiteral("Scanner les modules de surveillance sur le réseau"), this);
     headerLabel->setStyleSheet("font-size: 18px; font-weight: 700; color: #4a90d9; margin-bottom: 10px;");
     mainLayout->addWidget(headerLabel);
@@ -126,6 +105,7 @@ void NetworkScannerDialog::setupUi()
                                   "background: #0f3460; border-radius: 4px;");
     mainLayout->addWidget(m_subnetLabel);
 
+    // --- Barre de progression + bouton de scan ---
     auto *progressLayout = new QHBoxLayout();
     m_progressBar = new QProgressBar(this);
     m_progressBar->setRange(0, 100);
@@ -142,6 +122,7 @@ void NetworkScannerDialog::setupUi()
     progressLayout->addWidget(m_scanButton);
     mainLayout->addLayout(progressLayout);
 
+    // --- Liste des appareils détectés ---
     auto *listGroup = new QGroupBox(QStringLiteral("Appareils détectés"), this);
     auto *listLayout = new QVBoxLayout(listGroup);
 
@@ -176,6 +157,7 @@ void NetworkScannerDialog::setupUi()
 
     mainLayout->addWidget(listGroup, 1);
 
+    // --- Boutons bas de page : annuler / connecter ---
     auto *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
 
@@ -195,19 +177,83 @@ void NetworkScannerDialog::setupUi()
     mainLayout->addLayout(buttonLayout);
 }
 
+// =====================================================================
+//  GESTION DE LA LISTE DES APPAREILS
+// =====================================================================
+void NetworkScannerDialog::displayKnownRaspberryPiList()
+{
+    // Avant le scan, on affiche les 4 Raspberry Pi connus en grisé.
+    const auto knownRpi = ArpScanner::getKnownRaspberryPiList();
+
+    for (const auto &rpi : knownRpi) {
+        auto *item = new QListWidgetItem();
+        item->setText(QStringLiteral(" %1 | %2 | En attente de scan...")
+                      .arg(rpi.name, rpi.ipAddress));
+        item->setData(Qt::UserRole, rpi.ipAddress);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Unchecked);
+        item->setForeground(QColor(150, 150, 150));
+
+        m_deviceList->addItem(item);
+    }
+}
+
+void NetworkScannerDialog::updateRaspberryPiInList(const NetworkDevice &device)
+{
+    // Retrouve la ligne du Raspberry Pi par son IP et met à jour son état.
+    for (int i = 0; i < m_deviceList->count(); ++i) {
+        QListWidgetItem *item = m_deviceList->item(i);
+        if (item->data(Qt::UserRole).toString() != device.ipAddress)
+            continue;
+
+        const QString statusIcon = device.isOnline ? QStringLiteral("✅") : QStringLiteral("❌");
+        const QString statusText = device.isOnline ? QStringLiteral("En ligne") : QStringLiteral("Hors ligne");
+
+        item->setText(QStringLiteral("%1 %2 | %3 | %4 | %5")
+                      .arg(statusIcon, device.hostname, device.ipAddress,
+                           device.deviceType, statusText));
+
+        if (device.isOnline) {
+            item->setForeground(QColor(100, 255, 100));
+            item->setCheckState(Qt::Checked);
+        } else {
+            item->setForeground(QColor(255, 100, 100));
+            item->setCheckState(Qt::Unchecked);
+        }
+        return;
+    }
+}
+
+void NetworkScannerDialog::updateStatusLabel()
+{
+    const int total = m_detectedDevices.size();
+
+    if (total == 0) {
+        m_statusLabel->setText(QStringLiteral("Aucun appareil détecté"));
+        m_statusLabel->setStyleSheet("color: #aaa; font-style: italic;");
+    } else {
+        m_statusLabel->setText(QStringLiteral("✓ %1 module(s) de surveillance détecté(s)")
+                               .arg(total));
+        m_statusLabel->setStyleSheet("color: #2ecc71; font-weight: 600;");
+    }
+}
+
+// =====================================================================
+//  SLOTS DU SCAN
+// =====================================================================
 void NetworkScannerDialog::onScanClicked()
 {
+    // Deuxième clic pendant un scan = arrêt du scan.
     if (m_arpScanner->isScanning()) {
         m_arpScanner->stopScan();
         m_scanButton->setText(QStringLiteral("▶ Scanner les Raspberry Pi"));
-        m_scanButton->setStyleSheet(QString());
         return;
     }
 
+    // Remise à zéro de l'interface avant un nouveau scan
     m_deviceList->clear();
     m_detectedDevices.clear();
     m_selectedDevices.clear();
-    m_surveillanceModuleCount = 0;
     m_progressBar->setValue(0);
     m_connectButton->setEnabled(false);
     m_selectAllButton->setEnabled(false);
@@ -221,83 +267,21 @@ void NetworkScannerDialog::onScanClicked()
     m_arpScanner->startScanKnownDevices();
 }
 
-void NetworkScannerDialog::onConnectClicked()
-{
-    m_selectedDevices.clear();
-
-    for (int i = 0; i < m_deviceList->count(); ++i) {
-        QListWidgetItem *item = m_deviceList->item(i);
-        if (item->checkState() == Qt::Checked) {
-            // Find device by IP address (stored in UserRole)
-            QString deviceIp = item->data(Qt::UserRole).toString();
-            for (const auto &device : m_detectedDevices) {
-                if (device.ipAddress == deviceIp) {
-                    m_selectedDevices.append(device);
-                    break;
-                }
-            }
-        }
-    }
-
-    if (m_selectedDevices.isEmpty()) {
-        QMessageBox::warning(this,
-                             QStringLiteral("Aucun module sélectionné"),
-                             QStringLiteral("Veuillez sélectionner au moins un module à connecter."));
-        return;
-    }
-
-    accept();
-}
-
 void NetworkScannerDialog::onDeviceFound(const NetworkDevice &device)
 {
     if (!m_detectedDevices.contains(device)) {
         m_detectedDevices.append(device);
         updateRaspberryPiInList(device);
-
-        if (device.deviceType.contains(QStringLiteral("Temperature"), Qt::CaseInsensitive) ||
-            device.deviceType.contains(QStringLiteral("Camera"), Qt::CaseInsensitive) ||
-            device.deviceType.contains(QStringLiteral("AirQuality"), Qt::CaseInsensitive) ||
-            device.deviceType.contains(QStringLiteral("Display"), Qt::CaseInsensitive)) {
-            m_surveillanceModuleCount++;
-        }
     }
-}
-
-void NetworkScannerDialog::updateRaspberryPiInList(const NetworkDevice &device)
-{
-    for (int i = 0; i < m_deviceList->count(); ++i) {
-        QListWidgetItem *item = m_deviceList->item(i);
-        QString itemIp = item->data(Qt::UserRole).toString();
-
-        if (itemIp == device.ipAddress) {
-            QString statusIcon = device.isOnline ? QStringLiteral("✅") : QStringLiteral("❌");
-            QString statusText = device.isOnline ? QStringLiteral("En ligne") : QStringLiteral("Hors ligne");
-
-            item->setText(QStringLiteral("%1 %2 | %3 | %4 | %5")
-                          .arg(statusIcon, device.hostname, device.ipAddress,
-                               device.deviceType, statusText));
-
-            if (device.isOnline) {
-                item->setForeground(QColor(100, 255, 100));
-                item->setCheckState(Qt::Checked);
-            } else {
-                item->setForeground(QColor(255, 100, 100));
-                item->setCheckState(Qt::Unchecked);
-            }
-            return;
-        }
-    }
-
-    addDeviceToList(device);
 }
 
 void NetworkScannerDialog::onScanProgress(int current, int total)
 {
     if (total > 0) {
-        int percentage = (current * 100) / total;
+        const int percentage = (current * 100) / total;
         m_progressBar->setValue(percentage);
-        m_progressBar->setFormat(QStringLiteral("%1/%2 hôtes scannés (%3%)").arg(current).arg(total).arg(percentage));
+        m_progressBar->setFormat(QStringLiteral("%1/%2 hôtes scannés (%3%)")
+                                 .arg(current).arg(total).arg(percentage));
     }
 }
 
@@ -313,23 +297,24 @@ void NetworkScannerDialog::onScanFinished(const QVector<NetworkDevice> &devices)
 
     int onlineCount = 0;
     for (const auto &device : devices) {
-        if (device.isOnline) onlineCount++;
+        if (device.isOnline)
+            onlineCount++;
     }
 
-    // Auto-connect all online devices
+    // Connexion automatique : si des appareils sont en ligne, on les coche
+    // tous et on valide directement la boîte de dialogue.
     if (onlineCount > 0) {
         QMessageBox::information(this,
-                                 QStringLiteral("Scan termin\u00e9"),
-                                 QStringLiteral("%1 Raspberry Pi d\u00e9tect\u00e9(s) sur 4\n"
+                                 QStringLiteral("Scan terminé"),
+                                 QStringLiteral("%1 Raspberry Pi détecté(s) sur 4\n"
                                                 "%2 en ligne - Connexion automatique en cours...")
                                  .arg(devices.size()).arg(onlineCount));
-    
-        // Select all online devices and populate m_selectedDevices
+
         m_selectedDevices.clear();
         for (int i = 0; i < m_deviceList->count(); ++i) {
             QListWidgetItem *item = m_deviceList->item(i);
-            QString itemIp = item->data(Qt::UserRole).toString();
-    
+            const QString itemIp = item->data(Qt::UserRole).toString();
+
             for (const auto &device : devices) {
                 if (device.ipAddress == itemIp && device.isOnline) {
                     item->setCheckState(Qt::Checked);
@@ -338,8 +323,7 @@ void NetworkScannerDialog::onScanFinished(const QVector<NetworkDevice> &devices)
                 }
             }
         }
-    
-        // Auto-accept the dialog to connect devices
+
         accept();
     }
 }
@@ -352,15 +336,18 @@ void NetworkScannerDialog::onScanError(const QString &error)
     QMessageBox::critical(this, QStringLiteral("Erreur de scan"), error);
 }
 
+// =====================================================================
+//  SLOTS DE SÉLECTION
+// =====================================================================
 void NetworkScannerDialog::onDeviceItemChanged(QListWidgetItem *item)
 {
     Q_UNUSED(item)
 
+    // Le bouton "Connecter" reflète le nombre d'appareils cochés.
     int selectedCount = 0;
     for (int i = 0; i < m_deviceList->count(); ++i) {
-        if (m_deviceList->item(i)->checkState() == Qt::Checked) {
+        if (m_deviceList->item(i)->checkState() == Qt::Checked)
             selectedCount++;
-        }
     }
 
     m_connectButton->setEnabled(selectedCount > 0);
@@ -373,81 +360,43 @@ void NetworkScannerDialog::onDeviceItemChanged(QListWidgetItem *item)
 
 void NetworkScannerDialog::onSelectAllClicked()
 {
-    for (int i = 0; i < m_deviceList->count(); ++i) {
-        QListWidgetItem *item = m_deviceList->item(i);
-        item->setCheckState(Qt::Checked);
-    }
+    for (int i = 0; i < m_deviceList->count(); ++i)
+        m_deviceList->item(i)->setCheckState(Qt::Checked);
 }
 
 void NetworkScannerDialog::onDeselectAllClicked()
 {
+    for (int i = 0; i < m_deviceList->count(); ++i)
+        m_deviceList->item(i)->setCheckState(Qt::Unchecked);
+}
+
+void NetworkScannerDialog::onConnectClicked()
+{
+    // Construit la liste des appareils cochés à partir de leurs IP.
+    m_selectedDevices.clear();
+
     for (int i = 0; i < m_deviceList->count(); ++i) {
         QListWidgetItem *item = m_deviceList->item(i);
-        item->setCheckState(Qt::Unchecked);
-    }
-}
+        if (item->checkState() != Qt::Checked)
+            continue;
 
-void NetworkScannerDialog::updateStatusLabel()
-{
-    int total = m_detectedDevices.size();
-    int surveillance = m_surveillanceModuleCount;
-
-    if (total == 0) {
-        m_statusLabel->setText(QStringLiteral("Aucun appareil détecté"));
-        m_statusLabel->setStyleSheet("color: #aaa; font-style: italic;");
-    } else if (surveillance > 0) {
-        m_statusLabel->setText(QStringLiteral("✓ %1 appareil(s) détecté(s) dont %2 module(s) de surveillance")
-                               .arg(total).arg(surveillance));
-        m_statusLabel->setStyleSheet("color: #2ecc71; font-weight: 600;");
-    } else {
-        m_statusLabel->setText(QStringLiteral("%1 appareil(s) détecté(s) (aucun module de surveillance)")
-                               .arg(total));
-        m_statusLabel->setStyleSheet("color: #f39c12; font-weight: 600;");
-    }
-}
-
-void NetworkScannerDialog::addDeviceToList(const NetworkDevice &device)
-{
-    auto *item = new QListWidgetItem();
-    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-
-    bool isSurveillance = device.deviceType.contains(QStringLiteral("Surveillance"), Qt::CaseInsensitive) ||
-                          device.deviceType.contains(QStringLiteral("Sensor"), Qt::CaseInsensitive) ||
-                          device.deviceType.contains(QStringLiteral("Camera"), Qt::CaseInsensitive);
-
-    item->setCheckState(isSurveillance ? Qt::Checked : Qt::Unchecked);
-
-    QString icon = getSignalIcon(device.rssi);
-    item->setText(QStringLiteral("%1 %2").arg(icon, formatDeviceInfo(device)));
-
-    // Store IP address for lookup (consistent with displayKnownRaspberryPiList)
-    item->setData(Qt::UserRole, device.ipAddress);
-
-    m_deviceList->addItem(item);
-}
-
-QString NetworkScannerDialog::formatDeviceInfo(const NetworkDevice &device) const
-{
-    QString info = QStringLiteral("%1 | %2 | %3").arg(device.ipAddress, device.macAddress, device.deviceType);
-
-    if (!device.hostname.isEmpty() && device.hostname != QStringLiteral("Unknown")) {
-        info += QStringLiteral(" (%1)").arg(device.hostname);
+        const QString deviceIp = item->data(Qt::UserRole).toString();
+        for (const auto &device : m_detectedDevices) {
+            if (device.ipAddress == deviceIp) {
+                m_selectedDevices.append(device);
+                break;
+            }
+        }
     }
 
-    return info;
-}
-
-QString NetworkScannerDialog::getSignalIcon(int rssi) const
-{
-    if (rssi > -50) {
-        return QStringLiteral("");
-    } else if (rssi > -65) {
-        return QStringLiteral("");
-    } else if (rssi > -80) {
-        return QStringLiteral("");
-    } else {
-        return QStringLiteral("");
+    if (m_selectedDevices.isEmpty()) {
+        QMessageBox::warning(this,
+                             QStringLiteral("Aucun module sélectionné"),
+                             QStringLiteral("Veuillez sélectionner au moins un module à connecter."));
+        return;
     }
+
+    accept();
 }
 
 QVector<NetworkDevice> NetworkScannerDialog::selectedDevices() const

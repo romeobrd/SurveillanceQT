@@ -5,12 +5,18 @@
 
 class QLabel;
 class QPushButton;
-class QTimer;
-class QWidget;
 
+/**
+ * TemperatureWidget — panneau "Historique Température" du dashboard.
+ *
+ * Affiche la dernière température reçue, un badge d'état
+ * (Normal / Avertissement / Alerte selon les seuils) et une courbe
+ * des 60 dernières mesures.
+ */
 class TemperatureWidget : public QFrame
 {
     Q_OBJECT
+
 public:
     enum Severity {
         Normal,
@@ -20,47 +26,28 @@ public:
 
     explicit TemperatureWidget(QWidget *parent = nullptr);
 
+    // Boutons exposés pour que le dashboard puisse s'y connecter
     QPushButton *editButton() const;
     QPushButton *closeButton() const;
 
-    QString currentSummary() const;
-    int currentValue() const;
     Severity severity() const;
-
-    void simulateStep();
-    void resetSensor();
     void setTitle(const QString &title);
-    void setResizable(bool enabled);
 
-    // Real-time MQTT data methods
-    void setRealTimeMode(bool enabled);
-    void setHumidity(double humidity);
-    double humidity() const { return m_humidity; }
+    // === MISE À JOUR DEPUIS LES DONNÉES MQTT ===
     void updateFromMqtt(double temperature, double humidity);
 
 private:
     void refreshUi();
-    void setSeverity(Severity severity);
 
     QPushButton *m_editButton;
     QPushButton *m_closeButton;
-    QLabel *m_titleLabel;
-    QLabel *m_stateLabel;
-    QLabel *m_valueLabel;
+    QLabel  *m_titleLabel;
+    QLabel  *m_stateLabel;   // badge Normal / Avertissement / Alerte
+    QLabel  *m_valueLabel;   // valeur courante en °C
     QWidget *m_chart;
-    QTimer *m_timer;
 
-    QVector<double> m_values;
-    int m_currentValue;
-    int m_peakValue;
+    QVector<double> m_values;   // 60 dernières températures
     Severity m_severity;
     int m_warningThreshold;
     int m_alarmThreshold;
-
-    // Real-time mode
-    bool m_realTimeMode;
-    double m_humidity;
-private slots:
-    void addtemperature (double value);
 };
-

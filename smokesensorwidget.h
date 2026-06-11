@@ -5,12 +5,18 @@
 
 class QLabel;
 class QPushButton;
-class QTimer;
-class QWidget;
 
+/**
+ * SmokeSensorWidget — panneau "Détecteur de Fumée" du dashboard.
+ *
+ * Affiche l'état du capteur Flying-Fish (détection binaire), les mesures
+ * de qualité d'air eCO2/TVOC, et un historique des 30 dernières mesures
+ * sous forme de barres (rouge = fumée détectée, vert = air sain).
+ */
 class SmokeSensorWidget : public QFrame
 {
     Q_OBJECT
+
 public:
     enum Severity {
         Normal,
@@ -20,51 +26,35 @@ public:
 
     explicit SmokeSensorWidget(QWidget *parent = nullptr);
 
+    // Boutons exposés pour que le dashboard puisse s'y connecter
     QPushButton *editButton() const;
     QPushButton *closeButton() const;
 
     QString currentSummary() const;
-    int currentValue() const;
-    bool isSmokeDetected() const;
     Severity severity() const;
-
-    void simulateStep();
-    void resetSensor();
     void setTitle(const QString &title);
-    void setResizable(bool enabled);
 
-    // Real-time MQTT data methods
-    void setRealTimeMode(bool enabled);
-    void updateFromMqtt(int smokeLevel);          // legacy ppm path
-    void updateFromMqttDetection(bool detected);  // Flying-Fish digital path
-    void updateFromGasData(int eco2_ppm, int tvoc_ppb, bool detected);
+    // === MISE À JOUR DEPUIS LES DONNÉES MQTT ===
+    void updateFromMqtt(int smokeLevel);              // niveau numérique (ppm)
+    void updateFromMqttDetection(bool detected);      // détection binaire
+    void updateFromGasData(int eco2Ppm, int tvocPpb, bool detected);
 
 private:
     void refreshUi();
-    void setSeverity(Severity severity);
     void updateChart();
 
     QPushButton *m_editButton;
     QPushButton *m_closeButton;
-    QLabel *m_titleLabel;
-    QLabel *m_iconLabel;
-    QLabel *m_stateLabel;
-    QLabel *m_detailLabel;
-    QLabel *m_ppmLabel;
+    QLabel  *m_titleLabel;
+    QLabel  *m_iconLabel;
+    QLabel  *m_stateLabel;
+    QLabel  *m_detailLabel;
+    QLabel  *m_ppmLabel;      // affichage eCO2 / TVOC
     QWidget *m_chartWidget;
-    QTimer *m_timer;
 
-    QVector<int> m_historyValues;     // 0 = no smoke, 1 = smoke
-    int m_currentValue;               // legacy ppm (kept for compat)
-    int m_peakValue;
-    int m_eco2Ppm;
-    int m_tvocPpb;
+    QVector<int> m_historyValues;   // 0 = pas de fumée, 1 = fumée
     bool m_smokeDetected;
-    int m_detectionCount;
+    int  m_detectionCount;
     Severity m_severity;
-    int m_warningThreshold;
-    int m_alarmThreshold;
-
-    // Real-time mode
-    bool m_realTimeMode;
+    int  m_alarmThreshold;          // seuil pour le niveau numérique (ppm)
 };
