@@ -71,6 +71,12 @@ public:
                         const QString &type, const QString &topic);
     QVector<Sensor> getAllSensors();
 
+    // === SEUILS D'ALARME ===
+    // Les seuils choisis dans l'éditeur de widget sont stockés dans la
+    // table `sensors` pour être retrouvés au prochain démarrage.
+    bool saveSensorThresholds(const QString &id, int warningThreshold, int alarmThreshold);
+    bool getSensorThresholds(const QString &id, int &warningThreshold, int &alarmThreshold);
+
     // === HISTORIQUE DES MESURES ===
     bool saveTemperatureReading(const QString &sensorId, double temperature, double humidity);
     bool saveSmokeReading(const QString &sensorId, int smokeLevel);

@@ -33,10 +33,18 @@ public:
     Severity severity() const;
     void setTitle(const QString &title);
 
+    // === SEUILS D'ALARME ===
+    // Appliqués à chaque nouvelle mesure ; modifiables via l'éditeur de
+    // widget (et rechargés depuis la base au démarrage).
+    void setThresholds(int warningThreshold, int alarmThreshold);
+    int warningThreshold() const { return m_warningThreshold; }
+    int alarmThreshold() const { return m_alarmThreshold; }
+
     // === MISE À JOUR DEPUIS LES DONNÉES MQTT ===
     void updateFromMqtt(double temperature, double humidity);
 
 private:
+    void updateSeverity(double temperature);
     void refreshUi();
 
     QPushButton *m_editButton;
