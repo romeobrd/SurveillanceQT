@@ -242,6 +242,33 @@ void TemperatureWidget::setTitle(const QString &title)
 }
 
 // =====================================================================
+//  SEUILS D'ALARME
+// =====================================================================
+void TemperatureWidget::setThresholds(int warningThreshold, int alarmThreshold)
+{
+    m_warningThreshold = warningThreshold;
+    m_alarmThreshold   = alarmThreshold;
+
+    // Réévalue tout de suite la dernière mesure avec les nouveaux seuils :
+    // l'alarme se déclenche (ou s'éteint) sans attendre la mesure suivante.
+    if (!m_values.isEmpty()) {
+        updateSeverity(m_values.last());
+        refreshUi();
+    }
+}
+
+void TemperatureWidget::updateSeverity(double temperature)
+{
+    // C'est ICI que la mesure est comparée aux seuils.
+    if (temperature >= m_alarmThreshold)
+        m_severity = Alarm;
+    else if (temperature >= m_warningThreshold)
+        m_severity = Warning;
+    else
+        m_severity = Normal;
+}
+
+// =====================================================================
 //  MISE À JOUR DEPUIS LES DONNÉES MQTT
 // =====================================================================
 void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
@@ -252,12 +279,7 @@ void TemperatureWidget::updateFromMqtt(double temperature, double humidity)
         m_values.removeFirst();
 
     // État selon les seuils d'avertissement et d'alarme
-    if (temperature >= m_alarmThreshold)
-        m_severity = Alarm;
-    else if (temperature >= m_warningThreshold)
-        m_severity = Warning;
-    else
-        m_severity = Normal;
+    updateSeverity(temperature);
 
     // Valeur affichée avec une décimale
     if (m_valueLabel)

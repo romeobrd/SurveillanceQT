@@ -606,6 +606,11 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
             tempWidget->resize(260, 180);
             yOffset += 195;
 
+            // Restaure les seuils d'alarme enregistrés en base.
+            int warning = 0, alarm = 0;
+            if (m_dbManager && m_dbManager->getSensorThresholds(kDefaultTempSensorId, warning, alarm))
+                tempWidget->setThresholds(warning, alarm);
+
             m_temperatureWidget = tempWidget;
             newWidget = tempWidget;
 
@@ -626,6 +631,11 @@ void DashboardWindow::onDevicesConnected(const QVector<NetworkDevice> &devices)
             smokeWidget->move(xOffset, yOffset);
             smokeWidget->resize(260, 180);
             yOffset += 195;
+
+            // Restaure les seuils d'alarme enregistrés en base.
+            int warning = 0, alarm = 0;
+            if (m_dbManager && m_dbManager->getSensorThresholds(kDefaultSmokeSensorId, warning, alarm))
+                smokeWidget->setThresholds(warning, alarm);
 
             m_smokeWidget = smokeWidget;
             newWidget = smokeWidget;
@@ -706,43 +716,75 @@ void DashboardWindow::updateConnectedDevicesStatus()
 // =====================================================================
 void DashboardWindow::onSmokeWidgetEdit()
 {
+    // Pré-remplit l'éditeur avec les seuils ACTUELS du widget.
     WidgetConfig config;
-    config.id = QStringLiteral("smoke-001");
+    config.id = kDefaultSmokeSensorId;
     config.name = QStringLiteral("Niveau de Fumée");
     config.type = QStringLiteral("Fumée MQ-2");
-    config.warningThreshold = 28;
-    config.alarmThreshold = 60;
+    config.warningThreshold = m_smokeWidget->warningThreshold();
+    config.alarmThreshold = m_smokeWidget->alarmThreshold();
     config.unit = QStringLiteral("%");
 
     WidgetEditor editor(config, this);
     if (editor.exec() == QDialog::Accepted) {
         const WidgetConfig newConfig = editor.getConfig();
+
+        // 1. Applique les nouveaux seuils au widget : la dernière mesure
+        //    est immédiatement re-comparée (alarme mise à jour).
         m_smokeWidget->setTitle(newConfig.name);
+        m_smokeWidget->setThresholds(newConfig.warningThreshold,
+                                     newConfig.alarmThreshold);
+
+        // 2. Sauvegarde en base pour les retrouver au prochain démarrage.
+        if (m_dbManager) {
+            m_dbManager->saveSensorThresholds(kDefaultSmokeSensorId,
+                                              newConfig.warningThreshold,
+                                              newConfig.alarmThreshold);
+        }
+
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
-                                 QStringLiteral("Nouveau nom: %1\nType: %2")
-                                     .arg(newConfig.name, newConfig.type));
+                                 QStringLiteral("Nouveau nom: %1\nSeuil avertissement: %2\nSeuil alarme: %3")
+                                     .arg(newConfig.name)
+                                     .arg(newConfig.warningThreshold)
+                                     .arg(newConfig.alarmThreshold));
     }
 }
 
 void DashboardWindow::onTempWidgetEdit()
 {
+    // Pré-remplit l'éditeur avec les seuils ACTUELS du widget.
     WidgetConfig config;
-    config.id = QStringLiteral("temp-001");
+    config.id = kDefaultTempSensorId;
     config.name = QStringLiteral("Historique Température");
     config.type = QStringLiteral("Température DHT22");
-    config.warningThreshold = 45;
-    config.alarmThreshold = 58;
+    config.warningThreshold = m_temperatureWidget->warningThreshold();
+    config.alarmThreshold = m_temperatureWidget->alarmThreshold();
     config.unit = QStringLiteral("°C");
 
     WidgetEditor editor(config, this);
     if (editor.exec() == QDialog::Accepted) {
         const WidgetConfig newConfig = editor.getConfig();
+
+        // 1. Applique les nouveaux seuils au widget : la dernière mesure
+        //    est immédiatement re-comparée (alarme mise à jour).
         m_temperatureWidget->setTitle(newConfig.name);
+        m_temperatureWidget->setThresholds(newConfig.warningThreshold,
+                                           newConfig.alarmThreshold);
+
+        // 2. Sauvegarde en base pour les retrouver au prochain démarrage.
+        if (m_dbManager) {
+            m_dbManager->saveSensorThresholds(kDefaultTempSensorId,
+                                              newConfig.warningThreshold,
+                                              newConfig.alarmThreshold);
+        }
+
         QMessageBox::information(this,
                                  QStringLiteral("Widget modifié"),
-                                 QStringLiteral("Nouveau nom: %1\nType: %2")
-                                     .arg(newConfig.name, newConfig.type));
+                                 QStringLiteral("Nouveau nom: %1\nSeuil avertissement: %2\nSeuil alarme: %3")
+                                     .arg(newConfig.name)
+                                     .arg(newConfig.warningThreshold)
+                                     .arg(newConfig.alarmThreshold));
     }
 }
 
@@ -796,13 +838,23 @@ void DashboardWindow::onAddSensor()
             wc.id = config.id;
             wc.name = config.name;
             wc.type = SensorFactory::sensorTypeToString(config.type);
-            wc.warningThreshold = config.warningThreshold;
-            wc.alarmThreshold = config.alarmThreshold;
+            // Seuils ACTUELS du widget (et non ceux de la création).
+            wc.warningThreshold = sensorWidget->warningThreshold();
+            wc.alarmThreshold = sensorWidget->alarmThreshold();
             wc.unit = config.unit;
 
             WidgetEditor editor(wc, this);
-            if (editor.exec() == QDialog::Accepted)
-                sensorWidget->setTitle(editor.getConfig().name);
+            if (editor.exec() == QDialog::Accepted) {
+                const WidgetConfig newConfig = editor.getConfig();
+                sensorWidget->setTitle(newConfig.name);
+                sensorWidget->setThresholds(newConfig.warningThreshold,
+                                            newConfig.alarmThreshold);
+                if (m_dbManager) {
+                    m_dbManager->saveSensorThresholds(config.id,
+                                                      newConfig.warningThreshold,
+                                                      newConfig.alarmThreshold);
+                }
+            }
         });
     };
 

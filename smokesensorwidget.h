@@ -34,6 +34,14 @@ public:
     Severity severity() const;
     void setTitle(const QString &title);
 
+    // === SEUILS D'ALARME ===
+    // Le seuil d'alarme convertit le niveau numérique en détection ;
+    // modifiables via l'éditeur de widget (et rechargés depuis la base
+    // au démarrage).
+    void setThresholds(int warningThreshold, int alarmThreshold);
+    int warningThreshold() const { return m_warningThreshold; }
+    int alarmThreshold() const { return m_alarmThreshold; }
+
     // === MISE À JOUR DEPUIS LES DONNÉES MQTT ===
     void updateFromMqtt(int smokeLevel);              // niveau numérique (ppm)
     void updateFromMqttDetection(bool detected);      // détection binaire
@@ -56,5 +64,7 @@ private:
     bool m_smokeDetected;
     int  m_detectionCount;
     Severity m_severity;
+    int  m_warningThreshold;        // mémorisé pour l'éditeur de widget
     int  m_alarmThreshold;          // seuil pour le niveau numérique (ppm)
+    int  m_lastLevel;               // dernière mesure numérique (-1 = aucune)
 };
