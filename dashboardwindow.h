@@ -52,7 +52,6 @@ private slots:
     void onSmokeWidgetEdit();
     void onTempWidgetEdit();
     void onCameraWidgetEdit();
-    void onAddSensor();
     void openModuleManager();
 
     // === AUTHENTIFICATION ===
@@ -89,9 +88,6 @@ private:
     void setWidgetsEnabled(bool enabled);
 
     // Gestion des widgets capteurs
-    void addSensorToGrid(QWidget *widget);
-    void setWidgetSize(QWidget *widget, const QSize &size);
-    void resetWidgetSize(QWidget *widget);
     void enableWidgetDragging(QWidget *widget);
 
     // --- Widgets capteurs (créés après le scan réseau) ---
@@ -99,7 +95,6 @@ private:
     TemperatureWidget *m_temperatureWidget;
     CameraWidget      *m_cameraWidget;
     QWidget           *m_sensorContainer;   // conteneur à positionnement libre
-    QVector<QWidget *> m_dynamicSensors;    // capteurs ajoutés via "➕"
 
     // --- Barre d'état du bas ---
     QLabel *m_userStatusLabel;

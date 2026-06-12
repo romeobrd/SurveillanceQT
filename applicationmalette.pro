@@ -9,7 +9,6 @@ TARGET   = SystemeSurveillanceQt
 
 SOURCES += \
     $$PWD/main.cpp \
-    $$PWD/addsensordialog.cpp \
     $$PWD/arpscanner.cpp \
     $$PWD/camerawidget.cpp \
     $$PWD/dashboardwindow.cpp \
@@ -18,13 +17,11 @@ SOURCES += \
     $$PWD/modulemanager.cpp \
     $$PWD/mqttclient.cpp \
     $$PWD/networkscannerdialog.cpp \
-    $$PWD/sensorfactory.cpp \
     $$PWD/smokesensorwidget.cpp \
     $$PWD/temperaturewidget.cpp \
     $$PWD/widgeteditor.cpp
 
 HEADERS += \
-    $$PWD/addsensordialog.h \
     $$PWD/arpscanner.h \
     $$PWD/camerawidget.h \
     $$PWD/dashboardwindow.h \
@@ -33,7 +30,6 @@ HEADERS += \
     $$PWD/modulemanager.h \
     $$PWD/mqttclient.h \
     $$PWD/networkscannerdialog.h \
-    $$PWD/sensorfactory.h \
     $$PWD/smokesensorwidget.h \
     $$PWD/temperaturewidget.h \
     $$PWD/widgeteditor.h
