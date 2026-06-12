@@ -1,12 +1,10 @@
 #include "dashboardwindow.h"
 
-#include "addsensordialog.h"
 #include "camerawidget.h"
 #include "databaseviewerwidget.h"
 #include "modulemanager.h"
 #include "mqttclient.h"
 #include "networkscannerdialog.h"
-#include "sensorfactory.h"
 #include "smokesensorwidget.h"
 #include "temperaturewidget.h"
 #include "widgeteditor.h"
@@ -17,7 +15,6 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
@@ -361,91 +358,6 @@ QWidget *DashboardWindow::createBottomBar()
     connect(m_scanNetworkButton, &QPushButton::clicked,
             this, &DashboardWindow::openNetworkScanner);
 
-    // --- Bouton d'ajout d'un capteur ---
-    auto *addSensorButton = new QPushButton(QStringLiteral("➕"), bottomBar);
-    addSensorButton->setFixedSize(32, 28);
-    addSensorButton->setStyleSheet(
-        "QPushButton {"
-        "  background: rgba(76, 175, 80, 0.25);"
-        "  color: #4caf50;"
-        "  border: 1px solid rgba(76, 175, 80, 0.4);"
-        "  border-radius: 6px;"
-        "  font-size: 14px;"
-        "  font-weight: 600;"
-        "}"
-        "QPushButton:hover {"
-        "  background: rgba(76, 175, 80, 0.4);"
-        "}"
-        );
-    connect(addSensorButton, &QPushButton::clicked,
-            this, &DashboardWindow::onAddSensor);
-
-    // --- Bouton de redimensionnement rapide des modules ---
-    auto *resizeButton = new QPushButton(QStringLiteral("📐"), bottomBar);
-    resizeButton->setFixedSize(32, 28);
-    resizeButton->setStyleSheet(
-        "QPushButton {"
-        "  background: rgba(156, 39, 176, 0.25);"
-        "  color: #9c27b0;"
-        "  border: 1px solid rgba(156, 39, 176, 0.4);"
-        "  border-radius: 6px;"
-        "  font-size: 14px;"
-        "  font-weight: 600;"
-        "}"
-        "QPushButton:hover {"
-        "  background: rgba(156, 39, 176, 0.4);"
-        "}"
-        );
-    connect(resizeButton, &QPushButton::clicked, this, [this, resizeButton]() {
-        // Menu contextuel avec des tailles prédéfinies pour les 3 widgets.
-        QMenu menu(this);
-        menu.setStyleSheet(
-            "QMenu {"
-            "  background: #1a1a2e;"
-            "  border: 1px solid #2d3a5c;"
-            "  border-radius: 8px;"
-            "  padding: 8px;"
-            "}"
-            "QMenu::item {"
-            "  color: #eee;"
-            "  padding: 10px 20px;"
-            "  border-radius: 5px;"
-            "}"
-            "QMenu::item:selected {"
-            "  background: #4a90d9;"
-            "}"
-            );
-
-        auto *smallAction  = menu.addAction(QStringLiteral("🔹 Petit (1x1)"));
-        auto *mediumAction = menu.addAction(QStringLiteral("🔸 Moyen (2x1)"));
-        auto *largeAction  = menu.addAction(QStringLiteral("🔶 Grand (2x2)"));
-        menu.addSeparator();
-        auto *autoAction   = menu.addAction(QStringLiteral("⚙ Auto (défaut)"));
-
-        connect(smallAction, &QAction::triggered, this, [this]() {
-            setWidgetSize(m_smokeWidget, QSize(300, 200));
-            setWidgetSize(m_temperatureWidget, QSize(300, 200));
-            setWidgetSize(m_cameraWidget, QSize(300, 400));
-        });
-        connect(mediumAction, &QAction::triggered, this, [this]() {
-            setWidgetSize(m_smokeWidget, QSize(450, 250));
-            setWidgetSize(m_temperatureWidget, QSize(450, 250));
-            setWidgetSize(m_cameraWidget, QSize(450, 500));
-        });
-        connect(largeAction, &QAction::triggered, this, [this]() {
-            setWidgetSize(m_smokeWidget, QSize(600, 350));
-            setWidgetSize(m_temperatureWidget, QSize(600, 350));
-            setWidgetSize(m_cameraWidget, QSize(600, 700));
-        });
-        connect(autoAction, &QAction::triggered, this, [this]() {
-            resetWidgetSize(m_smokeWidget);
-            resetWidgetSize(m_temperatureWidget);
-            resetWidgetSize(m_cameraWidget);
-        });
-
-        menu.exec(resizeButton->mapToGlobal(QPoint(0, -menu.sizeHint().height())));
-    });
-
     // --- Assemblage de la barre ---
     layout->addWidget(activeLabel);
     layout->addWidget(m_activeValueLabel);
@@ -459,8 +371,6 @@ QWidget *DashboardWindow::createBottomBar()
     layout->addWidget(m_networkStatusLabel);
     layout->addSpacing(8);
     layout->addWidget(m_scanNetworkButton);
-    layout->addWidget(addSensorButton);
-    layout->addWidget(resizeButton);
     layout->addStretch();
     layout->addWidget(settingsButton);
     layout->addWidget(m_userStatusLabel);
@@ -819,135 +729,8 @@ void DashboardWindow::openModuleManager()
 }
 
 // =====================================================================
-//  AJOUT MANUEL DE CAPTEURS (bouton ➕)
+//  DÉPLACEMENT DES WIDGETS CAPTEURS
 // =====================================================================
-void DashboardWindow::onAddSensor()
-{
-    AddSensorDialog dialog(this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-
-    const SensorConfig config = dialog.getSensorConfig();
-
-    QWidget *newWidget = nullptr;
-
-    // Branche le bouton ✎ d'un capteur dynamique sur l'éditeur de widget.
-    auto connectEditButton = [this, config](QPushButton *editBtn, auto *sensorWidget) {
-        connect(editBtn, &QPushButton::clicked, this, [this, config, sensorWidget]() {
-            WidgetConfig wc;
-            wc.id = config.id;
-            wc.name = config.name;
-            wc.type = SensorFactory::sensorTypeToString(config.type);
-            // Seuils ACTUELS du widget (et non ceux de la création).
-            wc.warningThreshold = sensorWidget->warningThreshold();
-            wc.alarmThreshold = sensorWidget->alarmThreshold();
-            wc.unit = config.unit;
-
-            WidgetEditor editor(wc, this);
-            if (editor.exec() == QDialog::Accepted) {
-                const WidgetConfig newConfig = editor.getConfig();
-                sensorWidget->setTitle(newConfig.name);
-                sensorWidget->setThresholds(newConfig.warningThreshold,
-                                            newConfig.alarmThreshold);
-                if (m_dbManager) {
-                    m_dbManager->saveSensorThresholds(config.id,
-                                                      newConfig.warningThreshold,
-                                                      newConfig.alarmThreshold);
-                }
-            }
-        });
-    };
-
-    // Branche le bouton ✕ d'un capteur dynamique (masquer le widget).
-    auto connectCloseButton = [this](QPushButton *closeBtn, QWidget *sensorWidget) {
-        connect(closeBtn, &QPushButton::clicked, this, [this, sensorWidget]() {
-            sensorWidget->hide();
-            updateBottomStatus();
-        });
-    };
-
-    switch (config.type) {
-    case SensorType::Smoke: {
-        auto *widget = SensorFactory::createSmokeSensor(this, config.name);
-        connectEditButton(widget->editButton(), widget);
-        connectCloseButton(widget->closeButton(), widget);
-        newWidget = widget;
-        break;
-    }
-    case SensorType::Temperature: {
-        auto *widget = SensorFactory::createTemperatureSensor(this, config.name);
-        connectEditButton(widget->editButton(), widget);
-        connectCloseButton(widget->closeButton(), widget);
-        newWidget = widget;
-        break;
-    }
-    case SensorType::Camera: {
-        auto *widget = SensorFactory::createCamera(this, config.name);
-        connectCloseButton(widget->closeButton(), widget);
-        newWidget = widget;
-        break;
-    }
-    default:
-        QMessageBox::warning(this, QStringLiteral("Non supporté"),
-                             QStringLiteral("Ce type de capteur n'est pas encore supporté."));
-        return;
-    }
-
-    addSensorToGrid(newWidget);
-
-    QMessageBox::information(this, QStringLiteral("Capteur ajouté"),
-                             QStringLiteral("Le capteur '%1' a été ajouté au dashboard.")
-                                 .arg(config.name));
-}
-
-void DashboardWindow::addSensorToGrid(QWidget *widget)
-{
-    if (!m_sensorContainer || !widget)
-        return;
-
-    // Positionnement automatique : 3 widgets par ligne.
-    const int x = 20 + (m_dynamicSensors.size() % 3) * 370;
-    const int y = 20 + (m_dynamicSensors.size() / 3) * 270;
-
-    widget->setParent(m_sensorContainer);
-    widget->move(x, y);
-    widget->resize(350, 250);
-
-    enableWidgetDragging(widget);
-    m_dynamicSensors.append(widget);
-
-    widget->show();
-}
-
-// =====================================================================
-//  TAILLE ET DÉPLACEMENT DES WIDGETS CAPTEURS
-// =====================================================================
-void DashboardWindow::setWidgetSize(QWidget *widget, const QSize &size)
-{
-    if (!widget)
-        return;
-
-    // Taille figée : minimum = maximum.
-    widget->setMinimumSize(size);
-    widget->setMaximumSize(size);
-
-    if (m_sensorContainer)
-        m_sensorContainer->adjustSize();
-}
-
-void DashboardWindow::resetWidgetSize(QWidget *widget)
-{
-    if (!widget)
-        return;
-
-    // Retour au dimensionnement automatique.
-    widget->setMinimumSize(0, 0);
-    widget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-
-    if (m_sensorContainer)
-        m_sensorContainer->adjustSize();
-}
-
 void DashboardWindow::enableWidgetDragging(QWidget *widget)
 {
     if (!widget)
@@ -973,7 +756,7 @@ bool DashboardWindow::eventFilter(QObject *watched, QEvent *event)
     // On ne traite que nos widgets capteurs.
     QWidget *widget = qobject_cast<QWidget *>(watched);
     if (!widget || (widget != m_smokeWidget && widget != m_temperatureWidget &&
-                    widget != m_cameraWidget && !m_dynamicSensors.contains(widget))) {
+                    widget != m_cameraWidget)) {
         return QWidget::eventFilter(watched, event);
     }
 
@@ -1377,10 +1160,6 @@ void DashboardWindow::setWidgetsEnabled(bool enabled)
         m_cameraWidget->setEnabled(enabled);
     if (m_scanNetworkButton)
         m_scanNetworkButton->setEnabled(enabled);
-    for (auto *sensor : std::as_const(m_dynamicSensors)) {
-        if (sensor)
-            sensor->setEnabled(enabled);
-    }
 }
 
 // =====================================================================
