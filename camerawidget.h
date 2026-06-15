@@ -9,13 +9,7 @@ class QPushButton;
 class QResizeEvent;
 class QShowEvent;
 
-/**
- * CameraWidget — affichage du flux RTSP de la caméra de surveillance.
- *
- * La vidéo est lue par le lecteur externe "mpv", dont la fenêtre est
- * incrustée dans le widget grâce à l'option --wid (nécessite X11 :
- * le code force la plateforme Qt "xcb" si l'on est sous Wayland).
- */
+
 class CameraWidget : public QWidget
 {
     Q_OBJECT
@@ -31,7 +25,7 @@ public:
     void stop();
     void reloadFrame();
 
-    // Boutons exposés pour que le dashboard puisse s'y connecter
+    // Bouton recuperer du dashboard pour avoir le meme style
     QPushButton *closeButton() const;
     QPushButton *editButton() const;
 
@@ -54,13 +48,13 @@ private:
 
     QLabel      *m_titleLabel;
     QLabel      *m_statusLabel;
-    QWidget     *m_videoSurface;   // surface native dans laquelle mpv dessine
+    QWidget     *m_videoSurface;   // natif a mvp
     QPushButton *m_closeButton;
     QPushButton *m_editButton;
     QPushButton *m_reloadButton;
     QProcess    *m_mpvProcess;
 
-    bool m_playRequested;   // l'utilisateur veut voir le flux
-    bool m_stopping;        // arrêt volontaire en cours (pas une erreur)
-    int  m_startAttempts;   // tentatives en attendant que la surface soit prête
+    bool m_playRequested;   // Pour voir le flux
+    bool m_stopping;        // Arret volontaire -> pas d'ereur
+    int  m_startAttempts;   // tentative de démaragge
 };
