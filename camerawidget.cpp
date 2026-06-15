@@ -18,6 +18,20 @@ namespace {
 constexpr const char *kForcedLocalRtspUrl = "rtsp://127.0.0.1:8554/rascam";
 
 
+// L'incrustation de mpv via --wid ne fonctionne qu'avec X11. Si Qt démarre
+// en Wayland, on force la plateforme "xcb" AVANT la création de
+// QApplication (d'où l'objet statique initialisé au chargement).
+struct ForceQtXcbForMpvEmbedding
+{
+    ForceQtXcbForMpvEmbedding()
+    {
+        const QByteArray platform = qgetenv("QT_QPA_PLATFORM").toLower();
+        if (platform.isEmpty() || platform.contains("wayland")) {
+            qputenv("QT_QPA_PLATFORM", QByteArray("xcb"));
+        }
+    }
+};
+const ForceQtXcbForMpvEmbedding kForceQtXcbForMpvEmbedding;
 
 QPushButton *makeCameraToolButton(const QString &text, QWidget *parent)
 {
