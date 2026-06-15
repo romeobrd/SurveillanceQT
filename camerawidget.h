@@ -10,6 +10,8 @@ class QResizeEvent;
 class QShowEvent;
 
 
+// Widget qui affiche le flux vidéo RTSP d'une caméra en incrustant le
+// lecteur externe mpv dans une surface native (option mpv --wid).
 class CameraWidget : public QWidget
 {
     Q_OBJECT
@@ -25,7 +27,7 @@ public:
     void stop();
     void reloadFrame();
 
-    // Bouton recuperer du dashboard pour avoir le meme style
+    // Boutons récupérés par le dashboard pour partager le même style.
     QPushButton *closeButton() const;
     QPushButton *editButton() const;
 
@@ -38,8 +40,6 @@ private:
     void scheduleStart(int delayMs = 250);
     void startWhenReady();
     void startMpv();
-    void setStatus(const QString &text, bool error = false);
-    bool ensureMpvAvailable();
     bool isEmbeddingReady() const;
 
     QString m_title;
@@ -47,14 +47,12 @@ private:
     QString m_mpvExecutable;
 
     QLabel      *m_titleLabel;
-    QLabel      *m_statusLabel;
-    QWidget     *m_videoSurface;   // natif a mvp
+    QWidget     *m_videoSurface;   // surface native passée à mpv
     QPushButton *m_closeButton;
     QPushButton *m_editButton;
     QPushButton *m_reloadButton;
     QProcess    *m_mpvProcess;
 
-    bool m_playRequested;   // Pour voir le flux
-    bool m_stopping;        // Arret volontaire -> pas d'ereur
-    int  m_startAttempts;   // tentative de démaragge
+    bool m_playRequested;   // l'utilisateur veut voir le flux
+    int  m_startAttempts;   // tentatives de démarrage en attendant l'affichage Qt
 };
