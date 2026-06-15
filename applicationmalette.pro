@@ -7,6 +7,11 @@ CONFIG  += c++17
 TEMPLATE = app
 TARGET   = SystemeSurveillanceQt
 
+# Contournement d'un bug de GCC 13 : la passe d'optimisation "tree-pre"
+# (active à partir de -O2) plante (internal compiler error). On désactive
+# uniquement cette passe ; le reste des optimisations -O2 reste actif.
+QMAKE_CXXFLAGS += -fno-tree-pre
+
 SOURCES += \
     $$PWD/main.cpp \
     $$PWD/arpscanner.cpp \

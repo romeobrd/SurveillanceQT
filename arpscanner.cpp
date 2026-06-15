@@ -28,10 +28,7 @@ ArpScanner::ArpScanner(QObject *parent)
     , m_progressTimer(new QTimer(this))
 {
     m_scanTimer->setSingleShot(true);
-    // NB : on passe par une lambda plutôt que par un pointeur sur fonction
-    // membre (&ArpScanner::onScanTimeout) pour contourner un bug interne de
-    // GCC 13 (« internal compiler error » lors de l'instanciation du slot).
-    connect(m_scanTimer, &QTimer::timeout, this, [this]() { onScanTimeout(); });
+    connect(m_scanTimer, &QTimer::timeout, this, &ArpScanner::onScanTimeout);
 
     // Rafraîchit la barre de progression toutes les 100 ms.
     m_progressTimer->setInterval(100);
