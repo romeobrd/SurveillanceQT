@@ -14,10 +14,15 @@ namespace {
 
 constexpr const char *kForcedLocalRtspUrl = "rtsp://127.0.0.1:8554/rascam";
 
+/*
+ *
+ *ATTENTION OBLIGATOIRE -> sinon pas d'image
+ *
+ L'incrustation de mpv via --wid ne fonctionne qu'avec X11. Si Qt démarre
+ en Wayland, on force la plateforme "xcb" AVANT la création de
+ QApplication (d'où l'objet statique initialisé au chargement).
+*/
 
-// L'incrustation de mpv via --wid ne fonctionne qu'avec X11. Si Qt démarre
-// en Wayland, on force la plateforme "xcb" AVANT la création de
-// QApplication (d'où l'objet statique initialisé au chargement).
 struct ForceQtXcbForMpvEmbedding
 {
     ForceQtXcbForMpvEmbedding()
@@ -150,11 +155,12 @@ void CameraWidget::buildUi()
     root->addWidget(m_videoSurface, 1);
 }
 
-// =====================================================================
-//  ACCESSEURS
-// =====================================================================
+/* =====================================================================
+  ACCESSEURS
+ =====================================================================
 
-// Change le titre affiché dans la barre du widget.
+Change le titre affiché dans la barre du widget. -> herité du dashboard
+*/
 void CameraWidget::setTitle(const QString &title)
 {
     m_title = title.trimmed().isEmpty() ? QStringLiteral("Caméra") : title.trimmed();
@@ -164,32 +170,38 @@ void CameraWidget::setTitle(const QString &title)
         m_titleLabel->setText(m_title);
 }
 
-// L'URL passée par le dashboard est ignorée : le flux arrive toujours en
-// local (voir kForcedLocalRtspUrl).
+/* L'URL passée par le dashboard est ignorée : le flux arrive toujours en
+
+ local (voir kForcedLocalRtspUrl). par le docker
+*/
+
 void CameraWidget::setStreamUrl(const QString &url)
 {
     Q_UNUSED(url)
     m_streamUrl = QString::fromLatin1(kForcedLocalRtspUrl);
 }
 
-// Donne accès au bouton de fermeture (le dashboard y branche son action).
+// Donne accès au bouton de fermeture (le dashboard y branche son action). -> herité du style global
 QPushButton *CameraWidget::closeButton() const
 {
     return m_closeButton;
 }
 
-// Donne accès au bouton d'édition (le dashboard y branche son action).
+// Donne accès au bouton d'édition (le dashboard y branche son action). -> herité du style global
 QPushButton *CameraWidget::editButton() const
 {
     return m_editButton;
 }
 
-// =====================================================================
-//  PILOTAGE DU LECTEUR MPV
-// =====================================================================
+/*
+=====================================================================
+  PILOTAGE DU LECTEUR MPV
+ =====================================================================
 
-// Indique si mpv peut être incrusté : la surface vidéo doit être
-// réellement affichée à l'écran avec une taille raisonnable.
+Indique si mpv peut être incrusté : la surface vidéo doit être
+ réellement affichée à l'écran avec une taille raisonnable.
+
+*/
 bool CameraWidget::isEmbeddingReady() const
 {
     if (!m_videoSurface)
@@ -232,8 +244,15 @@ void CameraWidget::scheduleStart(int delayMs)
     QTimer::singleShot(delayMs, this, &CameraWidget::startWhenReady);
 }
 
-// Attend (30 essais max, 200 ms d'intervalle) que la surface vidéo soit
-// visible et dimensionnée, puis déclenche le lancement de mpv.
+
+/*
+ Attention obligatoire sinon problème avec le scanner ARP
+
+ Attend (30 essais max, 200 ms d'intervalle) que la surface vidéo soit
+ visible et dimensionnée, puis déclenche le lancement de mpv
+
+
+*/
 void CameraWidget::startWhenReady()
 {
     if (!m_playRequested)
@@ -270,8 +289,8 @@ void CameraWidget::startMpv()
     args << QStringLiteral("--force-window=immediate");
     args << QStringLiteral("--demuxer-lavf-o=rtsp_transport=tcp");
     args << QStringLiteral("--wid=%1").arg(windowId);
-    // Sortie vidéo X11 sans décodage matériel : c'est la combinaison
-    // validée en test sur les Raspberry Pi / PC Linux du projet.
+    // Sortie vidéo X11 sans décodage matériel
+
     args << QStringLiteral("--vo=x11");
     args << QStringLiteral("--hwdec=no");
     args << m_streamUrl;
@@ -279,8 +298,7 @@ void CameraWidget::startMpv()
     m_mpvProcess->start(m_mpvExecutable, args);
 }
 
-// Arrête le flux : demande poliment l'arrêt (terminate) puis force (kill)
-// si mpv ne répond pas.
+// Arrête le flux
 void CameraWidget::stop()
 {
     m_playRequested = false;
@@ -302,12 +320,15 @@ void CameraWidget::reloadFrame()
     play();
 }
 
-// =====================================================================
-//  ÉVÉNEMENTS QT
-// =====================================================================
+/*
+=====================================================================
+  ÉVÉNEMENTS QT
+ =====================================================================
 
-// Démarre automatiquement le flux dès que le widget devient visible :
-// le dashboard n'a pas besoin d'appeler play() lui-même.
+Démarre automatiquement le flux dès que le widget devient visible :
+ le dashboard n'a pas besoin d'appeler play() lui-même.
+*/
+
 void CameraWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
