@@ -7,10 +7,13 @@ CONFIG  += c++17
 TEMPLATE = app
 TARGET   = SystemeSurveillanceQt
 
-# Contournement d'un bug de GCC 13 : la passe d'optimisation "tree-pre"
-# (active à partir de -O2) plante (internal compiler error). On désactive
-# uniquement cette passe ; le reste des optimisations -O2 reste actif.
-QMAKE_CXXFLAGS += -fno-tree-pre
+# Contournement d'un bug de GCC 13 : ses passes d'optimisation -O2 plantent
+# (internal compiler error dans la passe "tree-pre"). Le flag -fno-tree-pre
+# seul ne suffit pas, car -O2 (placé après sur la ligne de commande) réactive
+# la passe. On rétrograde donc l'optimisation de la cible Release en -O1, qui
+# n'active pas cette passe.
+QMAKE_CXXFLAGS_RELEASE -= -O2
+QMAKE_CXXFLAGS_RELEASE += -O1
 
 SOURCES += \
     $$PWD/main.cpp \
