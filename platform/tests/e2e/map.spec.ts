@@ -1,13 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
+import { login } from "./helpers";
 
 async function openMap(page: Page, seed: number) {
+  if (!page.url().includes("/carte")) await login(page, "manager");
   await page.goto(`/carte?seed=${seed}`);
   await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
     timeout: 30_000,
   });
 }
 
-test("la page d'accueil mène à la carte", async ({ page }) => {
+test("la page d'accueil mène à la carte une fois connecté", async ({
+  page,
+}) => {
+  await login(page, "manager");
   await page.goto("/");
   await page.getByRole("link", { name: "Ouvrir la carte des locaux" }).click();
   await expect(page).toHaveURL(/\/carte/);
