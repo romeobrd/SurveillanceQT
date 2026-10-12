@@ -9,12 +9,9 @@ async function openMap(page: Page, seed: number) {
   });
 }
 
-test("la page d'accueil mène à la carte une fois connecté", async ({
-  page,
-}) => {
+test("la navigation mène à la carte", async ({ page }) => {
   await login(page, "manager");
-  await page.goto("/");
-  await page.getByRole("link", { name: "Ouvrir la carte des locaux" }).click();
+  await page.getByRole("link", { name: "Carte", exact: true }).click();
   await expect(page).toHaveURL(/\/carte/);
   await expect(
     page.getByRole("heading", { name: "Carte des locaux" }),
@@ -49,7 +46,7 @@ test("la liste des zones permet de choisir une zone au clavier", async ({
   page,
 }) => {
   await openMap(page, 5);
-  const first = page.getByRole("list").first().getByRole("button").first();
+  const first = page.getByRole("complementary").getByRole("button").first();
   const name = (await first.innerText()).trim();
   await first.focus();
   await page.keyboard.press("Enter");

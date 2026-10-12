@@ -43,7 +43,8 @@ test("le rôle affiché vient du compte : l'employé n'a pas d'actions rapides",
 }) => {
   await login(page, "employee");
   await expect(page.getByTestId("role")).toHaveText("Employé");
-  await page.getByRole("list").first().getByRole("button").first().click();
+  await page.goto("/carte");
+  await page.getByRole("complementary").getByRole("button").first().click();
   await expect(
     page.getByRole("heading", { name: "Postes de travail", level: 3 }),
   ).toBeVisible();
@@ -54,18 +55,19 @@ test("le rôle affiché vient du compte : l'employé n'a pas d'actions rapides",
 
 test("le manager voit les actions rapides", async ({ page }) => {
   await login(page, "manager");
-  await page.getByRole("list").first().getByRole("button").first().click();
+  await page.goto("/carte");
+  await page.getByRole("complementary").getByRole("button").first().click();
   await expect(
     page.getByRole("heading", { name: "Actions rapides" }),
   ).toBeVisible();
 });
 
-test("la page de connexion renvoie vers la carte quand on est déjà connecté", async ({
+test("la page de connexion renvoie vers le tableau de bord quand on est déjà connecté", async ({
   page,
 }) => {
   await login(page, "admin");
   await page.goto("/login");
-  await expect(page).toHaveURL(/\/carte/);
+  await expect(page).toHaveURL(/\/tableau-de-bord/);
 });
 
 test("verrouillage après 5 échecs, même pour un compte inconnu", async ({

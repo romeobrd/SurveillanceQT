@@ -32,12 +32,28 @@ npm run typecheck
 npm test                  # unitaires + intégration (PostgreSQL de test requis)
 npm run test:unit         # sans base de données
 npm run test:integration  # exige DATABASE_URL_TEST
-npm run test:e2e          # Playwright (nécessite un navigateur et la base de développement semée)
+npm run test:e2e          # Playwright (navigateur + base de développement semée ; les tests créent leurs propres données)
 ```
 
 Les tests d'intégration vident la base `DATABASE_URL_TEST` : elle doit être différente de `DATABASE_URL`.
 
 Sans navigateur téléchargeable, Playwright peut utiliser un Chromium existant : `CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e`.
+
+## Modules
+
+Après connexion, la navigation donne accès à :
+
+| Page            | Contenu                                                                                                    | Écriture                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Tableau de bord | collaborateurs actifs, postes occupés/libres, alertes de stock, matériel à traiter, avancement des projets | —                                                              |
+| Carte           | aménagement actif lu en base, panneau de zone, barre de progression d'un projet                            | admin, manager (aperçu `?seed=` puis enregistrement explicite) |
+| Collaborateurs  | recherche, filtres, tri ; équipes ; départ (poste libéré, matériel restitué)                               | admin                                                          |
+| Postes          | libres/occupés, attribution                                                                                | admin, manager                                                 |
+| Stock           | articles et mouvements ; quantité calculée ; alertes sous le seuil                                         | admin, manager                                                 |
+| Matériel        | état, affectation, historique ; l'employé ne voit que le sien                                              | admin, manager                                                 |
+| Projets         | étapes ordonnées, progression calculée                                                                     | admin, manager                                                 |
+
+Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppression demande une confirmation ; chaque module a un lien « Voir sur la carte ».
 
 ## Architecture des données
 
@@ -52,4 +68,4 @@ Hébergement prévu dans l'Union européenne (à documenter à la phase 7). Aucu
 
 ## Avancement
 
-Phases 0 à 3 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 4 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord). La carte est sur `/carte` (paramètre `?seed=`).
