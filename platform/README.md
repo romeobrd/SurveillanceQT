@@ -24,4 +24,8 @@ Hébergement prévu dans l'Union européenne (à documenter à la phase 7). Aucu
 
 ## Avancement
 
-Phase 0 (initialisation) terminée.
+Phases 0 (initialisation), 1 (format de carte et générateur) et 2 (rendu PixiJS, interactions, panneau latéral) terminées. La carte est sur `/carte` (paramètre `?seed=`).
+
+## Tests e2e
+
+`npm run test:e2e` lance Playwright. Sans navigateur téléchargeable, indiquer un Chromium existant : `CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e`.
