@@ -36,6 +36,8 @@ export const EdgeSchema = z.object({
   x: z.number().int().min(0),
   y: z.number().int().min(0),
   side: z.enum(["N", "W"]),
+  /** Nature d'un mur : plein par défaut, ou cloison vitrée (translucide, mais infranchissable). */
+  kind: z.enum(["solid", "glass"]).optional(),
 });
 
 export const RotationSchema = z.union([

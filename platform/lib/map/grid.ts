@@ -106,3 +106,18 @@ export function floodFill(
   }
   return { visited, count: tail };
 }
+
+/** Tuiles situées de part et d'autre d'une porte : toujours laissées libres de mobilier. */
+export function buildDoorKeepFree(layout: Layout): Uint8Array {
+  const mask = new Uint8Array(layout.width * layout.height);
+  const mark = (x: number, y: number) => {
+    if (x >= 0 && y >= 0 && x < layout.width && y < layout.height)
+      mask[y * layout.width + x] = 1;
+  };
+  for (const door of layout.doors) {
+    mark(door.x, door.y);
+    if (door.side === "N") mark(door.x, door.y - 1);
+    else mark(door.x - 1, door.y);
+  }
+  return mask;
+}

@@ -68,6 +68,12 @@ export function validateLayout(
       problems.push(`élément inconnu du catalogue : ${element.catalogKey}`);
       continue;
     }
+    if (entry.category === "structure") {
+      problems.push(
+        `élément de structure placé comme mobilier : ${element.catalogKey}`,
+      );
+      continue;
+    }
     const rects = zoneRects.get(element.zoneId);
     if (!rects) {
       problems.push(

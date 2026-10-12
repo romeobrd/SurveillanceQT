@@ -1,6 +1,6 @@
 // Ameublement cohérent par type de zone, sans collision et sans bloquer un passage.
 import { CATALOG, getFootprint } from "./catalog";
-import { createGrid, floodFill, type Grid } from "./grid";
+import { buildDoorKeepFree, createGrid, floodFill, type Grid } from "./grid";
 import type { Rng } from "./prng";
 import { getEntranceTiles } from "./reachability";
 import type { Layout, MapElement, Rect, Rotation, Zone } from "./schema";
@@ -16,20 +16,6 @@ interface Context {
   keepFree: Uint8Array;
   freeCount: number;
   elements: MapElement[];
-}
-
-function buildKeepFree(layout: Layout): Uint8Array {
-  const mask = new Uint8Array(layout.width * layout.height);
-  const mark = (x: number, y: number) => {
-    if (x >= 0 && y >= 0 && x < layout.width && y < layout.height)
-      mask[y * layout.width + x] = 1;
-  };
-  for (const door of layout.doors) {
-    mark(door.x, door.y);
-    if (door.side === "N") mark(door.x, door.y - 1);
-    else mark(door.x - 1, door.y);
-  }
-  return mask;
 }
 
 function allReachable(ctx: Context): boolean {
@@ -202,7 +188,7 @@ export function furnishLayout(layout: Layout, rng: Rng): MapElement[] {
     grid,
     rng,
     entrances: getEntranceTiles(layout),
-    keepFree: buildKeepFree(layout),
+    keepFree: buildDoorKeepFree(layout),
     freeCount: layout.width * layout.height,
     elements: [],
   };

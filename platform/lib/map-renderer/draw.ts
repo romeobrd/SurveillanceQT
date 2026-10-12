@@ -116,6 +116,13 @@ function lerp(a: Point, b: Point, t: number): Point {
 function drawWall(g: Graphics, edge: Edge): void {
   const [p1, p2] = edgeEnds(edge);
   const wallHeight = WALL_HEIGHT * HEIGHT_UNIT;
+  if (edge.kind === "glass") {
+    // Cloison vitrée : translucide, avec un cadre en haut et en bas
+    g.poly(flat([lift(p1, wallHeight), lift(p2, wallHeight), p2, p1]))
+      .fill({ color: 0x9ccfe0, alpha: 0.35 })
+      .stroke({ width: 2, color: 0x5b9bb5, alpha: 0.85 });
+    return;
+  }
   const color =
     edge.side === "N" ? shade(WALL_COLOR, 0.95) : shade(WALL_COLOR, 0.8);
   g.poly(flat([lift(p1, wallHeight), lift(p2, wallHeight), p2, p1]))
