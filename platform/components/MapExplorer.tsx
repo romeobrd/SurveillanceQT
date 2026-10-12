@@ -1,28 +1,22 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   generateFirstLayoutAction,
   saveLayoutAction,
 } from "@/app/(app)/carte/actions";
+import LayoutEditor from "@/components/editor/LayoutEditor";
+import type { VersionInfo } from "@/components/editor/VersionsPanel";
+import MapViewLazy from "@/components/MapViewLazy";
 import ActionForm from "@/components/ui/ActionForm";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
+import { createEmptyLayout } from "@/lib/map/edit";
 import type { Layout } from "@/lib/map/schema";
 import ZonePanel from "./ZonePanel";
-
-const MapView = dynamic(() => import("./MapView"), {
-  ssr: false,
-  loading: () => (
-    <p className="flex h-full items-center justify-center bg-slate-800 text-slate-200">
-      {fr.map.loading}
-    </p>
-  ),
-});
 
 export type MapMode = "active" | "preview" | "empty";
 
@@ -38,6 +32,11 @@ interface MapExplorerProps {
   zoneDbIds: Record<string, string>;
   initialZoneId: string | null;
   initialProjectId: string | null;
+  /** Version active (aperçu compris) : l'éditeur refuse d'écraser un travail plus récent. */
+  baseVersion: number | null;
+  /** Aménagement enregistré, pour « repartir de la carte enregistrée ». */
+  savedLayout: Layout | null;
+  versions: VersionInfo[];
 }
 
 const buttonClass =
@@ -54,8 +53,15 @@ export default function MapExplorer({
   zoneDbIds,
   initialZoneId,
   initialProjectId,
+  baseVersion,
+  savedLayout,
+  versions,
 }: MapExplorerProps) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const leaveDialog = useRef<HTMLDialogElement>(null);
+  const leaveTitle = useId();
   const people = useMemo(() => getPersonMarkers(data), [data]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(
     layout?.zones.some((zone) => zone.id === initialZoneId)
@@ -95,8 +101,34 @@ export default function MapExplorer({
             )}
           </span>
         )}
+        {canEdit && (
+          <div
+            role="group"
+            aria-label={fr.editor.modeLabel}
+            className="flex overflow-hidden rounded-md border border-slate-300"
+          >
+            <button
+              type="button"
+              aria-pressed={!editing}
+              onClick={() =>
+                dirty ? leaveDialog.current?.showModal() : setEditing(false)
+              }
+              className="px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-600 aria-pressed:bg-orange-100 aria-pressed:font-medium"
+            >
+              {fr.editor.view}
+            </button>
+            <button
+              type="button"
+              aria-pressed={editing}
+              onClick={() => setEditing(true)}
+              className="border-l border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-600 aria-pressed:bg-orange-100 aria-pressed:font-medium"
+            >
+              {fr.editor.edit}
+            </button>
+          </div>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {canEdit && mode !== "empty" && (
+          {canEdit && !editing && mode !== "empty" && (
             <button
               type="button"
               onClick={() =>
@@ -109,7 +141,7 @@ export default function MapExplorer({
               {fr.map.newLayout}
             </button>
           )}
-          {mode === "preview" && seed !== null && (
+          {mode === "preview" && seed !== null && !editing && (
             <>
               <ActionForm
                 action={saveLayoutAction}
@@ -129,7 +161,23 @@ export default function MapExplorer({
         </div>
       </div>
 
-      {mode === "empty" || !layout ? (
+      {editing ? (
+        <div className="min-h-0 flex-1">
+          <LayoutEditor
+            initialLayout={layout ?? createEmptyLayout(24, 20)}
+            savedLayout={savedLayout}
+            baseVersion={baseVersion}
+            people={people}
+            versions={versions}
+            onDirtyChange={setDirty}
+            onSaved={() => {
+              setDirty(false);
+              setEditing(false);
+              router.refresh();
+            }}
+          />
+        </div>
+      ) : mode === "empty" || !layout ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
           <p>{canEdit ? fr.layout.empty : fr.layout.emptyEmployee}</p>
           {canEdit && (
@@ -145,7 +193,7 @@ export default function MapExplorer({
         <>
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <div className="min-h-[50vh] flex-1">
-              <MapView
+              <MapViewLazy
                 layout={layout}
                 people={people}
                 selectedZoneId={selectedZoneId}
@@ -206,6 +254,36 @@ export default function MapExplorer({
           )}
         </>
       )}
+      <dialog
+        ref={leaveDialog}
+        aria-labelledby={leaveTitle}
+        className="m-auto w-full max-w-md rounded-lg p-6 shadow-xl backdrop:bg-slate-900/50"
+      >
+        <h2 id={leaveTitle} className="text-lg font-semibold">
+          {fr.editor.leave.title}
+        </h2>
+        <p className="mt-2 text-sm text-slate-700">{fr.editor.leave.body}</p>
+        <div className="mt-4 flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              leaveDialog.current?.close();
+              setDirty(false);
+              setEditing(false);
+            }}
+            className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-red-700"
+          >
+            {fr.editor.leave.leave}
+          </button>
+          <button
+            type="button"
+            onClick={() => leaveDialog.current?.close()}
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
+          >
+            {fr.editor.leave.stay}
+          </button>
+        </div>
+      </dialog>
     </div>
   );
 }

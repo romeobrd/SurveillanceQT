@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fr } from "@/lib/i18n/fr";
-import { MapRenderer } from "@/lib/map-renderer/MapRenderer";
+import type { EditOverlayData } from "@/lib/map-renderer/draw";
+import { MapRenderer, type EditorBridge } from "@/lib/map-renderer/MapRenderer";
 import type { PersonMarker } from "@/lib/map/scene";
 import type { Layout } from "@/lib/map/schema";
 
@@ -11,13 +12,25 @@ interface MapViewProps {
   people: readonly PersonMarker[];
   selectedZoneId: string | null;
   onSelectZone: (zoneId: string | null) => void;
+  /** Passerelle de l'éditeur (mode Aménager) : reçoit les gestes au lieu de la sélection de zone. */
+  editor?: EditorBridge | null;
+  overlay?: EditOverlayData | null;
+  /** Survol d'un élément du catalogue glissé au-dessus de la carte. */
+  onDragHover?: (tile: { x: number; y: number } | null) => void;
+  /** Élément du catalogue déposé sur la carte. */
+  onDropItem?: (tile: { x: number; y: number }, catalogKey: string) => void;
 }
+
+/** Type de données du glisser-déposer depuis le catalogue. */
+export const CATALOG_DRAG_TYPE = "application/x-catalog-key";
 
 declare global {
   interface Window {
     /** Outils de diagnostic, disponibles hors production uniquement. */
     __mapDebug?: {
       zoneCenter: (zoneId: string) => { x: number; y: number } | null;
+      tileCenter: (x: number, y: number) => { x: number; y: number };
+      gridPoint: (gx: number, gy: number) => { x: number; y: number };
       benchmark: (frames?: number) => ReturnType<MapRenderer["benchmark"]>;
       stats: () => ReturnType<MapRenderer["getStats"]>;
     };
@@ -32,6 +45,10 @@ export default function MapView({
   people,
   selectedZoneId,
   onSelectZone,
+  editor = null,
+  overlay = null,
+  onDragHover,
+  onDropItem,
 }: MapViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelectZone);
@@ -75,9 +92,29 @@ export default function MapView({
     };
   }, []);
 
+  // La vue n'est recadrée qu'au premier affichage ; ensuite l'éditeur garde la caméra de l'utilisateur
+  const sceneLoaded = useRef(false);
   useEffect(() => {
-    renderer?.setScene(layout, people);
+    sceneLoaded.current = false;
+  }, [renderer]);
+
+  useEffect(() => {
+    if (!renderer) return;
+    renderer.setScene(layout, people, {
+      keepView: sceneLoaded.current && editor !== null,
+    });
+    sceneLoaded.current = true;
+    // `editor` n'est lu que pour décider du recadrage : sa seule présence ne doit pas redessiner la scène
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderer, layout, people]);
+
+  useEffect(() => {
+    renderer?.setEditor(editor);
+  }, [renderer, editor]);
+
+  useEffect(() => {
+    renderer?.setEditOverlay(overlay);
+  }, [renderer, overlay]);
 
   useEffect(() => {
     renderer?.setSelectedZone(selectedZoneId);
@@ -87,6 +124,8 @@ export default function MapView({
     if (!renderer || process.env.NODE_ENV === "production") return;
     window.__mapDebug = {
       zoneCenter: (zoneId) => renderer.getZoneScreenCenter(zoneId),
+      tileCenter: (x, y) => renderer.getTileScreenCenter(x, y),
+      gridPoint: (gx, gy) => renderer.getGridScreenPoint(gx, gy),
       benchmark: (frames) => renderer.benchmark(frames),
       stats: () => renderer.getStats(),
     };
@@ -103,6 +142,22 @@ export default function MapView({
         aria-label={fr.map.canvasLabel}
         tabIndex={0}
         data-testid="map-host"
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(CATALOG_DRAG_TYPE)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          onDragHover?.(
+            renderer?.clientToTile(event.clientX, event.clientY) ?? null,
+          );
+        }}
+        onDragLeave={() => onDragHover?.(null)}
+        onDrop={(event) => {
+          const key = event.dataTransfer.getData(CATALOG_DRAG_TYPE);
+          if (!key) return;
+          event.preventDefault();
+          const tile = renderer?.clientToTile(event.clientX, event.clientY);
+          if (tile) onDropItem?.(tile, key);
+        }}
         className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-500"
       />
       {!renderer && !failed && (

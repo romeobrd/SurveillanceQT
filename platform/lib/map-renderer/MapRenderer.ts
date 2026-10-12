@@ -2,11 +2,15 @@
 import { Application, Container, Graphics } from "pixi.js";
 import { getZoneCenter } from "./zoneCenter";
 import {
+  drawEditOverlay,
   drawFloor,
   drawSceneItem,
   drawZoneOverlay,
+  floorKey,
   footprintBounds,
   itemHeightUnits,
+  sceneItemKey,
+  type EditOverlayData,
 } from "./draw";
 import { gridToScreen, screenToGrid } from "../map/iso";
 import { buildScene, getWorldBounds, type PersonMarker } from "../map/scene";
@@ -39,6 +43,26 @@ export interface BenchmarkResult {
   totalItems: number;
 }
 
+/** Geste de pointeur traduit en coordonnées de carte, transmis à l'éditeur. */
+export interface EditorPointer {
+  /** Tuile sous le pointeur, null hors du plan. */
+  tile: { x: number; y: number } | null;
+  /** Position fractionnaire sur la grille (pour viser une arête). */
+  grid: { x: number; y: number };
+  shift: boolean;
+}
+
+/** Passerelle vers l'éditeur : le moteur de rendu transmet les gestes et laisse l'éditeur décider. */
+export interface EditorBridge {
+  /** Retourne true si l'éditeur prend le geste (sinon la caméra se déplace). */
+  onPointerDown(pointer: EditorPointer): boolean;
+  onPointerMove(pointer: EditorPointer): void;
+  onPointerUp(pointer: EditorPointer): void;
+  /** Retourne true si la touche est gérée (sinon la caméra peut réagir). */
+  onKeyDown(event: KeyboardEvent): boolean;
+  onCancel(): void;
+}
+
 interface CullEntry {
   bounds: WorldRect;
 }
@@ -54,6 +78,21 @@ export class MapRenderer {
   private readonly itemLayer = new Container();
   private readonly hoverGraphics = new Graphics();
   private readonly selectedGraphics = new Graphics();
+  // Calque d'édition à part, hors du groupe de rendu de la scène : le redessiner (fantôme qui suit la souris)
+  // ne force pas la reconstruction des lots des centaines d'objets de la carte.
+  private readonly editWorld = new Container();
+  private readonly editLayer = new Container();
+  private lastOverlayKey = "";
+  private readonly editTiles = new Graphics();
+  private readonly editGhosts = new Graphics();
+  private readonly editSelection = new Graphics();
+  private readonly editMarks = new Graphics();
+  // Dessins réutilisés d'une mise à jour à l'autre : seuls les objets modifiés sont redessinés
+  private itemCache = new Map<string, Graphics>();
+  private floorCache = new Map<string, Graphics>();
+  private editor: EditorBridge | null = null;
+  private editorCapture = false;
+  private spaceHeld = false;
 
   private layout: Layout | null = null;
   private zoneLookup: Int16Array = new Int16Array(0);
@@ -81,8 +120,15 @@ export class MapRenderer {
     // déplacement et zoom ne modifient que la transformation (pas de reconstruction par image).
     this.world.isRenderGroup = true;
     this.world.addChild(this.floorLayer, this.overlayLayer, this.itemLayer);
+    this.editWorld.addChild(this.editLayer);
+    this.editLayer.addChild(
+      this.editTiles,
+      this.editGhosts,
+      this.editSelection,
+      this.editMarks,
+    );
     this.overlayLayer.addChild(this.selectedGraphics, this.hoverGraphics);
-    this.app.stage.addChild(this.world);
+    this.app.stage.addChild(this.world, this.editWorld);
 
     const canvas = this.app.canvas;
     canvas.style.touchAction = "none";
@@ -93,6 +139,7 @@ export class MapRenderer {
     canvas.addEventListener("pointerleave", this.onPointerLeave);
     canvas.addEventListener("wheel", this.onWheel, { passive: false });
     options.host.addEventListener("keydown", this.onKeyDown);
+    options.host.addEventListener("keyup", this.onKeyUp);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(options.host);
@@ -116,33 +163,148 @@ export class MapRenderer {
     return new MapRenderer(app, options);
   }
 
-  /** Charge une carte et les occupants des postes, puis recadre la vue. */
-  setScene(layout: Layout, people: readonly PersonMarker[]): void {
+  /**
+   * Charge une carte et les occupants des postes. Les dessins inchangés sont réutilisés ; la vue est
+   * recadrée sauf si `keepView` (mises à jour de l'éditeur).
+   */
+  setScene(
+    layout: Layout,
+    people: readonly PersonMarker[],
+    options: { keepView?: boolean } = {},
+  ): void {
     this.layout = layout;
     this.zoneLookup = buildZoneLookup(layout);
     this.worldBounds = getWorldBounds(layout);
     this.hoverZoneId = null;
-
-    for (const layer of [this.floorLayer, this.itemLayer]) {
-      for (const child of layer.removeChildren()) child.destroy();
-    }
     this.cullEntries = [];
 
+    const reuse = (
+      cache: Map<string, Graphics>,
+      key: string,
+      used: Set<string>,
+      create: () => Graphics,
+    ): { key: string; graphics: Graphics } => {
+      // Deux objets de même clé ne partagent jamais le même dessin
+      let uniqueKey = key;
+      for (let n = 1; used.has(uniqueKey); n++) uniqueKey = `${key}#${n}`;
+      used.add(uniqueKey);
+      return { key: uniqueKey, graphics: cache.get(uniqueKey) ?? create() };
+    };
+    const swap = (
+      layer: Container,
+      cache: Map<string, Graphics>,
+      next: Map<string, Graphics>,
+    ) => {
+      for (const [key, graphics] of cache) {
+        if (!next.has(key)) graphics.destroy();
+      }
+      layer.removeChildren();
+      for (const graphics of next.values()) layer.addChild(graphics);
+      return next;
+    };
+
+    const floors = new Map<string, Graphics>();
+    const floorKeys = new Set<string>();
     for (const zone of layout.zones) {
-      const floor = new Graphics();
-      drawFloor(floor, zone);
-      this.floorLayer.addChild(floor);
+      const { key, graphics } = reuse(
+        this.floorCache,
+        floorKey(zone),
+        floorKeys,
+        () => {
+          const created = new Graphics();
+          drawFloor(created, zone);
+          return created;
+        },
+      );
+      floors.set(key, graphics);
     }
+    this.floorCache = swap(this.floorLayer, this.floorCache, floors);
+
+    const items = new Map<string, Graphics>();
+    const itemKeys = new Set<string>();
     for (const item of buildScene(layout, people)) {
-      const graphics = new Graphics();
-      drawSceneItem(graphics, item);
-      this.itemLayer.addChild(graphics);
+      const { key, graphics } = reuse(
+        this.itemCache,
+        sceneItemKey(item),
+        itemKeys,
+        () => {
+          const created = new Graphics();
+          drawSceneItem(created, item);
+          return created;
+        },
+      );
+      items.set(key, graphics);
       this.cullEntries.push({
         bounds: footprintBounds(item.footprint, itemHeightUnits(item)),
       });
     }
+    this.itemCache = swap(this.itemLayer, this.itemCache, items);
+
     this.redrawOverlays();
-    this.resetView();
+    if (options.keepView) this.setCamera(this.camera);
+    else this.resetView();
+  }
+
+  /** Branche (ou débranche) l'éditeur : les gestes lui sont transmis au lieu de sélectionner des zones. */
+  setEditor(bridge: EditorBridge | null): void {
+    this.editor = bridge;
+    this.editorCapture = false;
+    if (!bridge) this.setEditOverlay(null);
+    this.setHover(null);
+  }
+
+  /** Fantômes, sélection, arête visée… dessinés par-dessus la carte. */
+  setEditOverlay(overlay: EditOverlayData | null): void {
+    // Rien à redessiner si l'aperçu est identique au précédent
+    const key = JSON.stringify(overlay);
+    if (key === this.lastOverlayKey) return;
+    this.lastOverlayKey = key;
+    drawEditOverlay(
+      {
+        tiles: this.editTiles,
+        ghosts: this.editGhosts,
+        selection: this.editSelection,
+        marks: this.editMarks,
+      },
+      overlay,
+    );
+    this.dirty = true;
+  }
+
+  /** Coordonnées de grille (fractionnaires) sous un point de l'écran. */
+  clientToGrid(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const world = screenToWorld(
+      this.camera,
+      clientX - rect.left,
+      clientY - rect.top,
+    );
+    return screenToGrid(world.x, world.y);
+  }
+
+  /** Tuile sous un point de l'écran (null hors du plan). */
+  clientToTile(
+    clientX: number,
+    clientY: number,
+  ): { x: number; y: number } | null {
+    if (!this.layout) return null;
+    const grid = this.clientToGrid(clientX, clientY);
+    const x = Math.floor(grid.x);
+    const y = Math.floor(grid.y);
+    return x >= 0 && y >= 0 && x < this.layout.width && y < this.layout.height
+      ? { x, y }
+      : null;
+  }
+
+  /** Point de la grille (fractionnaire) en pixels relatifs au canvas (utile aux tests). */
+  getGridScreenPoint(gx: number, gy: number): { x: number; y: number } {
+    const world = gridToScreen(gx, gy);
+    return worldToScreen(this.camera, world.x, world.y);
+  }
+
+  /** Centre d'une tuile en pixels relatifs au canvas (utile aux tests). */
+  getTileScreenCenter(x: number, y: number): { x: number; y: number } {
+    return this.getGridScreenPoint(x + 0.5, y + 0.5);
   }
 
   setSelectedZone(zoneId: string | null): void {
@@ -216,6 +378,7 @@ export class MapRenderer {
     cancelAnimationFrame(this.frameHandle);
     this.resizeObserver.disconnect();
     this.options.host.removeEventListener("keydown", this.onKeyDown);
+    this.options.host.removeEventListener("keyup", this.onKeyUp);
     const canvas = this.app.canvas;
     canvas.removeEventListener("pointerdown", this.onPointerDown);
     canvas.removeEventListener("pointermove", this.onPointerMove);
@@ -249,6 +412,8 @@ export class MapRenderer {
     );
     this.world.position.set(this.camera.x, this.camera.y);
     this.world.scale.set(this.camera.zoom);
+    this.editWorld.position.set(this.camera.x, this.camera.y);
+    this.editWorld.scale.set(this.camera.zoom);
     if (markDirty) this.dirty = true;
   }
 
@@ -313,10 +478,28 @@ export class MapRenderer {
     this.options.onZoneHover?.(zoneId);
   }
 
+  private editorPointer(event: PointerEvent): EditorPointer {
+    return {
+      tile: this.clientToTile(event.clientX, event.clientY),
+      grid: this.clientToGrid(event.clientX, event.clientY),
+      shift: event.shiftKey,
+    };
+  }
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     this.app.canvas.setPointerCapture(event.pointerId);
     this.options.host.focus({ preventScroll: true });
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    // Clic gauche (hors Espace) en édition : l'éditeur décide s'il prend le geste ; sinon la caméra se déplace
+    if (
+      this.editor &&
+      event.button === 0 &&
+      !this.spaceHeld &&
+      this.pointers.size === 1
+    ) {
+      this.editorCapture = this.editor.onPointerDown(this.editorPointer(event));
+      if (this.editorCapture) return;
+    }
     if (this.pointers.size === 1) {
       this.dragStart = { x: event.clientX, y: event.clientY };
       this.dragMoved = false;
@@ -328,7 +511,19 @@ export class MapRenderer {
 
   private readonly onPointerMove = (event: PointerEvent): void => {
     const previous = this.pointers.get(event.pointerId);
+    if (this.editor && this.pointers.size <= 1) {
+      this.editor.onPointerMove(this.editorPointer(event));
+      if (this.editorCapture) {
+        if (previous)
+          this.pointers.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY,
+          });
+        return;
+      }
+    }
     if (!previous) {
+      if (this.editor) return;
       this.setHover(
         event.pointerType === "mouse"
           ? this.zoneAt(event.clientX, event.clientY)
@@ -373,7 +568,13 @@ export class MapRenderer {
     const wasSingle = this.pointers.size === 1;
     this.pointers.delete(event.pointerId);
     this.app.canvas.style.cursor = "";
-    if (wasSingle && !this.dragMoved)
+    if (this.editorCapture) {
+      this.editorCapture = false;
+      this.editor?.onPointerUp(this.editorPointer(event));
+      if (this.pointers.size === 0) this.dragStart = null;
+      return;
+    }
+    if (wasSingle && !this.dragMoved && !this.editor)
       this.options.onZoneClick?.(this.zoneAt(event.clientX, event.clientY));
     if (this.pointers.size === 0) this.dragStart = null;
     this.pinchDistance = 0;
@@ -381,6 +582,10 @@ export class MapRenderer {
 
   private readonly onPointerCancel = (event: PointerEvent): void => {
     this.pointers.delete(event.pointerId);
+    if (this.editorCapture) {
+      this.editorCapture = false;
+      this.editor?.onCancel();
+    }
     this.dragStart = null;
     this.pinchDistance = 0;
     this.app.canvas.style.cursor = "";
@@ -404,7 +609,23 @@ export class MapRenderer {
     );
   };
 
+  private readonly onKeyUp = (event: KeyboardEvent): void => {
+    if (event.key === " ") this.spaceHeld = false;
+  };
+
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (this.editor) {
+      // Espace maintenu + glisser = déplacer la carte sans quitter l'outil
+      if (event.key === " ") {
+        this.spaceHeld = true;
+        event.preventDefault();
+        return;
+      }
+      if (this.editor.onKeyDown(event)) {
+        event.preventDefault();
+        return;
+      }
+    }
     const center = { x: this.viewWidth / 2, y: this.viewHeight / 2 };
     switch (event.key) {
       case "ArrowLeft":

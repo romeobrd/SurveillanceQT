@@ -36,6 +36,14 @@ export default async function CartePage({
   const { session, repos } = await getAppContext();
   const canEdit = can(session.role, "layout:write");
   const active = await repos.map.getActive();
+  const versions = canEdit
+    ? (await repos.layouts.listVersions()).map((version) => ({
+        id: version.id,
+        version: version.version,
+        isActive: version.isActive,
+        createdAt: version.createdAt.toISOString(),
+      }))
+    : [];
 
   // Aperçu non enregistré : réservé à ceux qui peuvent aménager les locaux
   const previewSeed =
@@ -47,6 +55,9 @@ export default async function CartePage({
     canEdit,
     initialZoneId: params.zone ?? null,
     initialProjectId: params.project ?? null,
+    baseVersion: active?.version ?? null,
+    savedLayout: active?.layout ?? null,
+    versions,
   };
 
   if (previewSeed?.success) {

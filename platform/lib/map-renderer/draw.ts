@@ -1,6 +1,6 @@
 // Fonctions de dessin PixiJS : formes géométriques simples en projection isométrique.
 import type { Graphics } from "pixi.js";
-import { CATALOG } from "../map/catalog";
+import { CATALOG, getFootprint } from "../map/catalog";
 import { hexToInt, shade } from "../map/color";
 import type { Footprint } from "../map/depth";
 import { gridToScreen, TILE_HEIGHT } from "../map/iso";
@@ -156,9 +156,18 @@ function drawElement(
   g: Graphics,
   item: Extract<SceneItem, { kind: "element" }>,
 ): void {
-  const entry = CATALOG[item.catalogKey];
-  const { x, y, w, h } = item.footprint;
-  switch (item.catalogKey) {
+  drawElementAt(g, item.catalogKey, item.footprint);
+}
+
+/** Dessine un élément du catalogue sur une emprise donnée (aussi utilisé pour le fantôme de l'éditeur). */
+export function drawElementAt(
+  g: Graphics,
+  catalogKey: string,
+  footprint: Footprint,
+): void {
+  const entry = CATALOG[catalogKey];
+  const { x, y, w, h } = footprint;
+  switch (catalogKey) {
     case "plante": {
       prism(g, x + 0.3, y + 0.3, 0.4, 0.4, 0.3, 0, "#9c6b43");
       const c = gridToScreen(x + 0.5, y + 0.5);
@@ -235,5 +244,110 @@ export function drawSceneItem(g: Graphics, item: SceneItem): void {
       return drawElement(g, item);
     case "person":
       return drawPerson(g, item);
+  }
+}
+
+/** Clé stable d'un objet de la scène : la même clé signifie le même dessin (réutilisé d'une mise à jour à l'autre). */
+export function sceneItemKey(item: SceneItem): string {
+  const f = item.footprint;
+  switch (item.kind) {
+    case "wall":
+      return `w:${item.edge.side}:${item.edge.x}:${item.edge.y}:${item.edge.kind ?? "solid"}`;
+    case "door":
+      return `d:${item.edge.side}:${item.edge.x}:${item.edge.y}`;
+    case "element":
+      return `e:${item.elementId}:${item.catalogKey}:${f.x}:${f.y}:${item.rotation}`;
+    case "person":
+      return `p:${f.x}:${f.y}:${item.color}`;
+  }
+}
+
+export function floorKey(zone: Zone): string {
+  return `${zone.id}:${zone.floorColor}:${zone.rects.map((r) => `${r.x},${r.y},${r.w},${r.h}`).join(";")}`;
+}
+
+const GOOD = 0x2f9e44;
+const BAD = 0xe03131;
+
+function diamond(rect: Rect): number[] {
+  return flat([
+    gridToScreen(rect.x, rect.y),
+    gridToScreen(rect.x + rect.w, rect.y),
+    gridToScreen(rect.x + rect.w, rect.y + rect.h),
+    gridToScreen(rect.x, rect.y + rect.h),
+  ]);
+}
+
+/** Calques de l'éditeur : fantômes (vert/rouge), sélection, arête visée, pièce en cours de tracé, rectangle de sélection. */
+export interface EditOverlayData {
+  ghosts: Array<{
+    catalogKey: string;
+    x: number;
+    y: number;
+    rotation: 0 | 90 | 180 | 270;
+    valid: boolean;
+  }>;
+  selection: Rect[];
+  edge: { edge: Pick<Edge, "x" | "y" | "side">; valid: boolean } | null;
+  rect: { rect: Rect; valid: boolean } | null;
+  marquee: Rect | null;
+}
+
+export function drawEditOverlay(
+  layers: {
+    tiles: Graphics;
+    ghosts: Graphics;
+    selection: Graphics;
+    marks: Graphics;
+  },
+  overlay: EditOverlayData | null,
+): void {
+  for (const g of Object.values(layers)) g.clear();
+  if (!overlay) return;
+
+  for (const ghost of overlay.ghosts) {
+    const entry = CATALOG[ghost.catalogKey];
+    if (!entry) continue;
+    const { w, h } = getFootprint(entry, ghost.rotation);
+    const footprint = { x: ghost.x, y: ghost.y, w, h };
+    layers.tiles
+      .poly(diamond(footprint))
+      .fill({ color: ghost.valid ? GOOD : BAD, alpha: 0.45 })
+      .stroke({ width: 2, color: ghost.valid ? GOOD : BAD, alpha: 0.95 });
+    drawElementAt(layers.ghosts, ghost.catalogKey, footprint);
+  }
+  layers.ghosts.alpha = 0.6;
+
+  for (const rect of overlay.selection) {
+    layers.selection
+      .poly(diamond(rect))
+      .fill({ color: 0xff922b, alpha: 0.18 })
+      .stroke({ width: 3, color: 0xe8590c, alpha: 1 });
+  }
+
+  if (overlay.rect) {
+    const color = overlay.rect.valid ? GOOD : BAD;
+    layers.marks
+      .poly(diamond(overlay.rect.rect))
+      .fill({ color, alpha: 0.28 })
+      .stroke({ width: 3, color, alpha: 0.95 });
+  }
+  if (overlay.marquee) {
+    layers.marks
+      .poly(diamond(overlay.marquee))
+      .fill({ color: 0x4dabf7, alpha: 0.18 })
+      .stroke({ width: 2, color: 0x1c7ed6, alpha: 0.95 });
+  }
+  if (overlay.edge) {
+    const color = overlay.edge.valid ? GOOD : BAD;
+    const [p1, p2] = edgeEnds(overlay.edge.edge as Edge);
+    const height = WALL_HEIGHT * HEIGHT_UNIT;
+    layers.marks
+      .poly(flat([lift(p1, height), lift(p2, height), p2, p1]))
+      .fill({ color, alpha: 0.3 });
+    layers.marks
+      .moveTo(p1.x, p1.y)
+      .lineTo(p2.x, p2.y)
+      .stroke({ width: 5, color, alpha: 0.95 });
   }
 }
