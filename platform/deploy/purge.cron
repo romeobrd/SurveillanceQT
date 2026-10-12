@@ -1,0 +1,2 @@
+# EXEMPLE NON TESTÉ — purge nocturne (03:15), à installer avec `crontab`.
+15 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://VOTRE-DOMAINE/api/cron/purge >/dev/null

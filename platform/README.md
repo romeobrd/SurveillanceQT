@@ -78,10 +78,16 @@ La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, 
 - **Droits** : matrice par rôle dans `lib/auth/permissions.ts`, vérifiée dans chaque dépôt de données.
 - **Authentification** : Auth.js v5 (bêta), session JWT en cookie `httpOnly`, `sameSite=lax`, `secure` en production ; mots de passe argon2id ; rôle et entreprise relus en base à chaque requête ; 5 échecs verrouillent 15 minutes (compteur indexé par l'empreinte de l'e-mail, aucune IP conservée).
 
-## Hébergement et RGPD
+## Hébergement et RGPD (phase 6)
 
-Hébergement prévu dans l'Union européenne (à documenter à la phase 7). Aucun traceur, police ou script tiers.
+- **Mes données** (`/mes-donnees`) : chacun consulte ses données, les exporte en JSON, dépose une demande d'accès / rectification / effacement et, si l'entreprise l'active, déclare sa présence du jour (facultatif, visible de soi seul, totaux anonymes au tableau de bord, jamais historisé ni journalisé).
+- **Administration** (admin) : réglages (présence, durées de conservation), suivi des demandes (dont « Exécuter l'effacement »), journal d'audit filtrable. Un collaborateur parti peut être anonymisé à la main ; sinon l'anonymisation est automatique après le délai réglé.
+- **Purge nocturne** : `npm run purge`, ou `POST /api/cron/purge` avec `Authorization: Bearer $CRON_SECRET` (secret de 32 caractères minimum ; sans lui la route répond 503).
+- **Sécurité navigateur** : CSP sans aucune origine externe, HSTS en production, `X-Frame-Options`, `Permissions-Policy` (géolocalisation, caméra, micro refusés). Limite connue : la CSP garde `'unsafe-inline'` pour les scripts, car le prérendu partiel (`cacheComponents`) est incompatible avec un nonce.
+- **Variables** : voir `.env.example` (`AUTH_URL` et `APP_ORIGIN` en production, `CRON_SECRET`).
+- **Documents** dans `docs/` (modèles à faire valider par un juriste ou un DPO) : registre des traitements, politique de confidentialité, note aux salariés, sous-traitants, procédure de réponse aux demandes, hébergement UE. Exemples de déploiement dans `deploy/` (non testés).
+- E2E sur la version de production : `npm run build` puis `E2E_PROD=1 npx playwright test` (port 3100).
 
 ## Avancement
 
-Phases 0 à 5 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 6 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet). La carte est sur `/carte` (paramètre `?seed=`).

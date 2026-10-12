@@ -1,4 +1,6 @@
 // Moteur de rendu PixiJS de la carte isométrique (composant client uniquement, jamais côté serveur).
+// Variante de PixiJS sans new Function() : compatible avec une CSP sans 'unsafe-eval'
+import "pixi.js/unsafe-eval";
 import { Application, Container, Graphics } from "pixi.js";
 import { getZoneCenter } from "./zoneCenter";
 import {
