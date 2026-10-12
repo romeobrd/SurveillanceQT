@@ -13,14 +13,19 @@ import {
 
 export type SessionInfo = AccessContext & { organizationName: string };
 
-/** Identité courante (relue en base, une fois par requête) ou null si non connecté. */
-export const getSessionInfo = cache(async (): Promise<SessionInfo | null> => {
-  // Toujours évalué à la requête (jamais prérendu) : la session dépend du cookie de l'utilisateur
-  await connection();
+/** Lecture de la session sans `connection()` : pour les route handlers (toujours dynamiques). */
+export async function readSession(): Promise<SessionInfo | null> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return null;
   return findAccessContext(userId);
+}
+
+/** Identité courante (relue en base, une fois par requête) ou null si non connecté. */
+export const getSessionInfo = cache(async (): Promise<SessionInfo | null> => {
+  // Toujours évalué à la requête (jamais prérendu) : la session dépend du cookie de l'utilisateur
+  await connection();
+  return readSession();
 });
 
 /** Exige une session valide : sinon redirection vers la page de connexion. */

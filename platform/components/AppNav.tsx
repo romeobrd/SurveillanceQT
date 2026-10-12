@@ -12,14 +12,17 @@ const ITEMS = [
   { href: "/stock", label: fr.nav.stock },
   { href: "/materiel", label: fr.nav.assets },
   { href: "/projets", label: fr.nav.projects },
+  { href: "/mes-donnees", label: fr.nav.privacy },
 ] as const;
 
-export default function AppNav() {
+const ADMIN_ITEM = { href: "/administration", label: fr.nav.admin } as const;
+
+export default function AppNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   return (
     <nav aria-label={fr.nav.label}>
       <ul className="flex flex-wrap gap-1">
-        {ITEMS.map((item) => {
+        {(isAdmin ? [...ITEMS, ADMIN_ITEM] : ITEMS).map((item) => {
           const current =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (

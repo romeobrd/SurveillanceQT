@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { departPersonAction, updatePersonAction } from "../actions";
+import {
+  anonymizePersonAction,
+  departPersonAction,
+  updatePersonAction,
+} from "../actions";
 import PersonFormFields from "@/components/PersonForm";
 import ActionForm from "@/components/ui/ActionForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -56,6 +60,18 @@ export default async function EditPersonPage({
             <input type="hidden" name="id" value={person.id} />
           </ConfirmDialog>
         )}
+        {person.status === "DEPARTED" &&
+          !person.anonymized &&
+          can(session.role, "privacy:manageRequests") && (
+            <ConfirmDialog
+              triggerLabel={fr.people.anonymize}
+              title={fr.people.anonymizeTitle}
+              description={fr.people.anonymizeBody}
+              action={anonymizePersonAction}
+            >
+              <input type="hidden" name="id" value={person.id} />
+            </ConfirmDialog>
+          )}
       </div>
     </div>
   );

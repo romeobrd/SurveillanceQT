@@ -151,6 +151,39 @@ export default async function DashboardPage() {
           )}
         </Card>
 
+        {dashboard.presence && (
+          <div className="lg:col-span-2">
+            <Card title={fr.dashboard.presenceTitle}>
+              <ul
+                className="flex flex-wrap gap-6 text-sm"
+                data-testid="presence-totals"
+              >
+                <li>
+                  <strong className="text-2xl">
+                    {dashboard.presence.office}
+                  </strong>{" "}
+                  {fr.dashboard.presenceOffice}
+                </li>
+                <li>
+                  <strong className="text-2xl">
+                    {dashboard.presence.remote}
+                  </strong>{" "}
+                  {fr.dashboard.presenceRemote}
+                </li>
+                <li>
+                  <strong className="text-2xl">
+                    {dashboard.presence.absent}
+                  </strong>{" "}
+                  {fr.dashboard.presenceAbsent}
+                </li>
+              </ul>
+              <p className="mt-2 text-xs text-slate-600">
+                {fr.dashboard.presenceNote}
+              </p>
+            </Card>
+          </div>
+        )}
+
         <div className="lg:col-span-2">
           <Card title={fr.dashboard.projects}>
             {dashboard.projects.length === 0 ? (

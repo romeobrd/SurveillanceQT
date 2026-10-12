@@ -144,6 +144,12 @@ export default async function PeoplePage({
                       ? fr.people.departed
                       : fr.people.active}
                   </Badge>
+                  {person.anonymized && (
+                    <>
+                      {" "}
+                      <Badge tone="warn">{fr.people.anonymized}</Badge>
+                    </>
+                  )}
                 </td>
               )}
               <td className={`${td} flex flex-wrap gap-2`}>

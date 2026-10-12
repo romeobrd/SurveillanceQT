@@ -17,7 +17,7 @@ async function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-dvh flex-col">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-2">
         <span className="font-semibold">{fr.app.name}</span>
-        <AppNav />
+        <AppNav isAdmin={session.role === "ADMIN"} />
         <div className="ml-auto flex items-center gap-3 text-sm">
           <span>
             {session.organizationName} ·{" "}

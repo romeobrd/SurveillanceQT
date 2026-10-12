@@ -49,6 +49,18 @@ export async function departPersonAction(
   redirect("/collaborateurs");
 }
 
+export async function anonymizePersonAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const result = await guarded("privacy:manageRequests", async (repos) => {
+    await repos.people.anonymize(IdSchema.parse(formData.get("id")));
+  });
+  if (result.error) return result;
+  revalidatePath("/collaborateurs");
+  redirect("/collaborateurs");
+}
+
 export async function createTeamAction(
   _previous: ActionState,
   formData: FormData,
