@@ -10,6 +10,12 @@ import {
 } from "./repositories/layouts";
 import { mapDataRepository } from "./repositories/map-data";
 import { peopleRepository, teamsRepository } from "./repositories/people";
+import {
+  auditRepository,
+  presenceRepository,
+  privacyRepository,
+  settingsRepository,
+} from "./repositories/privacy";
 import { projectsRepository } from "./repositories/projects";
 import { stockRepository } from "./repositories/stock";
 import { createTenantDb } from "./tenant";
@@ -27,6 +33,10 @@ export function getRepositories(context: AccessContext) {
     projects: projectsRepository(db, context),
     dashboard: dashboardRepository(db, context),
     map: mapDataRepository(db, context),
+    privacy: privacyRepository(db, context),
+    presence: presenceRepository(db, context),
+    settings: settingsRepository(db, context),
+    audit: auditRepository(db, context),
   };
 }
 

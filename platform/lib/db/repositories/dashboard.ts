@@ -1,6 +1,7 @@
 // Tableau de bord : agrégats sans donnée personnelle (comptes, alertes, avancements).
 import { assertPermission, type AccessContext } from "@/lib/auth/permissions";
 import type { TenantDb } from "../tenant";
+import { presenceRepository } from "./privacy";
 import { projectsRepository, type ProjectView } from "./projects";
 import { stockRepository, type StockItemView } from "./stock";
 
@@ -19,6 +20,8 @@ export interface DashboardData {
     }>;
   };
   projects: ProjectView[];
+  /** Totaux du jour, jamais par personne ; null quand la présence déclarative est désactivée. */
+  presence: { office: number; remote: number; absent: number } | null;
 }
 
 export function dashboardRepository(db: TenantDb, context: AccessContext) {
@@ -73,6 +76,7 @@ export function dashboardRepository(db: TenantDb, context: AccessContext) {
           })),
         },
         projects,
+        presence: await presenceRepository(db, context).todayCounts(),
       };
     },
   };
