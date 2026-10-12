@@ -128,6 +128,130 @@ export async function seedOrganization(
   };
 }
 
+/** Exemples de stock, de matériel et de projets pour la démonstration (données fictives). */
+export async function seedSampleData(
+  organization: SeededOrganization,
+): Promise<void> {
+  const repos = getRepositories(organization.accounts.manager.context);
+  const zones = await repos.zones.list();
+  const zoneOfType = (type: string) =>
+    (zones.find((zone) => zone.type === type) ?? zones[0]).id;
+  const reserve = zoneOfType("reserve");
+
+  const paper = await repos.stock.createItem({
+    name: "Ramettes de papier A4",
+    reference: "PAP-A4",
+    unit: "ramettes",
+    threshold: 10,
+    zoneId: reserve,
+  });
+  await repos.stock.addMovement({
+    stockItemId: paper.id,
+    type: "IN",
+    quantity: 20,
+    reason: "Livraison fournisseur",
+  });
+  await repos.stock.addMovement({
+    stockItemId: paper.id,
+    type: "OUT",
+    quantity: 16,
+    reason: "Réapprovisionnement des imprimantes",
+  });
+  const capsules = await repos.stock.createItem({
+    name: "Capsules de café",
+    reference: "CAF-01",
+    unit: "capsules",
+    threshold: 20,
+    zoneId: zoneOfType("cafeteria"),
+  });
+  await repos.stock.addMovement({
+    stockItemId: capsules.id,
+    type: "IN",
+    quantity: 60,
+    reason: "Commande mensuelle",
+  });
+  const cables = await repos.stock.createItem({
+    name: "Câbles HDMI",
+    reference: "CAB-HDMI",
+    unit: "unités",
+    threshold: 5,
+    zoneId: reserve,
+  });
+  await repos.stock.addMovement({
+    stockItemId: cables.id,
+    type: "IN",
+    quantity: 12,
+    reason: "Livraison fournisseur",
+  });
+
+  const base = {
+    purchaseDate: new Date("2024-03-15"),
+    personId: null,
+    zoneId: null,
+  };
+  await repos.assets.create({
+    ...base,
+    type: "Ordinateur portable",
+    brand: "Dell",
+    model: "Latitude 5440",
+    serialNumber: "DL-0001",
+    state: "IN_SERVICE",
+    personId: organization.accounts.employee.personId,
+  });
+  await repos.assets.create({
+    ...base,
+    type: "Écran",
+    brand: "LG",
+    model: "24MK430H",
+    serialNumber: "LG-0042",
+    state: "IN_SERVICE",
+    zoneId: zoneOfType("open_space"),
+  });
+  await repos.assets.create({
+    ...base,
+    type: "Serveur NAS",
+    brand: "Synology",
+    model: "DS923+",
+    serialNumber: "SY-0007",
+    state: "BROKEN",
+    zoneId: zoneOfType("salle_serveur"),
+  });
+  await repos.assets.create({
+    ...base,
+    type: "Imprimante",
+    brand: "Brother",
+    model: "HL-L3270CDW",
+    serialNumber: "BR-0310",
+    state: "TO_RENEW",
+    zoneId: zoneOfType("accueil"),
+  });
+
+  const teams = await repos.teams.list();
+  const technique = teams.find((team) => team.name === "Technique")?.id ?? null;
+  const network = await repos.projects.create({
+    name: "Migration vers le nouveau réseau",
+    teamId: technique,
+    description: "Câblage et bascule des postes",
+  });
+  const networkSteps = [
+    "Audit de l'existant",
+    "Achat du matériel",
+    "Câblage",
+    "Bascule des postes",
+  ];
+  for (const [index, name] of networkSteps.entries()) {
+    const step = await repos.projects.addStep(network.id, name);
+    if (index < 2) await repos.projects.setStepStatus(step.id, "DONE");
+  }
+  const offices = await repos.projects.create({
+    name: "Réaménagement des bureaux",
+    teamId: null,
+    description: "",
+  });
+  for (const name of ["Plan des postes", "Déménagement", "Installation"])
+    await repos.projects.addStep(offices.id, name);
+}
+
 export const DEV_ORGANIZATIONS: OrganizationSpec[] = [
   {
     name: "Atelier Lumière (démo A)",
@@ -211,7 +335,10 @@ export async function seedDevelopment(): Promise<SeededOrganization[]> {
   if (existing > 0)
     throw new Error("La base contient déjà des données : seed annulé.");
   const result: SeededOrganization[] = [];
-  for (const spec of DEV_ORGANIZATIONS)
-    result.push(await seedOrganization(spec));
+  for (const spec of DEV_ORGANIZATIONS) {
+    const organization = await seedOrganization(spec);
+    await seedSampleData(organization);
+    result.push(organization);
+  }
   return result;
 }
