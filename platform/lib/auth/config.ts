@@ -42,7 +42,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (isLocked(await getAttemptState(key), new Date())) return null;
 
-        const user = await findUserForLogin(email);
+        const found = await findUserForLogin(email);
+        // Un compte désactivé est traité comme un compte inconnu : même réponse, même durée
+        const user = found && !found.disabledAt ? found : null;
         const valid = user
           ? await verifyPassword(user.passwordHash, password)
           : false;

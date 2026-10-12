@@ -8,7 +8,7 @@ import { rawPrisma } from "./client";
 export async function findUserForLogin(email: string) {
   return rawPrisma.user.findUnique({
     where: { email: email.trim().toLowerCase() },
-    select: { id: true, passwordHash: true },
+    select: { id: true, passwordHash: true, disabledAt: true },
   });
 }
 
@@ -23,10 +23,12 @@ export async function findAccessContext(
       organizationId: true,
       role: true,
       personId: true,
+      disabledAt: true,
       organization: { select: { name: true } },
     },
   });
-  if (!user) return null;
+  // Compte désactivé (départ, anonymisation) : plus aucune session valide, effet immédiat
+  if (!user || user.disabledAt) return null;
   return {
     userId: user.id,
     organizationId: user.organizationId,

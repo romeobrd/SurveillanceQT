@@ -89,13 +89,15 @@ model Organization {
 }
 
 model User {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
-  email          String   @unique
+  email          String    @unique
   passwordHash   String
   role           Role
   personId       String?
-  createdAt      DateTime @default(now())
+  /// Compte désactivé (départ, anonymisation) : connexion impossible, session invalide immédiatement.
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   person          Person?          @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
@@ -138,6 +140,10 @@ model Person {
   jobTitle       String
   teamId         String?
   status         PersonStatus @default(ACTIVE)
+  /// Date de départ : sert à compter la durée de conservation avant anonymisation (donnée non personnelle).
+  departedAt     DateTime?
+  /// Renseigné quand les données personnelles ont été anonymisées.
+  anonymizedAt   DateTime?
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   team             Team?             @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: NoAction)
@@ -344,6 +350,8 @@ model PrivacyRequest {
   requesterId    String
   type           PrivacyRequestType
   status         PrivacyRequestStatus @default(OPEN)
+  /// Précision libre de la personne sur sa propre demande (500 caractères) ; effacée à l'anonymisation.
+  details        String               @default("")
   createdAt      DateTime             @default(now())
   resolvedAt     DateTime?
 

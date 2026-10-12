@@ -19,6 +19,10 @@ export const PERMISSIONS = {
   "org:settings": ["ADMIN"],
   "users:manage": ["ADMIN"],
   "privacy:manageRequests": ["ADMIN"],
+  /** « Mes données » : chacun consulte, exporte et demande la rectification ou l'effacement de SES données. */
+  "privacy:self": ["ADMIN", "MANAGER", "EMPLOYEE"],
+  /** Présence déclarative : saisie par le salarié lui-même, jamais par un tiers. */
+  "presence:declare": ["ADMIN", "MANAGER", "EMPLOYEE"],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

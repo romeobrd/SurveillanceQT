@@ -17,7 +17,8 @@
     "db:seed": "prisma db seed",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
-    "db:seed:e2e": "tsx --conditions=react-server prisma/seed-e2e.ts"
+    "db:seed:e2e": "tsx --conditions=react-server prisma/seed-e2e.ts",
+    "purge": "tsx --conditions=react-server prisma/purge.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",

@@ -12,15 +12,14 @@ import {
   type PersonInput,
 } from "@/features/people/schemas";
 import { recordAudit } from "../audit";
+import { anonymizePerson, departPerson } from "../privacy-core";
 import {
   DuplicateError,
   InUseError,
-  InvalidOperationError,
   NotFoundError,
   rethrowUnique,
 } from "../errors";
 import type { TenantDb } from "../tenant";
-import { recordAssignmentChange } from "./asset-history";
 
 export { PersonInputSchema, type PersonInput };
 
@@ -36,6 +35,8 @@ export interface DirectoryEntry {
   /** Réservés aux rôles autorisés (people:readDetails). */
   workEmail?: string;
   status?: "ACTIVE" | "DEPARTED";
+  /** Données déjà anonymisées (réservé aux rôles autorisés). */
+  anonymized?: boolean;
 }
 
 export function peopleRepository(db: TenantDb, context: AccessContext) {
@@ -50,6 +51,7 @@ export function peopleRepository(db: TenantDb, context: AccessContext) {
     workstations: { select: { zone: { select: { key: true } } }, take: 1 },
     workEmail: withDetails,
     status: withDetails,
+    anonymizedAt: withDetails,
   } as const;
 
   type Row = {
@@ -62,15 +64,19 @@ export function peopleRepository(db: TenantDb, context: AccessContext) {
     workstations: Array<{ zone: { key: string } }>;
     workEmail?: string;
     status?: "ACTIVE" | "DEPARTED";
+    anonymizedAt?: Date | null;
   };
 
   const toEntry = (row: Row): DirectoryEntry => {
-    const { team, workstations, workEmail, status, ...rest } = row;
+    const { team, workstations, workEmail, status, anonymizedAt, ...rest } =
+      row;
     return {
       ...rest,
       teamName: team?.name ?? null,
       zoneKey: workstations[0]?.zone.key ?? null,
-      ...(withDetails ? { workEmail, status } : {}),
+      ...(withDetails
+        ? { workEmail, status, anonymized: anonymizedAt != null }
+        : {}),
     };
   };
 
@@ -171,41 +177,25 @@ export function peopleRepository(db: TenantDb, context: AccessContext) {
     },
 
     /**
-     * Départ d'un collaborateur : statut « parti », poste libéré, matériel restitué (historique conservé).
-     * L'anonymisation de ses données est traitée en phase 6.
+     * Départ d'un collaborateur : statut « parti », poste libéré, matériel restitué, connexion désactivée.
+     * Ses données sont anonymisées après la durée de conservation de l'entreprise, ou à la demande (anonymize).
      */
     async markDeparted(id: string): Promise<void> {
       assertPermission(context, "people:write");
-      await db.$transaction(async (tx) => {
-        const person = await tx.person.findUnique({
-          where: { id },
-          select: { status: true },
-        });
-        if (!person) throw new NotFoundError("Collaborateur");
-        if (person.status === "DEPARTED")
-          throw new InvalidOperationError("Collaborateur déjà parti");
-        await tx.person.update({ where: { id }, data: { status: "DEPARTED" } });
-        await tx.workstation.updateMany({
-          where: { personId: id },
-          data: { personId: null },
-        });
-        const assets = await tx.asset.findMany({
-          where: { personId: id },
-          select: { id: true, zoneId: true },
-        });
-        for (const asset of assets) {
-          await tx.asset.update({
-            where: { id: asset.id },
-            data: { personId: null },
-          });
-          await recordAssignmentChange(tx, context.organizationId, asset.id, {
-            personId: null,
-            zoneId: asset.zoneId,
-          });
-        }
-      });
+      await departPerson(context.organizationId, id);
       await recordAudit(db, context, {
         action: "person.depart",
+        resourceType: "Person",
+        resourceId: id,
+      });
+    },
+
+    /** Anonymise tout de suite les données personnelles d'un collaborateur (effacement, SPEC §8.5). Irréversible. */
+    async anonymize(id: string): Promise<void> {
+      assertPermission(context, "privacy:manageRequests");
+      await anonymizePerson(context.organizationId, id);
+      await recordAudit(db, context, {
+        action: "person.anonymize",
         resourceType: "Person",
         resourceId: id,
       });
