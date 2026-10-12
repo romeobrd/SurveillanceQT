@@ -20,6 +20,7 @@ const TOUCH: Record<string, Record<string, unknown>> = {
   StockItem: { name: "piratage" },
   StockMovement: { reason: "piratage" },
   Asset: { brand: "piratage" },
+  AssetAssignment: { releasedAt: new Date() },
   Project: { name: "piratage" },
   ProjectStep: { name: "piratage" },
   PresenceStatus: { status: "ABSENT" },

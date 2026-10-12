@@ -32,7 +32,7 @@ export async function loginAction(
     if (error instanceof AuthError) return { error: "invalid", email };
     throw error;
   }
-  redirect("/carte");
+  redirect("/tableau-de-bord");
 }
 
 export async function logoutAction(): Promise<void> {

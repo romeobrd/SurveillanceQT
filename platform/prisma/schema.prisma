@@ -85,6 +85,7 @@ model Organization {
   presenceStatuses PresenceStatus[]
   auditLogs        AuditLog[]
   privacyRequests  PrivacyRequest[]
+  assetAssignments AssetAssignment[]
 }
 
 model User {
@@ -138,12 +139,13 @@ model Person {
   teamId         String?
   status         PersonStatus @default(ACTIVE)
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  team         Team?            @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: NoAction)
-  user         User?
-  workstations Workstation[]
-  assets       Asset[]
-  presences    PresenceStatus[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team             Team?             @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  user             User?
+  workstations     Workstation[]
+  assets           Asset[]
+  assetAssignments AssetAssignment[]
+  presences        PresenceStatus[]
 
   @@unique([id, organizationId])
   @@index([organizationId])
@@ -174,10 +176,11 @@ model Zone {
   name           String
   type           String
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workstations Workstation[]
-  stockItems   StockItem[]
-  assets       Asset[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workstations     Workstation[]
+  stockItems       StockItem[]
+  assets           Asset[]
+  assetAssignments AssetAssignment[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, key])
@@ -247,12 +250,32 @@ model Asset {
   personId       String?
   zoneId         String?
 
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  person       Person?           @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  zone         Zone?             @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  assignments  AssetAssignment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, serialNumber])
+}
+
+/// Historique d'affectation du matériel (SPEC §7). personId passe à null lors de l'anonymisation d'un départ.
+model AssetAssignment {
+  id             String    @id @default(cuid())
+  organizationId String
+  assetId        String
+  personId       String?
+  zoneId         String?
+  assignedAt     DateTime  @default(now())
+  releasedAt     DateTime?
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  asset        Asset        @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
   person       Person?      @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
   zone         Zone?        @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
 
   @@unique([id, organizationId])
-  @@unique([organizationId, serialNumber])
+  @@index([assetId])
 }
 
 model Project {

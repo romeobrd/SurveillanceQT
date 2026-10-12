@@ -1,13 +1,16 @@
+import Link from "next/link";
 import { fr } from "@/lib/i18n/fr";
 import type { Layout, Zone } from "@/lib/map/schema";
 import { ZONE_LABELS } from "@/lib/map/zoneTypes";
-import type { MockData, Role } from "@/features/map/types";
+import type { MapData, Role } from "@/features/map/types";
 
 interface ZonePanelProps {
   layout: Layout;
-  data: MockData;
+  data: MapData;
   zone: Zone | null;
   role: Role;
+  /** Identifiant en base des zones de la carte (vide en aperçu) : liens vers les modules. */
+  zoneDbIds: Record<string, string>;
   onSelectZone: (zoneId: string | null) => void;
 }
 
@@ -51,6 +54,7 @@ export default function ZonePanel({
   data,
   zone,
   role,
+  zoneDbIds,
   onSelectZone,
 }: ZonePanelProps) {
   if (!zone) return <ZoneList layout={layout} onSelectZone={onSelectZone} />;
@@ -143,7 +147,7 @@ export default function ZonePanel({
                 <span>{asset.label}</span>
                 <span
                   className={
-                    asset.state === "en_service"
+                    asset.state === "IN_SERVICE"
                       ? "text-slate-600"
                       : "font-medium text-red-700"
                   }
@@ -219,27 +223,35 @@ export default function ZonePanel({
         )}
       </section>
 
-      {canAct && (
+      {canAct && zoneDbIds[zone.id] && (
         <section aria-labelledby="actions-title">
           <h3 id="actions-title" className={sectionTitle}>
             {fr.map.quickActions}
           </h3>
           <div className="flex flex-wrap gap-2">
-            {Object.values(fr.map.actions).map((label) => (
-              <button
-                key={label}
-                type="button"
-                disabled
-                title={fr.map.quickActionsSoon}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-500 disabled:cursor-not-allowed"
+            {[
+              {
+                label: fr.map.actions.assignWorkstation,
+                href: `/postes?zoneId=${zoneDbIds[zone.id]}&status=free`,
+              },
+              {
+                label: fr.map.actions.stockMovement,
+                href: `/stock?zoneId=${zoneDbIds[zone.id]}`,
+              },
+              {
+                label: fr.map.actions.reportIssue,
+                href: `/materiel?zoneId=${zoneDbIds[zone.id]}`,
+              },
+            ].map((action) => (
+              <Link
+                key={action.label}
+                href={action.href}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
               >
-                {label}
-              </button>
+                {action.label}
+              </Link>
             ))}
           </div>
-          <p className="mt-1 text-xs text-slate-600">
-            {fr.map.quickActionsSoon}
-          </p>
         </section>
       )}
     </article>

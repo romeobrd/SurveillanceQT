@@ -14,6 +14,7 @@ const MODEL_NAMES = [
   "stockItem",
   "stockMovement",
   "asset",
+  "assetAssignment",
   "project",
   "projectStep",
   "presenceStatus",

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 async function RedirectIfSignedIn() {
-  if (await getSessionInfo()) redirect("/carte");
+  if (await getSessionInfo()) redirect("/tableau-de-bord");
   return null;
 }
 

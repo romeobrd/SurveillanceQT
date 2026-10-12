@@ -1,0 +1,60 @@
+// Aides communes aux server actions : droits vérifiés côté serveur, erreurs métier traduites.
+import "server-only";
+import { ZodError } from "zod";
+import type { Permission } from "@/lib/auth/permissions";
+import { requirePermission, type SessionInfo } from "@/lib/auth/session";
+import {
+  DuplicateError,
+  ForbiddenError,
+  getRepositories,
+  InsufficientStockError,
+  InUseError,
+  InvalidLayoutError,
+  InvalidOperationError,
+  NotFoundError,
+  ReassignmentRequiredError,
+  type Repositories,
+} from "@/lib/db";
+import { fr } from "@/lib/i18n/fr";
+
+export type ActionState = { error: string | null };
+
+export function actionErrorMessage(error: unknown): string | null {
+  if (error instanceof ZodError) return fr.errors.invalid;
+  if (error instanceof ForbiddenError) return fr.errors.forbidden;
+  if (error instanceof NotFoundError) return fr.errors.notFound;
+  if (error instanceof InUseError) return fr.errors.inUse;
+  if (error instanceof InsufficientStockError)
+    return fr.errors.insufficientStock;
+  if (error instanceof DuplicateError) return fr.errors.duplicate;
+  if (error instanceof InvalidOperationError) return fr.errors.invalidOperation;
+  if (error instanceof ReassignmentRequiredError)
+    return `${fr.errors.reassignment} (${error.blockers.join(", ")})`;
+  if (error instanceof InvalidLayoutError) return fr.errors.invalid;
+  return null;
+}
+
+/**
+ * Exécute une action après vérification du droit. Les erreurs métier deviennent un message ;
+ * les erreurs inattendues sont relancées (page d'erreur) et jamais affichées en détail.
+ */
+export async function guarded(
+  permission: Permission,
+  run: (repos: Repositories, session: SessionInfo) => Promise<void>,
+): Promise<ActionState> {
+  try {
+    const session = await requirePermission(permission);
+    await run(getRepositories(session), session);
+    return { error: null };
+  } catch (error) {
+    const message = actionErrorMessage(error);
+    if (message === null) throw error;
+    return { error: message };
+  }
+}
+
+export function formObject(
+  formData: FormData,
+): Record<string, FormDataEntryValue> {
+  return Object.fromEntries(formData.entries());
+}

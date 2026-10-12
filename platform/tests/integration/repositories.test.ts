@@ -50,6 +50,8 @@ describe("employé", () => {
         "jobTitle",
         "lastName",
         "teamId",
+        "teamName",
+        "zoneKey",
       ]);
     }
   });

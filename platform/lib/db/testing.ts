@@ -15,7 +15,7 @@ export { rawPrisma as testRawPrisma };
 
 export async function resetDatabase(): Promise<void> {
   await rawPrisma.$executeRawUnsafe(
-    `TRUNCATE "AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
+    `TRUNCATE "AssetAssignment","AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
       `"Workstation","Zone","Layout","User","Person","Team","LoginAttempt","Organization" CASCADE`,
   );
 }
@@ -64,6 +64,14 @@ export async function seedFullOrganization(
       brand: "Marque",
       model: "Modèle",
       serialNumber: `SN-${organizationId}`,
+      personId: person,
+      zoneId: zone.id,
+    },
+  });
+  const assignment = await rawPrisma.assetAssignment.create({
+    data: {
+      organizationId,
+      assetId: asset.id,
       personId: person,
       zoneId: zone.id,
     },
@@ -118,6 +126,7 @@ export async function seedFullOrganization(
       StockItem: stockItem.id,
       StockMovement: movement.id,
       Asset: asset.id,
+      AssetAssignment: assignment.id,
       Project: project.id,
       ProjectStep: step.id,
       PresenceStatus: presence.id,

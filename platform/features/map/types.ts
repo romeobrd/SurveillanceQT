@@ -1,9 +1,9 @@
-// Types des données factices de la carte (remplacées par la base de données aux phases 3 et 4).
+// Données affichées sur la carte et dans le panneau de zone (lues en base, par zone de la carte).
 
 export type Role = "admin" | "manager" | "employe";
 
 /** Champs strictement limités à SPEC §4 : aucune autre donnée personnelle. */
-export interface MockPerson {
+export interface MapPerson {
   id: string;
   firstName: string;
   lastName: string;
@@ -11,14 +11,14 @@ export interface MockPerson {
   team: string;
 }
 
-export interface MockWorkstation {
+export interface MapWorkstation {
   elementId: string;
   zoneId: string;
   label: string;
   personId: string | null;
 }
 
-export interface MockStockItem {
+export interface MapStockItem {
   id: string;
   zoneId: string;
   name: string;
@@ -27,16 +27,16 @@ export interface MockStockItem {
   threshold: number;
 }
 
-export type AssetState = "en_service" | "en_panne" | "a_renouveler";
+export type AssetState = "IN_SERVICE" | "BROKEN" | "TO_RENEW" | "RETIRED";
 
-export interface MockAsset {
+export interface MapAsset {
   id: string;
   zoneId: string;
   label: string;
   state: AssetState;
 }
 
-export interface MockProject {
+export interface MapProject {
   id: string;
   name: string;
   team: string;
@@ -44,10 +44,10 @@ export interface MockProject {
   progress: number;
 }
 
-export interface MockData {
-  people: MockPerson[];
-  workstations: MockWorkstation[];
-  stock: MockStockItem[];
-  assets: MockAsset[];
-  projects: MockProject[];
+export interface MapData {
+  people: MapPerson[];
+  workstations: MapWorkstation[];
+  stock: MapStockItem[];
+  assets: MapAsset[];
+  projects: MapProject[];
 }
