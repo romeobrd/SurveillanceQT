@@ -7,6 +7,7 @@ import { generateMockData, getPersonMarkers } from "@/features/map/mockData";
 import type { Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
 import { generateLayout } from "@/lib/map/generator";
+import { logoutAction } from "@/app/login/actions";
 import ZonePanel from "./ZonePanel";
 
 const MapView = dynamic(() => import("./MapView"), {
@@ -30,13 +31,20 @@ function parseSeed(value: string | null): number {
     : DEFAULT_SEED;
 }
 
-function MapWorkspace({ seed }: { seed: number }) {
+function MapWorkspace({
+  seed,
+  role,
+  organizationName,
+}: {
+  seed: number;
+  role: Role;
+  organizationName: string;
+}) {
   const router = useRouter();
   const layout = useMemo(() => generateLayout(seed), [seed]);
   const data = useMemo(() => generateMockData(layout), [layout]);
   const people = useMemo(() => getPersonMarkers(data), [data]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>("manager");
   const selectedZone =
     layout.zones.find((zone) => zone.id === selectedZoneId) ?? null;
 
@@ -61,20 +69,20 @@ function MapWorkspace({ seed }: { seed: number }) {
         >
           {fr.map.newLayout}
         </button>
-        <label className="ml-auto flex items-center gap-2 text-sm">
-          {fr.map.roleLabel}
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value as Role)}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1"
-          >
-            {(Object.keys(fr.map.roles) as Role[]).map((key) => (
-              <option key={key} value={key}>
-                {fr.map.roles[key]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="ml-auto flex items-center gap-3 text-sm">
+          <span>
+            {organizationName} ·{" "}
+            <span data-testid="role">{fr.map.roles[role]}</span>
+          </span>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
+            >
+              {fr.auth.logout}
+            </button>
+          </form>
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <main className="min-h-[50vh] flex-1">
@@ -102,7 +110,20 @@ function MapWorkspace({ seed }: { seed: number }) {
   );
 }
 
-export default function MapExplorer() {
+export default function MapExplorer({
+  role,
+  organizationName,
+}: {
+  role: Role;
+  organizationName: string;
+}) {
   const seed = parseSeed(useSearchParams().get("seed"));
-  return <MapWorkspace key={seed} seed={seed} />;
+  return (
+    <MapWorkspace
+      key={seed}
+      seed={seed}
+      role={role}
+      organizationName={organizationName}
+    />
+  );
 }
