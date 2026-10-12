@@ -110,6 +110,10 @@ export const fr = {
     invalidOperation: "Cette opération n'est pas possible dans l'état actuel.",
     reassignment:
       "Des éléments encore utilisés seraient retirés : réaffectez-les d'abord.",
+    invalidLayout:
+      "Cette carte ne peut pas être enregistrée : vérifiez les accès et la cohérence des locaux.",
+    stale:
+      "La carte a été modifiée par quelqu'un d'autre depuis l'ouverture de l'éditeur. Rechargez la page.",
     generic: "Une erreur est survenue. Réessayez.",
   },
   dashboard: {

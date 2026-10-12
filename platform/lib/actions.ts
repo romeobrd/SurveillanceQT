@@ -13,6 +13,7 @@ import {
   InvalidOperationError,
   NotFoundError,
   ReassignmentRequiredError,
+  StaleLayoutError,
   type Repositories,
 } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
@@ -30,7 +31,8 @@ export function actionErrorMessage(error: unknown): string | null {
   if (error instanceof InvalidOperationError) return fr.errors.invalidOperation;
   if (error instanceof ReassignmentRequiredError)
     return `${fr.errors.reassignment} (${error.blockers.join(", ")})`;
-  if (error instanceof InvalidLayoutError) return fr.errors.invalid;
+  if (error instanceof InvalidLayoutError) return fr.errors.invalidLayout;
+  if (error instanceof StaleLayoutError) return fr.errors.stale;
   return null;
 }
 
@@ -57,4 +59,19 @@ export function formObject(
   formData: FormData,
 ): Record<string, FormDataEntryValue> {
   return Object.fromEntries(formData.entries());
+}
+
+/** Comme `guarded`, mais renvoie une valeur (aperçu d'impact, contenu d'une version…). */
+export async function guardedValue<T>(
+  permission: Permission,
+  run: (repos: Repositories, session: SessionInfo) => Promise<T>,
+): Promise<{ error: string | null; value?: T }> {
+  try {
+    const session = await requirePermission(permission);
+    return { error: null, value: await run(getRepositories(session), session) };
+  } catch (error) {
+    const message = actionErrorMessage(error);
+    if (message === null) throw error;
+    return { error: message };
+  }
 }

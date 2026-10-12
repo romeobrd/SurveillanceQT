@@ -56,3 +56,11 @@ export function rethrowUnique(error: unknown, field: string): never {
   }
   throw error;
 }
+
+/** La carte active a changé depuis l'ouverture de l'éditeur : enregistrer écraserait le travail d'un autre. */
+export class StaleLayoutError extends Error {
+  constructor() {
+    super("La carte a été modifiée depuis l'ouverture de l'éditeur");
+    this.name = "StaleLayoutError";
+  }
+}

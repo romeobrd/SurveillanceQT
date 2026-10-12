@@ -38,6 +38,7 @@ export {
   InsufficientStockError,
   InvalidOperationError,
   NotFoundError,
+  StaleLayoutError,
 } from "./errors";
 export {
   ReassignmentRequiredError,

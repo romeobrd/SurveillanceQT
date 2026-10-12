@@ -4,6 +4,7 @@ export * from "./geometry";
 export * from "./history";
 export * from "./ids";
 export * from "./operations";
+export * from "./plan";
 export * from "./placement";
 export * from "./queries";
 export * from "./save";
