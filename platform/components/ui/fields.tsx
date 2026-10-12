@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 export const inputClass =
   "w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-orange-600";
@@ -57,9 +57,10 @@ export function SelectField({
   placeholder?: string;
   help?: string;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const domId = useId();
   return (
-    <Field id={id} label={label} help={help}>
-      <select id={id} name={id} className={inputClass} {...props}>
+    <Field id={domId} label={label} help={help}>
+      <select id={domId} name={id} className={inputClass} {...props}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -79,9 +80,16 @@ export function TextArea({
   id: string;
   label: string;
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const domId = useId();
   return (
-    <Field id={id} label={label}>
-      <textarea id={id} name={id} rows={3} className={inputClass} {...props} />
+    <Field id={domId} label={label}>
+      <textarea
+        id={domId}
+        name={id}
+        rows={3}
+        className={inputClass}
+        {...props}
+      />
     </Field>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { fr } from "@/lib/i18n/fr";
 import { inputClass } from "./fields";
 
@@ -197,9 +197,15 @@ export function Card({
   title: string;
   children: ReactNode;
 }) {
+  const titleId = useId();
   return (
-    <section className="rounded-lg border border-slate-200 p-4">
-      <h2 className="mb-3 text-lg font-semibold">{title}</h2>
+    <section
+      aria-labelledby={titleId}
+      className="rounded-lg border border-slate-200 p-4"
+    >
+      <h2 id={titleId} className="mb-3 text-lg font-semibold">
+        {title}
+      </h2>
       {children}
     </section>
   );

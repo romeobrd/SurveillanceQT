@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { fr } from "@/lib/i18n/fr";
 import ActionForm, { type ActionState } from "./ActionForm";
 
@@ -24,6 +24,7 @@ export default function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   return (
     <>
       <button
@@ -35,10 +36,10 @@ export default function ConfirmDialog({
       </button>
       <dialog
         ref={dialogRef}
-        aria-labelledby="confirm-title"
+        aria-labelledby={titleId}
         className="m-auto w-full max-w-md rounded-lg p-6 shadow-xl backdrop:bg-slate-900/50"
       >
-        <h2 id="confirm-title" className="text-lg font-semibold">
+        <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
         <p className="mt-2 text-sm text-slate-700">{description}</p>

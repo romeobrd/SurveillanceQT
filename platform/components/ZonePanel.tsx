@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useId } from "react";
 import { fr } from "@/lib/i18n/fr";
 import type { Layout, Zone } from "@/lib/map/schema";
 import { ZONE_LABELS } from "@/lib/map/zoneTypes";
@@ -21,9 +22,10 @@ function ZoneList({
   layout,
   onSelectZone,
 }: Pick<ZonePanelProps, "layout" | "onSelectZone">) {
+  const uid = useId();
   return (
-    <section aria-labelledby="zone-list-title">
-      <h2 id="zone-list-title" className="text-lg font-semibold">
+    <section aria-labelledby={`${uid}-zone-list`}>
+      <h2 id={`${uid}-zone-list`} className="text-lg font-semibold">
         {fr.map.zoneList}
       </h2>
       <p className="mb-3 text-sm text-slate-600">{fr.map.zoneListHint}</p>
@@ -57,6 +59,7 @@ export default function ZonePanel({
   zoneDbIds,
   onSelectZone,
 }: ZonePanelProps) {
+  const uid = useId();
   if (!zone) return <ZoneList layout={layout} onSelectZone={onSelectZone} />;
 
   const workstations = data.workstations.filter((w) => w.zoneId === zone.id);
@@ -76,10 +79,10 @@ export default function ZonePanel({
   const canAct = role === "admin" || role === "manager";
 
   return (
-    <article aria-labelledby="zone-title" className="flex flex-col gap-5">
+    <article aria-labelledby={`${uid}-zone`} className="flex flex-col gap-5">
       <header className="flex items-start justify-between gap-2">
         <div>
-          <h2 id="zone-title" className="text-xl font-semibold">
+          <h2 id={`${uid}-zone`} className="text-xl font-semibold">
             {zone.name}
           </h2>
           <p className="text-sm text-slate-600">{ZONE_LABELS[zone.type]}</p>
@@ -94,8 +97,8 @@ export default function ZonePanel({
         </button>
       </header>
 
-      <section aria-labelledby="ws-title">
-        <h3 id="ws-title" className={sectionTitle}>
+      <section aria-labelledby={`${uid}-ws`}>
+        <h3 id={`${uid}-ws`} className={sectionTitle}>
           {fr.map.workstations} ({occupiedCount}/{workstations.length}{" "}
           {fr.map.occupied})
         </h3>
@@ -134,8 +137,8 @@ export default function ZonePanel({
         )}
       </section>
 
-      <section aria-labelledby="assets-title">
-        <h3 id="assets-title" className={sectionTitle}>
+      <section aria-labelledby={`${uid}-assets`}>
+        <h3 id={`${uid}-assets`} className={sectionTitle}>
           {fr.map.assets}
         </h3>
         {assets.length === 0 ? (
@@ -160,8 +163,8 @@ export default function ZonePanel({
         )}
       </section>
 
-      <section aria-labelledby="stock-title">
-        <h3 id="stock-title" className={sectionTitle}>
+      <section aria-labelledby={`${uid}-stock`}>
+        <h3 id={`${uid}-stock`} className={sectionTitle}>
           {fr.map.stock}
         </h3>
         {stock.length === 0 ? (
@@ -194,8 +197,8 @@ export default function ZonePanel({
         )}
       </section>
 
-      <section aria-labelledby="projects-title">
-        <h3 id="projects-title" className={sectionTitle}>
+      <section aria-labelledby={`${uid}-projects`}>
+        <h3 id={`${uid}-projects`} className={sectionTitle}>
           {fr.map.projects}
         </h3>
         {projects.length === 0 ? (
@@ -224,8 +227,8 @@ export default function ZonePanel({
       </section>
 
       {canAct && zoneDbIds[zone.id] && (
-        <section aria-labelledby="actions-title">
-          <h3 id="actions-title" className={sectionTitle}>
+        <section aria-labelledby={`${uid}-actions`}>
+          <h3 id={`${uid}-actions`} className={sectionTitle}>
             {fr.map.quickActions}
           </h3>
           <div className="flex flex-wrap gap-2">
