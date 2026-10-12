@@ -342,3 +342,55 @@ export async function seedDevelopment(): Promise<SeededOrganization[]> {
   }
   return result;
 }
+
+/** Entreprise dédiée aux tests e2e destructifs (enregistrement, restauration de cartes) : recréée avant chaque série. */
+export const E2E_ORGANIZATION: OrganizationSpec = {
+  name: "Atelier E2E (test automatisé)",
+  sector: "bureau",
+  emailDomain: "atelier-e2e.example",
+  mapSeed: 2024,
+  people: [
+    {
+      firstName: "Paul",
+      lastName: "Martin",
+      jobTitle: "Directeur",
+      team: "Direction",
+    },
+    {
+      firstName: "Inès",
+      lastName: "Garnier",
+      jobTitle: "Office manager",
+      team: "Administration",
+    },
+    {
+      firstName: "Théo",
+      lastName: "Faure",
+      jobTitle: "Développeur",
+      team: "Technique",
+    },
+    {
+      firstName: "Manon",
+      lastName: "Blanc",
+      jobTitle: "Technicienne",
+      team: "Technique",
+    },
+    {
+      firstName: "Jules",
+      lastName: "Chevalier",
+      jobTitle: "Commercial",
+      team: "Commercial",
+    },
+  ],
+};
+
+/** Supprime puis recrée l'entreprise de test e2e (les autres entreprises ne sont jamais touchées). */
+export async function resetE2eOrganization(): Promise<SeededOrganization> {
+  if (process.env.NODE_ENV === "production")
+    throw new Error("Interdit en production");
+  await rawPrisma.organization.deleteMany({
+    where: { name: E2E_ORGANIZATION.name },
+  });
+  const organization = await seedOrganization(E2E_ORGANIZATION);
+  await seedSampleData(organization);
+  return organization;
+}

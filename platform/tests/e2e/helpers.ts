@@ -8,12 +8,20 @@ export const ACCOUNTS = {
   employee: "employee@atelier-lumiere.example",
 } as const;
 
+/** Entreprise dédiée aux tests destructifs (recréée par `npm run db:seed:e2e`). */
+export const E2E_ACCOUNTS = {
+  admin: "admin@atelier-e2e.example",
+  manager: "manager@atelier-e2e.example",
+  employee: "employee@atelier-e2e.example",
+} as const;
+
 export async function login(
   page: Page,
   who: keyof typeof ACCOUNTS = "manager",
+  accounts: Record<keyof typeof ACCOUNTS, string> = ACCOUNTS,
 ) {
   await page.goto("/login");
-  await page.getByLabel("Adresse e-mail professionnelle").fill(ACCOUNTS[who]);
+  await page.getByLabel("Adresse e-mail professionnelle").fill(accounts[who]);
   await page.getByLabel("Mot de passe").fill(DEV_PASSWORD);
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page).toHaveURL(/\/tableau-de-bord/);

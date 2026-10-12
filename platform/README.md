@@ -32,10 +32,13 @@ npm run typecheck
 npm test                  # unitaires + intégration (PostgreSQL de test requis)
 npm run test:unit         # sans base de données
 npm run test:integration  # exige DATABASE_URL_TEST
-npm run test:e2e          # Playwright (navigateur + base de développement semée ; les tests créent leurs propres données)
+npm run test:e2e          # Playwright (navigateur + base de développement semée)
+npm run db:seed:e2e       # (re)crée l'entreprise « Atelier E2E », utilisée par les tests e2e destructifs
 ```
 
 Les tests d'intégration vident la base `DATABASE_URL_TEST` : elle doit être différente de `DATABASE_URL`.
+
+Les tests e2e qui enregistrent ou restaurent des cartes (`editor-save.spec.ts`) travaillent sur une entreprise dédiée, recréée avant chaque test : les entreprises de démonstration ne sont jamais modifiées.
 
 Sans navigateur téléchargeable, Playwright peut utiliser un Chromium existant : `CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e`.
 
@@ -55,6 +58,19 @@ Après connexion, la navigation donne accès à :
 
 Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppression demande une confirmation ; chaque module a un lien « Voir sur la carte ».
 
+## Mode Aménager
+
+Sur `/carte`, les administrateurs et managers basculent de **Vue** à **Aménager** :
+
+- **Catalogue** par catégories (postes, mobilier, équipements, structure) : glisser-déposer ou clic pour armer puis clic sur la carte. Aperçu fantôme **vert** (valide) ou **rouge** avec la raison (collision, hors pièce, trop près d'une porte, bloque un passage).
+- **Gestes** : sélection (clic, Maj+clic, rectangle Maj+glisser), déplacement par glisser, **R** pour tourner, **Suppr**, **Échap**, **Ctrl+Z / Ctrl+Y**, flèches pour déplacer la sélection ou le curseur de pose, **Entrée** pour poser, Espace+glisser pour déplacer la carte.
+- **Pièces** : tracer un rectangle, redimensionner (champs numériques), typer, renommer, supprimer. Les murs de contour suivent. **Murs, cloisons vitrées et portes** se posent à la main sur les arêtes.
+- **Point de départ** : carte enregistrée, carte générée (seed) ou locaux vides (10 à 60 tuiles par côté).
+- **Enregistrement explicite** : la carte est entièrement revalidée côté serveur (schéma, cohérence, accessibilité depuis l'entrée, taille). Si des postes attribués, du stock ou du matériel disparaissent avec une pièce ou un poste, un **dialogue de réaffectation** exige une décision pour chacun (libérer la personne ou la placer ailleurs ; détacher ou ranger ailleurs) : rien n'est perdu en silence.
+- **Versions** : historique (numéro et date), ouvrir une version dans l'éditeur ou la **restaurer** (crée une nouvelle version, l'historique est conservé). Un enregistrement est refusé si quelqu'un d'autre a modifié la carte entre-temps.
+
+La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, testée sans navigateur.
+
 ## Architecture des données
 
 - **Multi-tenant** : aucune requête Prisma hors de `lib/db` (règle ESLint). Le code applicatif passe par `getRepositories(contexte)`, dont le contexte vient toujours de la session. Une extension Prisma impose `organizationId` à chaque lecture et écriture (liste blanche d'opérations, écritures imbriquées refusées).
@@ -68,4 +84,4 @@ Hébergement prévu dans l'Union européenne (à documenter à la phase 7). Aucu
 
 ## Avancement
 
-Phases 0 à 4 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 5 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager). La carte est sur `/carte` (paramètre `?seed=`).
