@@ -17,6 +17,7 @@ const PAGES = [
   "/administration/comptes",
   "/administration/abonnement",
   "/stock/reapprovisionnement",
+  "/import/collaborateurs",
   "/mon-compte",
   "/cgu",
   "/confidentialite",

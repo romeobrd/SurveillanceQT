@@ -656,6 +656,46 @@ export const fr = {
     sectionRequests: "Demandes",
     sectionJournal: "Journal",
   },
+  importCsv: {
+    open: "Importer (CSV)",
+    titles: {
+      collaborateurs: "Importer des collaborateurs",
+      materiel: "Importer du matériel",
+      stock: "Importer des articles de stock",
+    },
+    back: {
+      collaborateurs: "/collaborateurs",
+      materiel: "/materiel",
+      stock: "/stock",
+    },
+    intro:
+      "Envoyez un fichier CSV (séparateur « ; » ou « , », tel qu'enregistré par Excel ou LibreOffice). Vous verrez un aperçu avant tout enregistrement.",
+    columns: "Colonnes attendues",
+    optional: "facultative",
+    template: "Télécharger le modèle de fichier",
+    file: "Fichier CSV",
+    limits: "1 Mo et 2 000 lignes au maximum.",
+    analyze: "Analyser le fichier",
+    analyzing: "Analyse…",
+    previewTitle: "Aperçu",
+    summary: "{valid} ligne(s) valide(s) sur {total}.",
+    rejectedTitle: "Lignes ignorées",
+    line: "Ligne",
+    problems: "Problèmes",
+    moreRejected: "… et {count} autre(s) ligne(s) ignorée(s).",
+    confirm: "Importer {count} ligne(s) valide(s)",
+    importing: "Import…",
+    nothing:
+      "Aucune ligne valide à importer : corrigez le fichier puis analysez-le à nouveau.",
+    done: "{created} ligne(s) importée(s), {skipped} ignorée(s).",
+    another: "Importer un autre fichier",
+    noFile: "Choisissez un fichier CSV.",
+    tooLarge: "Fichier trop volumineux (1 Mo au maximum).",
+    notText:
+      "Le fichier n'est pas un CSV lisible (enregistrez-le au format « CSV UTF-8 »).",
+    peopleNotice:
+      "Seules les données prévues par l'application sont importées (prénom, nom, e-mail professionnel, poste, équipe). Les équipes absentes sont créées.",
+  },
   layout: {
     preview: "Aperçu non enregistré",
     previewHelp: "Ces locaux ne sont pas encore ceux de l'entreprise.",

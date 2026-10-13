@@ -9,6 +9,7 @@ import {
   FilterSelect,
   PageHeader,
   primaryLink,
+  secondaryLink,
   td,
   th,
 } from "@/components/ui/layout";
@@ -46,9 +47,14 @@ export default async function AssetsPage({
     <div className="mx-auto max-w-6xl p-4">
       <PageHeader title={fr.assets.title}>
         {canWrite && (
-          <Link href="/materiel/nouveau" className={primaryLink}>
-            {fr.assets.new}
-          </Link>
+          <>
+            <Link href="/import/materiel" className={secondaryLink}>
+              {fr.importCsv.open}
+            </Link>
+            <Link href="/materiel/nouveau" className={primaryLink}>
+              {fr.assets.new}
+            </Link>
+          </>
         )}
       </PageHeader>
       {!canWrite && (

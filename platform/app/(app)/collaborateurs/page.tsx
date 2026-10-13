@@ -45,6 +45,9 @@ export default async function PeoplePage({
             <Link href="/collaborateurs/equipes" className={secondaryLink}>
               {fr.people.manageTeams}
             </Link>
+            <Link href="/import/collaborateurs" className={secondaryLink}>
+              {fr.importCsv.open}
+            </Link>
             <Link href="/collaborateurs/nouveau" className={primaryLink}>
               {fr.people.new}
             </Link>

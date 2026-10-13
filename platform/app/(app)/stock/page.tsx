@@ -43,9 +43,14 @@ export default async function StockPage({
           {fr.reorder.open}
         </Link>
         {canWrite && (
-          <Link href="/stock/nouveau" className={primaryLink}>
-            {fr.stock.new}
-          </Link>
+          <>
+            <Link href="/import/stock" className={secondaryLink}>
+              {fr.importCsv.open}
+            </Link>
+            <Link href="/stock/nouveau" className={primaryLink}>
+              {fr.stock.new}
+            </Link>
+          </>
         )}
       </PageHeader>
       <FilterForm action="/stock">

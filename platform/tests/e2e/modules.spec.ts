@@ -552,3 +552,50 @@ test("les indicateurs montrent leur évolution sur une semaine (tableau de bord 
     / en \d+ j/,
   );
 });
+
+test("import CSV : aperçu des erreurs, puis import des seules lignes valides", async ({
+  page,
+}) => {
+  const ref = `IMP-${uniqueId()}`;
+  await login(page, "manager");
+  await page.goto("/stock");
+  await page.getByRole("link", { name: "Importer (CSV)" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Importer des articles de stock" }),
+  ).toBeVisible();
+  // Modèle de fichier téléchargeable
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("link", { name: "Télécharger le modèle de fichier" })
+    .click();
+  expect((await download).suggestedFilename()).toBe("modele-stock.csv");
+
+  const csv = [
+    "Article;Référence;Unité;Seuil;Quantité",
+    `Gobelets importés;${ref};paquets;5;40`,
+    ";SANS-NOM;paquets;;",
+  ].join("\r\n");
+  await page.getByLabel("Fichier CSV").setInputFiles({
+    name: "stock.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv, "utf8"),
+  });
+  await page.getByRole("button", { name: "Analyser le fichier" }).click();
+  await expect(page.getByTestId("import-summary")).toHaveText(
+    "1 ligne(s) valide(s) sur 2.",
+  );
+  await expect(
+    page
+      .getByRole("table", { name: "Lignes ignorées" })
+      .getByRole("row", { name: /3 .*Article/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Importer 1 ligne(s) valide(s)" })
+    .click();
+  await expect(page.getByTestId("import-done")).toHaveText(
+    "1 ligne(s) importée(s), 1 ignorée(s).",
+  );
+  await page.goto(`/stock?search=${ref}`);
+  await page.getByRole("link", { name: "Gobelets importés" }).click();
+  await expect(page.getByText("Import CSV")).toBeVisible();
+});

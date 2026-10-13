@@ -10,6 +10,7 @@ import {
   workstationsRepository,
   zonesRepository,
 } from "./repositories/layouts";
+import { importRepository } from "./repositories/imports";
 import { mapDataRepository } from "./repositories/map-data";
 import { peopleRepository, teamsRepository } from "./repositories/people";
 import {
@@ -41,6 +42,7 @@ export function getRepositories(context: AccessContext) {
     audit: auditRepository(db, context),
     accounts: accountsRepository(db, context),
     billing: billingRepository(db, context),
+    imports: importRepository(db, context),
   };
 }
 

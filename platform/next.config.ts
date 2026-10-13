@@ -29,14 +29,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  // Origines autorisées pour les server actions derrière un proxy inverse (APP_ORIGIN = nom d'hôte public)
-  ...(process.env.APP_ORIGIN
-    ? {
-        experimental: {
-          serverActions: { allowedOrigins: [process.env.APP_ORIGIN] },
-        },
-      }
-    : {}),
+  // Server actions : origines autorisées derrière un proxy inverse (APP_ORIGIN = nom d'hôte public)
+  experimental: {
+    serverActions: {
+      // Import CSV : fichier d'1 Mo au plus, plus l'enveloppe du formulaire
+      bodySizeLimit: "2mb",
+      ...(process.env.APP_ORIGIN
+        ? { allowedOrigins: [process.env.APP_ORIGIN] }
+        : {}),
+    },
+  },
   cacheComponents: true,
   partialPrefetching: true,
   // Modules natifs / pilotes : chargés tels quels côté serveur, jamais empaquetés
