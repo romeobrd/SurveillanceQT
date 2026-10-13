@@ -59,6 +59,8 @@ test("la page de connexion fonctionne sous la CSP stricte", async ({
 test("toutes les pages se chargent sans violation de CSP ni requête externe", async ({
   page,
 }) => {
+  // Onze pages d'affilée, chacune compilée à la première visite en développement (dont la carte 3D)
+  test.slow();
   const problems = watch(page);
   await login(page, "admin");
   for (const path of PAGES) {

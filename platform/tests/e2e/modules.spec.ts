@@ -307,7 +307,13 @@ test.describe("matériel", () => {
 
     const stateCard = page.getByRole("region", { name: "Changer l'état" });
     await stateCard.getByLabel("État").selectOption("BROKEN");
-    await stateCard.getByRole("button", { name: "Enregistrer" }).click();
+    // Attendre la réponse de l'action serveur avant de quitter la page
+    await Promise.all([
+      page.waitForResponse(
+        (response) => response.request().method() === "POST" && response.ok(),
+      ),
+      stateCard.getByRole("button", { name: "Enregistrer" }).click(),
+    ]);
     await page.goto(`/materiel?search=${serial}&state=BROKEN`);
     await expect(
       page.getByRole("row", { name: new RegExp(serial) }),

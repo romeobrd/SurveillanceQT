@@ -6,6 +6,9 @@ const port = prod ? 3100 : 3000;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // En développement, chaque page se compile à sa première visite, pendant que d'autres navigateurs
+  // dessinent la carte 3D en rendu logiciel : 10 s par vérification au lieu de 5
+  expect: { timeout: 10_000 },
   use: {
     baseURL: `http://localhost:${port}`,
     launchOptions: {

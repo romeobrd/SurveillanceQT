@@ -128,7 +128,7 @@ test("les indicateurs de l'entreprise sont posés sur la carte et mènent aux mo
   await expect(page).toHaveURL(/\/stock\?alert=low/);
 });
 
-test("une épingle signale une pièce à traiter et ouvre sa fiche flottante", async ({
+test("une épingle signale une pièce à traiter et ouvre son panneau avec le stock à réapprovisionner", async ({
   page,
 }) => {
   await login(page, "manager");
@@ -136,15 +136,19 @@ test("une épingle signale une pièce à traiter et ouvre sa fiche flottante", a
   await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
     timeout: 30_000,
   });
-  const pin = page.getByTestId("zone-pin").first();
+  const pin = page.getByTestId("zone-pin").last();
   await expect(pin).toBeVisible();
   await expect(pin).toHaveAccessibleName(/alerte/);
+  const zoneName = ((await pin.getAttribute("aria-label")) ?? "").split(
+    " :",
+  )[0];
   await pin.click();
-  const card = page.getByTestId("zone-card");
-  await expect(card).toBeVisible();
-  await expect(card).toContainText(/Stock bas|en panne/);
-  await card.getByRole("button", { name: "Fermer la fiche" }).click();
-  await expect(card).toHaveCount(0);
+  const panel = page.getByRole("complementary");
+  await expect(
+    panel.getByRole("heading", { name: zoneName, level: 2 }),
+  ).toBeVisible();
+  await expect(panel).toContainText(/Sous le seuil|Hors service|En panne/);
+  await panel.getByRole("button", { name: "Fermer le panneau" }).click();
   await expect(
     page.getByRole("heading", { name: "Zones", level: 2 }),
   ).toBeVisible();
