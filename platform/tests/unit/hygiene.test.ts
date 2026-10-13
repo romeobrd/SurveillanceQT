@@ -61,3 +61,19 @@ describe("modèle de données", () => {
     );
   });
 });
+
+describe("couleurs de la marque", () => {
+  it("chaque nuance brand-* utilisée est définie dans globals.css", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    const defined = new Set(
+      [...css.matchAll(/--color-brand-(\d+)/g)].map((match) => match[1]),
+    );
+    const used = new Set<string>();
+    for (const file of tracked.filter((name) =>
+      /^(app|components|lib)\/.*\.tsx?$/.test(name),
+    ))
+      for (const match of readFileSync(file, "utf8").matchAll(/brand-(\d+)/g))
+        used.add(match[1]);
+    expect([...used].filter((shade) => !defined.has(shade))).toEqual([]);
+  });
+});
