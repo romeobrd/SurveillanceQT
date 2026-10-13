@@ -1,0 +1,362 @@
+// Modèle de données (SPEC §4). Chaque table métier porte un organizationId.
+// Les références entre tables passent par des clés étrangères COMPOSITES (id, organizationId) :
+// la base elle-même refuse qu'une ligne de l'entreprise A pointe vers une ligne de l'entreprise B.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/db/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum PersonStatus {
+  ACTIVE
+  DEPARTED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum AssetState {
+  IN_SERVICE
+  BROKEN
+  TO_RENEW
+  RETIRED
+}
+
+enum StepStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum PresenceKind {
+  OFFICE
+  REMOTE
+  ABSENT
+}
+
+enum PrivacyRequestType {
+  ACCESS
+  RECTIFICATION
+  ERASURE
+}
+
+enum PrivacyRequestStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  REJECTED
+}
+
+model Organization {
+  id                          String   @id @default(cuid())
+  name                        String
+  sector                      String
+  presenceEnabled             Boolean  @default(false)
+  // Durées de conservation (jours), paramétrables par l'admin (appliquées en phase 6)
+  auditRetentionDays          Int      @default(365)
+  privacyRequestRetentionDays Int      @default(1095)
+  departedPersonRetentionDays Int      @default(30)
+  createdAt                   DateTime @default(now())
+
+  users            User[]
+  people           Person[]
+  teams            Team[]
+  layouts          Layout[]
+  zones            Zone[]
+  workstations     Workstation[]
+  stockItems       StockItem[]
+  stockMovements   StockMovement[]
+  assets           Asset[]
+  projects         Project[]
+  projectSteps     ProjectStep[]
+  presenceStatuses PresenceStatus[]
+  auditLogs        AuditLog[]
+  privacyRequests  PrivacyRequest[]
+  assetAssignments AssetAssignment[]
+}
+
+model User {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String    @unique
+  passwordHash   String
+  role           Role
+  personId       String?
+  /// Compte désactivé (départ, anonymisation) : connexion impossible, session invalide immédiatement.
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  person          Person?          @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  layouts         Layout[]
+  stockMovements  StockMovement[]
+  privacyRequests PrivacyRequest[]
+
+  @@unique([id, organizationId])
+  @@unique([personId, organizationId])
+  @@index([organizationId])
+}
+
+/// Compteur de tentatives de connexion, indexé par l'empreinte de l'e-mail (aucune adresse IP stockée).
+model LoginAttempt {
+  emailKey    String    @id
+  failures    Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model Team {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  people       Person[]
+  projects     Project[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+}
+
+model Person {
+  id             String       @id @default(cuid())
+  organizationId String
+  firstName      String
+  lastName       String
+  workEmail      String
+  jobTitle       String
+  teamId         String?
+  status         PersonStatus @default(ACTIVE)
+  /// Date de départ : sert à compter la durée de conservation avant anonymisation (donnée non personnelle).
+  departedAt     DateTime?
+  /// Renseigné quand les données personnelles ont été anonymisées.
+  anonymizedAt   DateTime?
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team             Team?             @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  user             User?
+  workstations     Workstation[]
+  assets           Asset[]
+  assetAssignments AssetAssignment[]
+  presences        PresenceStatus[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+}
+
+model Layout {
+  id             String   @id @default(cuid())
+  organizationId String
+  version        Int
+  /// Carte au format de lib/map (validée par zod avant écriture)
+  data           Json
+  authorId       String?
+  isActive       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, version])
+}
+
+model Zone {
+  id             String @id @default(cuid())
+  organizationId String
+  /// Identifiant stable référencé dans le Layout (ex. "z3")
+  key            String
+  name           String
+  type           String
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workstations     Workstation[]
+  stockItems       StockItem[]
+  assets           Asset[]
+  assetAssignments AssetAssignment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, key])
+}
+
+model Workstation {
+  id             String  @id @default(cuid())
+  organizationId String
+  /// Identifiant de l'élément "poste" sur la carte
+  elementKey     String
+  zoneId         String
+  personId       String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  zone         Zone         @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  person       Person?      @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, elementKey])
+}
+
+model StockItem {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  reference      String
+  unit           String
+  threshold      Int     @default(0)
+  zoneId         String?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  zone         Zone?           @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  movements    StockMovement[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, reference])
+}
+
+/// La quantité d'un article est calculée à partir de ses mouvements (jamais stockée).
+model StockMovement {
+  id             String       @id @default(cuid())
+  organizationId String
+  stockItemId    String
+  type           MovementType
+  quantity       Int
+  reason         String
+  authorId       String?
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockItem    StockItem    @relation(fields: [stockItemId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  author       User?        @relation(fields: [authorId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, stockItemId])
+}
+
+model Asset {
+  id             String     @id @default(cuid())
+  organizationId String
+  type           String
+  brand          String
+  model          String
+  serialNumber   String
+  state          AssetState @default(IN_SERVICE)
+  purchaseDate   DateTime?
+  personId       String?
+  zoneId         String?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  person       Person?           @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  zone         Zone?             @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  assignments  AssetAssignment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, serialNumber])
+}
+
+/// Historique d'affectation du matériel (SPEC §7). personId passe à null lors de l'anonymisation d'un départ.
+model AssetAssignment {
+  id             String    @id @default(cuid())
+  organizationId String
+  assetId        String
+  personId       String?
+  zoneId         String?
+  assignedAt     DateTime  @default(now())
+  releasedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  asset        Asset        @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  person       Person?      @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  zone         Zone?        @relation(fields: [zoneId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@index([assetId])
+}
+
+model Project {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  teamId         String?
+  description    String  @default("")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  steps        ProjectStep[]
+
+  @@unique([id, organizationId])
+}
+
+model ProjectStep {
+  id             String     @id @default(cuid())
+  organizationId String
+  projectId      String
+  name           String
+  order          Int
+  status         StepStatus @default(TODO)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@unique([projectId, order])
+}
+
+/// Présence déclarative facultative : purgée chaque nuit, jamais historisée (phase 6).
+model PresenceStatus {
+  id             String       @id @default(cuid())
+  organizationId String
+  personId       String
+  status         PresenceKind
+  date           DateTime     @db.Date
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  person       Person       @relation(fields: [personId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@unique([personId, date])
+}
+
+/// Journal d'audit : ne contient jamais de données personnelles (seulement des identifiants).
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, createdAt])
+}
+
+model PrivacyRequest {
+  id             String               @id @default(cuid())
+  organizationId String
+  requesterId    String
+  type           PrivacyRequestType
+  status         PrivacyRequestStatus @default(OPEN)
+  /// Précision libre de la personne sur sa propre demande (500 caractères) ; effacée à l'anonymisation.
+  details        String               @default("")
+  createdAt      DateTime             @default(now())
+  resolvedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requester    User         @relation(fields: [requesterId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+}

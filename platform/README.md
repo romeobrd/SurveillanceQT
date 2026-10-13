@@ -1,0 +1,117 @@
+# Gestion d'entreprise
+
+Plateforme de gestion d'entreprise avec carte isométrique des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
+
+## Démarrage (moins de 10 minutes)
+
+Prérequis : Node.js 22+, Docker (ou un PostgreSQL 16 local).
+
+```bash
+cp .env.example .env              # puis renseigner AUTH_SECRET : openssl rand -base64 32
+docker compose up -d              # PostgreSQL 16 (bases gestion_dev et gestion_test)
+npm install                       # installe les dépendances et génère le client Prisma
+npm run setup                     # applique les migrations et charge la démonstration (~5 s)
+npm run dev                       # http://localhost:3000
+```
+
+Sans Docker : créer deux bases PostgreSQL (`gestion_dev`, `gestion_test`) et ajuster `DATABASE_URL` / `DATABASE_URL_TEST` dans `.env`.
+
+### Comptes de test (données 100 % fictives, seed de développement uniquement)
+
+Mot de passe commun : `Demo-Password-2026!` (rappelé sur la page de connexion en développement uniquement).
+
+| Entreprise                  | Admin                              | Manager                              | Employé                               |
+| --------------------------- | ---------------------------------- | ------------------------------------ | ------------------------------------- |
+| Atelier Lumière (démo A)    | `admin@atelier-lumiere.example`    | `manager@atelier-lumiere.example`    | `employee@atelier-lumiere.example`    |
+| Boulangerie Dupont (démo B) | `admin@boulangerie-dupont.example` | `manager@boulangerie-dupont.example` | `employee@boulangerie-dupont.example` |
+
+Le seed refuse de s'exécuter en production ou sur une base non vide. Pour repartir de zéro : `npm run db:reset` (efface la base de développement).
+
+### Ce que contient la démonstration
+
+**Atelier Lumière** : 26 collaborateurs en 5 équipes, tous installés à un poste (16 postes restent libres), 7 articles de stock dont 3 sous le seuil, 14 pièces de matériel dont des pannes et des renouvellements, 4 projets (de 0 % à 100 %). **Boulangerie Dupont** : une seconde entreprise, invisible depuis la première (isolation multi-tenant).
+
+### Parcours conseillé (10 minutes)
+
+1. Connectez-vous en **manager** sur Atelier Lumière : le **tableau de bord** montre les alertes de stock, le matériel à traiter et l'avancement des projets.
+2. **Carte** : cliquez une pièce (panneau latéral : personnes, matériel, stock, projets), choisissez un projet pour voir sa progression, zoomez et déplacez la carte.
+3. **Aménager** : posez un meuble, annulez / rétablissez, enregistrez une nouvelle version, restaurez l'ancienne.
+4. **Collaborateurs**, **Postes**, **Stock**, **Matériel**, **Projets** : recherche, filtres, création, modification ; chaque module renvoie vers la carte.
+5. Reconnectez-vous en **employé** : lecture seule, pas d'e-mails des collègues ; **Mes données** pour consulter et exporter vos données.
+6. Reconnectez-vous en **admin** : **Administration** (réglages RGPD, demandes, journal d'audit).
+7. Essayez `boulangerie-dupont` : aucune donnée de l'autre entreprise n'apparaît.
+
+### Dépannage
+
+- `P1001: Can't reach database server` : PostgreSQL n'est pas démarré (`docker compose up -d`).
+- Connexion impossible / erreur d'authentification : vérifiez que `AUTH_SECRET` est renseigné dans `.env`.
+- Port 3000 occupé : `npm run dev -- -p 3001`.
+- `La base contient déjà des données` : le seed ne s'exécute que sur une base vide (`npm run db:reset`).
+
+## Contrôles qualité
+
+```bash
+npm run lint
+npm run typecheck
+npm test                  # unitaires + intégration (PostgreSQL de test requis)
+npm run test:unit         # sans base de données
+npm run test:integration  # exige DATABASE_URL_TEST
+npm run test:e2e          # Playwright (navigateur + base de développement semée)
+npm run db:seed:e2e       # (re)crée l'entreprise « Atelier E2E », utilisée par les tests e2e destructifs
+```
+
+Les tests d'intégration vident la base `DATABASE_URL_TEST` : elle doit être différente de `DATABASE_URL`.
+
+Les tests e2e qui enregistrent ou restaurent des cartes (`editor-save.spec.ts`) travaillent sur une entreprise dédiée, recréée avant chaque test : les entreprises de démonstration ne sont jamais modifiées.
+
+Sans navigateur téléchargeable, Playwright peut utiliser un Chromium existant : `CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e`.
+
+## Modules
+
+Après connexion, la navigation donne accès à :
+
+| Page            | Contenu                                                                                                    | Écriture                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Tableau de bord | collaborateurs actifs, postes occupés/libres, alertes de stock, matériel à traiter, avancement des projets | —                                                              |
+| Carte           | aménagement actif lu en base, panneau de zone, barre de progression d'un projet                            | admin, manager (aperçu `?seed=` puis enregistrement explicite) |
+| Collaborateurs  | recherche, filtres, tri ; équipes ; départ (poste libéré, matériel restitué)                               | admin                                                          |
+| Postes          | libres/occupés, attribution                                                                                | admin, manager                                                 |
+| Stock           | articles et mouvements ; quantité calculée ; alertes sous le seuil                                         | admin, manager                                                 |
+| Matériel        | état, affectation, historique ; l'employé ne voit que le sien                                              | admin, manager                                                 |
+| Projets         | étapes ordonnées, progression calculée                                                                     | admin, manager                                                 |
+
+Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppression demande une confirmation ; chaque module a un lien « Voir sur la carte ».
+
+## Mode Aménager
+
+Sur `/carte`, les administrateurs et managers basculent de **Vue** à **Aménager** :
+
+- **Catalogue** par catégories (postes, mobilier, équipements, structure) : glisser-déposer ou clic pour armer puis clic sur la carte. Aperçu fantôme **vert** (valide) ou **rouge** avec la raison (collision, hors pièce, trop près d'une porte, bloque un passage).
+- **Gestes** : sélection (clic, Maj+clic, rectangle Maj+glisser), déplacement par glisser, **R** pour tourner, **Suppr**, **Échap**, **Ctrl+Z / Ctrl+Y**, flèches pour déplacer la sélection ou le curseur de pose, **Entrée** pour poser, Espace+glisser pour déplacer la carte.
+- **Pièces** : tracer un rectangle, redimensionner (champs numériques), typer, renommer, supprimer. Les murs de contour suivent. **Murs, cloisons vitrées et portes** se posent à la main sur les arêtes.
+- **Point de départ** : carte enregistrée, carte générée (seed) ou locaux vides (10 à 60 tuiles par côté).
+- **Enregistrement explicite** : la carte est entièrement revalidée côté serveur (schéma, cohérence, accessibilité depuis l'entrée, taille). Si des postes attribués, du stock ou du matériel disparaissent avec une pièce ou un poste, un **dialogue de réaffectation** exige une décision pour chacun (libérer la personne ou la placer ailleurs ; détacher ou ranger ailleurs) : rien n'est perdu en silence.
+- **Versions** : historique (numéro et date), ouvrir une version dans l'éditeur ou la **restaurer** (crée une nouvelle version, l'historique est conservé). Un enregistrement est refusé si quelqu'un d'autre a modifié la carte entre-temps.
+
+La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, testée sans navigateur.
+
+## Architecture des données
+
+- **Multi-tenant** : aucune requête Prisma hors de `lib/db` (règle ESLint). Le code applicatif passe par `getRepositories(contexte)`, dont le contexte vient toujours de la session. Une extension Prisma impose `organizationId` à chaque lecture et écriture (liste blanche d'opérations, écritures imbriquées refusées).
+- **Clés étrangères composites** `(id, organizationId)` : la base refuse elle-même qu'une ligne de l'entreprise A référence une ligne de l'entreprise B.
+- **Droits** : matrice par rôle dans `lib/auth/permissions.ts`, vérifiée dans chaque dépôt de données.
+- **Authentification** : Auth.js v5 (bêta), session JWT en cookie `httpOnly`, `sameSite=lax`, `secure` en production ; mots de passe argon2id ; rôle et entreprise relus en base à chaque requête ; 5 échecs verrouillent 15 minutes (compteur indexé par l'empreinte de l'e-mail, aucune IP conservée).
+
+## Hébergement et RGPD (phase 6)
+
+- **Mes données** (`/mes-donnees`) : chacun consulte ses données, les exporte en JSON, dépose une demande d'accès / rectification / effacement et, si l'entreprise l'active, déclare sa présence du jour (facultatif, visible de soi seul, totaux anonymes au tableau de bord, jamais historisé ni journalisé).
+- **Administration** (admin) : réglages (présence, durées de conservation), suivi des demandes (dont « Exécuter l'effacement »), journal d'audit filtrable. Un collaborateur parti peut être anonymisé à la main ; sinon l'anonymisation est automatique après le délai réglé.
+- **Purge nocturne** : `npm run purge`, ou `POST /api/cron/purge` avec `Authorization: Bearer $CRON_SECRET` (secret de 32 caractères minimum ; sans lui la route répond 503).
+- **Sécurité navigateur** : CSP sans aucune origine externe, HSTS en production, `X-Frame-Options`, `Permissions-Policy` (géolocalisation, caméra, micro refusés). Limite connue : la CSP garde `'unsafe-inline'` pour les scripts, car le prérendu partiel (`cacheComponents`) est incompatible avec un nonce.
+- **Variables** : voir `.env.example` (`AUTH_URL` et `APP_ORIGIN` en production, `CRON_SECRET`).
+- **Documents** dans `docs/` (modèles à faire valider par un juriste ou un DPO) : registre des traitements, politique de confidentialité, note aux salariés, sous-traitants, procédure de réponse aux demandes, hébergement UE. Exemples de déploiement dans `deploy/` (non testés).
+- E2E sur la version de production : `npm run build` puis `E2E_PROD=1 npx playwright test` (port 3100).
+
+## Avancement
+
+Phases 0 à 7 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions). La carte est sur `/carte` (paramètre `?seed=`).

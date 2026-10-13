@@ -1,0 +1,54 @@
+import type { NextConfig } from "next";
+import { buildCsp } from "./lib/security/csp";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+// En-têtes de sécurité posés sur toutes les réponses (voir lib/security/csp.ts pour la CSP)
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: buildCsp({ dev: !isProduction }) },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  {
+    key: "Permissions-Policy",
+    // Aucune API sensible n'est utilisée : géolocalisation, caméra et micro sont refusés explicitement
+    value: "geolocation=(), camera=(), microphone=(), interest-cohort=()",
+  },
+  ...(isProduction
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains",
+        },
+      ]
+    : []),
+];
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  // Origines autorisées pour les server actions derrière un proxy inverse (APP_ORIGIN = nom d'hôte public)
+  ...(process.env.APP_ORIGIN
+    ? {
+        experimental: {
+          serverActions: { allowedOrigins: [process.env.APP_ORIGIN] },
+        },
+      }
+    : {}),
+  cacheComponents: true,
+  partialPrefetching: true,
+  // Modules natifs / pilotes : chargés tels quels côté serveur, jamais empaquetés
+  serverExternalPackages: ["@node-rs/argon2", "pg"],
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;

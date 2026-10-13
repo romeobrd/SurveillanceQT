@@ -1,0 +1,23 @@
+# EXEMPLE NON TESTÉ — à adapter (hébergeur UE, HTTPS devant le service, sauvegardes).
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://gestion:${DB_PASSWORD}@db:5432/gestion
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${APP_URL}
+      CRON_SECRET: ${CRON_SECRET}
+      APP_ORIGIN: ${APP_HOST}
+    depends_on: [db]
+    ports: ["127.0.0.1:3000:3000"] # exposé uniquement au proxy HTTPS local
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gestion
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: gestion
+    volumes: [db-data:/var/lib/postgresql/data]
+volumes:
+  db-data:
