@@ -26,6 +26,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Export du site vitrine (scripts/export-vitrine.mjs) : construction séparée, la normale reste intacte
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

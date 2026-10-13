@@ -521,6 +521,16 @@ export const fr = {
     choose: "Commencer l'essai",
     popular: "Le plus choisi",
     finalTitle: "Prêt à voir vos locaux autrement ?",
+    /** Site vitrine statique : le service n'est pas encore en ligne, les demandes passent par e-mail. */
+    static: {
+      cta: "Demander un accès",
+      ctaNote:
+        "Lancement prochain · Écrivez-nous pour faire partie des premiers",
+      choose: "Nous contacter",
+      mailSubject: "Spacora — demande d'accès",
+      pricingNote: "Prix HT. Annuel : deux mois offerts.",
+      contact: "Contact",
+    },
     footer: {
       legal: "Mentions légales",
       terms: "CGU",

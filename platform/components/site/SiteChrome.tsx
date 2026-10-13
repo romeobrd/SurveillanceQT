@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
+import { contactEmail, signupHref, staticSite } from "@/lib/site/mode";
 
 const t = fr.landing;
 const navLink =
@@ -53,21 +54,24 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <Suspense
-              fallback={
-                <Link href="/login" className={navLink}>
-                  {t.nav.login}
-                </Link>
-              }
-            >
-              <AccountLink />
-            </Suspense>
-            <Link
-              href="/inscription"
+            {/* Site vitrine statique : pas de connexion (le service n'est pas en ligne) */}
+            {!staticSite && (
+              <Suspense
+                fallback={
+                  <Link href="/login" className={navLink}>
+                    {t.nav.login}
+                  </Link>
+                }
+              >
+                <AccountLink />
+              </Suspense>
+            )}
+            <a
+              href={signupHref(t.static.mailSubject)}
               className={`${ctaClass} px-4 py-2 text-sm`}
             >
-              {t.cta}
-            </Link>
+              {staticSite ? t.static.cta : t.cta}
+            </a>
           </div>
         </div>
       </header>
@@ -78,18 +82,32 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
           <Link href="/mentions-legales" className="hover:underline">
             {t.footer.legal}
           </Link>
-          <Link href="/cgu" className="hover:underline">
-            {t.footer.terms}
-          </Link>
-          <Link href="/cgv" className="hover:underline">
-            {t.footer.sales}
-          </Link>
+          {/* CGU et CGV concernent le service : absentes du site vitrine statique */}
+          {!staticSite && (
+            <>
+              <Link href="/cgu" className="hover:underline">
+                {t.footer.terms}
+              </Link>
+              <Link href="/cgv" className="hover:underline">
+                {t.footer.sales}
+              </Link>
+            </>
+          )}
           <Link href="/confidentialite" className="hover:underline">
             {t.footer.privacy}
           </Link>
-          <Link href="/login" className="ml-auto hover:underline">
-            {t.footer.login}
-          </Link>
+          {staticSite ? (
+            <a
+              href={`mailto:${contactEmail}`}
+              className="ml-auto hover:underline"
+            >
+              {t.static.contact} : {contactEmail}
+            </a>
+          ) : (
+            <Link href="/login" className="ml-auto hover:underline">
+              {t.footer.login}
+            </Link>
+          )}
         </div>
       </footer>
     </div>

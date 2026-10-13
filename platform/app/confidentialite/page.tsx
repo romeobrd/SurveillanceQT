@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         {
           title: "Destinataires et hébergement",
           paragraphs: [
-            "Hébergement dans l'Union européenne par [hébergeur]. Paiement : Stripe (sous-traitant ; transferts encadrés par les clauses contractuelles types). Aucune donnée n'est vendue ni utilisée à des fins publicitaires.",
+            "Hébergement en France par OVH SAS. Paiement : Stripe (sous-traitant ; transferts encadrés par les clauses contractuelles types). Aucune donnée n'est vendue ni utilisée à des fins publicitaires.",
           ],
         },
         {

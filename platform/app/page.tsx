@@ -6,6 +6,7 @@ import zoom from "@/public/landing/carte-zoom.png";
 import SiteChrome, { ctaClass } from "@/components/site/SiteChrome";
 import { PLANS } from "@/features/billing/plans";
 import { fr } from "@/lib/i18n/fr";
+import { signupHref, staticSite } from "@/lib/site/mode";
 
 export const metadata: Metadata = {
   title: `${fr.app.name} — ${fr.app.homeTitle}`,
@@ -13,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 const t = fr.landing;
+// Site vitrine statique : boutons vers un e-mail de contact au lieu de l'inscription
+const signup = signupHref(t.static.mailSubject);
+const cta = staticSite ? t.static.cta : t.cta;
+const ctaNote = staticSite ? t.static.ctaNote : t.ctaNote;
 
 export default function Home() {
   return (
@@ -27,9 +32,9 @@ export default function Home() {
           </h1>
           <p className="text-lg text-slate-700">{fr.app.description}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/inscription" className={ctaClass}>
-              {t.cta}
-            </Link>
+            <a href={signup} className={ctaClass}>
+              {cta}
+            </a>
             <Link
               href="/#tarifs"
               className="focus-visible:outline-brand-600 rounded-lg border border-slate-300 px-5 py-2.5 font-medium hover:bg-slate-50 focus-visible:outline-2"
@@ -37,9 +42,10 @@ export default function Home() {
               {t.secondary}
             </Link>
           </div>
-          <p className="text-sm text-slate-600">{t.ctaNote}</p>
+          <p className="text-sm text-slate-600">{ctaNote}</p>
         </div>
         <Image
+          unoptimized={staticSite}
           src={carte}
           alt={t.screenshotAlt}
           priority
@@ -72,6 +78,7 @@ export default function Home() {
         className="mx-auto grid max-w-6xl scroll-mt-20 items-center gap-10 px-4 py-16 lg:grid-cols-2"
       >
         <Image
+          unoptimized={staticSite}
           src={zoom}
           alt={t.zoomAlt}
           className="rounded-2xl border border-slate-200 shadow-xl"
@@ -98,7 +105,7 @@ export default function Home() {
             {t.pricingTitle}
           </h2>
           <p className="mb-10 text-center text-sm text-slate-600">
-            {t.pricingNote}
+            {staticSite ? t.static.pricingNote : t.pricingNote}
           </p>
           <div className="grid gap-5 md:grid-cols-3">
             {Object.values(PLANS).map((plan) => (
@@ -127,9 +134,9 @@ export default function Home() {
                     <li key={line}>✓ {line}</li>
                   ))}
                 </ul>
-                <Link href="/inscription" className={`${ctaClass} mt-auto`}>
-                  {t.choose}
-                </Link>
+                <a href={signup} className={`${ctaClass} mt-auto`}>
+                  {staticSite ? t.static.choose : t.choose}
+                </a>
               </section>
             ))}
           </div>
@@ -138,10 +145,10 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-4 py-16 text-center">
         <h2 className="mb-4 text-3xl font-bold">{t.finalTitle}</h2>
-        <Link href="/inscription" className={ctaClass}>
-          {t.cta}
-        </Link>
-        <p className="mt-2 text-sm text-slate-600">{t.ctaNote}</p>
+        <a href={signup} className={ctaClass}>
+          {cta}
+        </a>
+        <p className="mt-2 text-sm text-slate-600">{ctaNote}</p>
       </section>
     </SiteChrome>
   );

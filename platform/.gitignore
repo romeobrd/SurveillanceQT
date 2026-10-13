@@ -52,3 +52,6 @@ next-env.d.ts
 # Serveur de production : sauvegardes et journaux
 /deploy/backups
 /deploy/logs
+
+# Construction du site vitrine (le résultat, vitrine/, est versionné)
+/.next-vitrine/
