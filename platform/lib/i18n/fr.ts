@@ -656,6 +656,39 @@ export const fr = {
     sectionRequests: "Demandes",
     sectionJournal: "Journal",
   },
+  onboarding: {
+    title: "Premiers pas",
+    progress: "{done} étape(s) sur {total}",
+    dismiss: "Masquer",
+    done: "Fait",
+    todo: "À faire",
+    steps: {
+      layout: {
+        label: "Dessiner le plan de vos locaux",
+        help: "Ouvrez la carte puis « Aménager » : pièces, bureaux, rangements.",
+      },
+      people: {
+        label: "Ajouter vos collaborateurs",
+        help: "Un par un ou d'un coup avec un fichier CSV.",
+      },
+      workstations: {
+        label: "Attribuer les postes",
+        help: "Chaque collaborateur retrouve son bureau sur la carte.",
+      },
+      accounts: {
+        label: "Inviter un collègue",
+        help: "Un responsable pour vous aider à tenir le stock et le matériel.",
+      },
+      inventory: {
+        label: "Enregistrer votre stock ou votre matériel",
+        help: "Articles de fournitures, ordinateurs, écrans… (import CSV possible).",
+      },
+      subscription: {
+        label: "Choisir votre offre",
+        help: "Avant la fin de l'essai, pour continuer sans interruption.",
+      },
+    },
+  },
   importCsv: {
     open: "Importer (CSV)",
     titles: {

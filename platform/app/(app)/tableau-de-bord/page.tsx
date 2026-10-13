@@ -6,6 +6,7 @@ import {
   ProgressBar,
   secondaryLink,
 } from "@/components/ui/layout";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 import { getAppContext } from "@/lib/app-context";
 import { formatDelta } from "@/features/dashboard/trends";
 import { fr } from "@/lib/i18n/fr";
@@ -71,14 +72,16 @@ function Stat({
 
 export default async function DashboardPage() {
   const { repos } = await getAppContext();
-  const [dashboard, { trends }] = await Promise.all([
+  const [dashboard, { trends }, onboarding] = await Promise.all([
     repos.dashboard.get(),
     repos.dashboard.trends(),
+    repos.dashboard.onboarding(),
   ]);
   const days = trends?.days;
   return (
     <div className="mx-auto max-w-6xl p-4">
       <h1 className="mb-4 text-2xl font-semibold">{fr.dashboard.title}</h1>
+      {onboarding && <OnboardingChecklist steps={onboarding} />}
       <section
         aria-label={fr.dashboard.title}
         className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6"

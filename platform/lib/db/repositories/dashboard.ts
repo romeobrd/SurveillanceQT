@@ -6,8 +6,14 @@ import {
   type MetricValues,
   type Trends,
 } from "@/features/dashboard/trends";
+import {
+  onboardingSteps,
+  type OnboardingStep,
+} from "@/features/onboarding/steps";
+import { can } from "@/lib/auth/permissions";
 import { todayInParis } from "@/lib/privacy/retention";
 import { computeCurrentMetrics, recordDailyMetrics } from "../metrics";
+import { recordAudit } from "../audit";
 import type { TenantDb } from "../tenant";
 import { presenceRepository } from "./privacy";
 import { projectsRepository, type ProjectView } from "./projects";
@@ -38,6 +44,52 @@ export function dashboardRepository(db: TenantDb, context: AccessContext) {
      * Indicateurs du jour et leur évolution sur une semaine. Consulter enregistre aussi le relevé du jour
      * (totaux uniquement) : les tendances existent même sans tâche planifiée.
      */
+    /**
+     * Étapes « Premiers pas » pour l'administrateur ; null une fois masquées ou toutes faites,
+     * et pour les autres rôles.
+     */
+    async onboarding(): Promise<OnboardingStep[] | null> {
+      if (!can(context.role, "org:settings")) return null;
+      const organization = await db.organization.findUnique({
+        where: { id: context.organizationId },
+        select: { onboardingDismissedAt: true, subscriptionStatus: true },
+      });
+      if (!organization || organization.onboardingDismissedAt) return null;
+      const [zones, people, assignedWorkstations, users, stockItems, assets] =
+        await Promise.all([
+          db.zone.count(),
+          db.person.count({ where: { status: "ACTIVE" } }),
+          db.workstation.count({ where: { personId: { not: null } } }),
+          db.user.count({ where: { disabledAt: null } }),
+          db.stockItem.count(),
+          db.asset.count(),
+        ]);
+      const steps = onboardingSteps({
+        zones,
+        people,
+        assignedWorkstations,
+        users,
+        stockItems,
+        assets,
+        subscribed: organization.subscriptionStatus === "ACTIVE",
+      });
+      return steps.every((step) => step.done) ? null : steps;
+    },
+
+    /** Masque définitivement « Premiers pas ». */
+    async dismissOnboarding(now: Date = new Date()): Promise<void> {
+      assertPermission(context, "org:settings");
+      await db.organization.update({
+        where: { id: context.organizationId },
+        data: { onboardingDismissedAt: now },
+      });
+      await recordAudit(db, context, {
+        action: "org.onboardingDismissed",
+        resourceType: "Organization",
+        resourceId: context.organizationId,
+      });
+    },
+
     async trends(
       now: Date = new Date(),
     ): Promise<{ current: MetricValues; trends: Trends | null }> {
