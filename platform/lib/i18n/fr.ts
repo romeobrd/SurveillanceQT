@@ -470,6 +470,7 @@ export const fr = {
       pricing: "Tarifs",
       privacy: "RGPD",
       login: "Connexion",
+      mySpace: "Mon espace",
     },
     badge: "Pour les PME de bureaux · Hébergé en Europe",
     cta: "Essai gratuit 14 jours",

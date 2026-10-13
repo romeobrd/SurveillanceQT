@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { getSessionInfo } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
 
 const t = fr.landing;
@@ -7,6 +8,19 @@ const navLink =
   "rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600";
 export const ctaClass =
   "inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white shadow-sm hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
+
+/** Déjà connecté : accès direct à son espace ; sinon lien de connexion. Lu à la requête (cookie de session). */
+async function AccountLink() {
+  return (await getSessionInfo()) ? (
+    <Link href="/tableau-de-bord" className={navLink}>
+      {t.nav.mySpace}
+    </Link>
+  ) : (
+    <Link href="/login" className={navLink}>
+      {t.nav.login}
+    </Link>
+  );
+}
 
 /** En-tête et pied de page du site public (accueil, tarifs, pages légales). */
 export default function SiteChrome({ children }: { children: ReactNode }) {
@@ -39,9 +53,15 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/login" className={navLink}>
-              {t.nav.login}
-            </Link>
+            <Suspense
+              fallback={
+                <Link href="/login" className={navLink}>
+                  {t.nav.login}
+                </Link>
+              }
+            >
+              <AccountLink />
+            </Suspense>
             <Link
               href="/inscription"
               className={`${ctaClass} px-4 py-2 text-sm`}

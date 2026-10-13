@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import carte from "@/public/landing/carte-3d.png";
 import zoom from "@/public/landing/carte-zoom.png";
 import SiteChrome, { ctaClass } from "@/components/site/SiteChrome";
 import { PLANS } from "@/features/billing/plans";
-import { getSessionInfo } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
 
 export const metadata: Metadata = {
@@ -17,18 +14,9 @@ export const metadata: Metadata = {
 
 const t = fr.landing;
 
-async function RedirectIfSignedIn() {
-  if (await getSessionInfo()) redirect("/tableau-de-bord");
-  return null;
-}
-
 export default function Home() {
   return (
     <SiteChrome>
-      <Suspense fallback={null}>
-        <RedirectIfSignedIn />
-      </Suspense>
-
       <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-[1fr_1.3fr]">
         <div className="flex flex-col gap-5">
           <span className="bg-brand-50 text-brand-800 w-fit rounded-full px-3 py-1 text-xs font-medium">
