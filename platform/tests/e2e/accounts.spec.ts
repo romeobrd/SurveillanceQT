@@ -3,7 +3,8 @@ import { execSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_ACCOUNTS, login, logout, uniqueId } from "./helpers";
 
-test.describe.configure({ mode: "serial" });
+// Chaque test recrée l'entreprise de test et calcule plusieurs empreintes de mot de passe (volontairement lentes)
+test.describe.configure({ mode: "serial", timeout: 60_000 });
 
 test.beforeEach(() => {
   execSync("npm run db:seed:e2e", { stdio: "pipe" });
