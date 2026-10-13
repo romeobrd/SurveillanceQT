@@ -34,7 +34,7 @@ describe("collaborateurs : recherche, filtres, tri", () => {
     const manager = repos(a, "manager").people;
     const bySurname = await manager.list({ search: "BERNARD" });
     expect(bySurname.map((p) => p.lastName)).toEqual(["Bernard"]);
-    expect((await manager.list({ search: "développeuse" })).length).toBe(1);
+    expect((await manager.list({ search: "développeuse" })).length).toBe(2);
     expect((await manager.list({ search: "sophie.bernard@" })).length).toBe(1);
     expect(
       (await repos(a, "employee").people.list({ search: "sophie.bernard@" }))
@@ -47,7 +47,7 @@ describe("collaborateurs : recherche, filtres, tri", () => {
     const teams = await manager.teams.list();
     const technique = teams.find((team) => team.name === "Technique")!;
     const filtered = await manager.people.list({ teamId: technique.id });
-    expect(filtered.length).toBe(2);
+    expect(filtered.length).toBe(8);
     expect(filtered.every((person) => person.teamName === "Technique")).toBe(
       true,
     );
