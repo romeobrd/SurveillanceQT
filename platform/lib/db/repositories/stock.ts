@@ -21,6 +21,7 @@ import {
   NotFoundError,
   rethrowUnique,
 } from "../errors";
+import { suggestedReorder, type ReorderLine } from "@/features/stock/reorder";
 import type { TenantDb } from "../tenant";
 
 export interface StockItemView {
@@ -129,6 +130,21 @@ export function stockRepository(db: TenantDb, context: AccessContext) {
 
   return {
     listItems,
+
+    /** Articles sous le seuil, avec la quantité conseillée à commander (aucune donnée personnelle). */
+    async reorderList(): Promise<Array<ReorderLine & { id: string }>> {
+      const low = await listItems({ alert: "low", sort: "name", dir: "asc" });
+      return low.map((item) => ({
+        id: item.id,
+        name: item.name,
+        reference: item.reference,
+        zone: item.zoneName,
+        quantity: item.quantity,
+        threshold: item.threshold,
+        unit: item.unit,
+        suggested: suggestedReorder(item.quantity, item.threshold),
+      }));
+    },
 
     async getItem(id: string) {
       assertPermission(context, "stock:read");

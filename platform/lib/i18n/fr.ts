@@ -223,6 +223,16 @@ export const fr = {
     assignmentNotice:
       "Une attribution indique l'affectation d'un poste, jamais une présence réelle.",
   },
+  reorder: {
+    title: "Réapprovisionnement",
+    intro:
+      "Articles passés sous leur seuil d'alerte, avec la quantité conseillée pour revenir à deux fois le seuil.",
+    suggested: "À commander",
+    export: "Exporter (CSV)",
+    exportHelp: "Fichier lisible par un tableur, à transmettre à votre fournisseur.",
+    empty: "Aucun article sous le seuil : rien à commander.",
+    open: "Liste de réapprovisionnement",
+  },
   stock: {
     title: "Stock",
     new: "Nouvel article",

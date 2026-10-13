@@ -198,7 +198,7 @@ export default function ZonePanel({
         )}
         {stock.some((item) => item.low) && (
           <Link
-            href="/stock?alert=low"
+            href="/stock/reapprovisionnement"
             className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 mt-3 block rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {fr.map.insights.showMissing}

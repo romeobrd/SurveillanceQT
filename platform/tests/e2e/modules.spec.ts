@@ -515,3 +515,27 @@ test("toutes les pages de l'application exigent une session", async ({
     await expect(page).toHaveURL(/\/login/);
   }
 });
+
+test("réapprovisionnement : liste des articles sous le seuil et export CSV", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/stock");
+  await page
+    .getByRole("link", { name: "Liste de réapprovisionnement" })
+    .click();
+  await expect(page).toHaveURL(/\/stock\/reapprovisionnement/);
+  const table = page.getByRole("table", { name: "Réapprovisionnement" });
+  await expect(
+    table.getByRole("row", { name: /Ramettes de papier A4/ }),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Exporter (CSV)" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("reapprovisionnement.csv");
+  const csv = (await import("node:fs")).readFileSync(await file.path(), "utf8");
+  expect(csv).toContain(
+    "Article;Référence;Zone;Quantité;Seuil;Unité;À commander",
+  );
+  expect(csv).toContain("PAP-A4");
+});

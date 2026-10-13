@@ -9,6 +9,7 @@ import {
   FilterSelect,
   PageHeader,
   primaryLink,
+  secondaryLink,
   td,
   th,
 } from "@/components/ui/layout";
@@ -38,6 +39,9 @@ export default async function StockPage({
   return (
     <div className="mx-auto max-w-6xl p-4">
       <PageHeader title={fr.stock.title}>
+        <Link href="/stock/reapprovisionnement" className={secondaryLink}>
+          {fr.reorder.open}
+        </Link>
         {canWrite && (
           <Link href="/stock/nouveau" className={primaryLink}>
             {fr.stock.new}
