@@ -11,7 +11,8 @@ import {
   waitForMap,
 } from "./editor-helpers";
 
-test.describe.configure({ mode: "serial" });
+// Chaque test recrée l'entreprise de test puis ouvre l'éditeur 3D (rendu logiciel en CI) : délai plus large
+test.describe.configure({ mode: "serial", timeout: 60_000 });
 
 const layout = generateLayout(2024);
 
@@ -204,8 +205,6 @@ test("restaure une ancienne version en créant une nouvelle version", async ({
 });
 
 test("refuse d'écraser une carte modifiée entre-temps", async ({ browser }) => {
-  // Deux éditeurs 3D ouverts en parallèle, en rendu logiciel (sans carte graphique) : plus lent que la moyenne
-  test.slow();
   const first = await (await browser.newContext()).newPage();
   const second = await (await browser.newContext()).newPage();
   await openE2eEditor(first);

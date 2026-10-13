@@ -158,12 +158,20 @@ test("postes : attribuer un poste libre puis le retrouver sur la carte", async (
     .fill(`helene.${id}@atelier-lumiere.example`);
   await page.getByLabel("Intitulé de poste").fill("Testeuse");
   await page.getByRole("button", { name: "Créer" }).click();
+  // La création redirige vers la liste : attendre qu'elle soit terminée avant de changer de page
+  await expect(page).toHaveURL(/\/collaborateurs$/);
 
   await page.goto("/postes?status=free");
   const row = page.locator("tbody tr").first();
   const zoneName = (await row.locator("td").nth(1).innerText()).trim();
   await row.getByRole("combobox").selectOption({ label: `Poste${id} Hélène` });
-  await row.getByRole("button", { name: "Attribuer" }).click();
+  // Attendre la réponse de l'action serveur avant de quitter la page (sinon l'attribution peut être abandonnée)
+  await Promise.all([
+    page.waitForResponse(
+      (response) => response.request().method() === "POST" && response.ok(),
+    ),
+    row.getByRole("button", { name: "Attribuer" }).click(),
+  ]);
   await page.goto(`/postes?search=Poste${id}`);
   await expect(
     page.getByRole("row", { name: new RegExp(`Poste${id}`) }),
