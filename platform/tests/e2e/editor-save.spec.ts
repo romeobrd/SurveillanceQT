@@ -204,6 +204,8 @@ test("restaure une ancienne version en créant une nouvelle version", async ({
 });
 
 test("refuse d'écraser une carte modifiée entre-temps", async ({ browser }) => {
+  // Deux éditeurs 3D ouverts en parallèle, en rendu logiciel (sans carte graphique) : plus lent que la moyenne
+  test.slow();
   const first = await (await browser.newContext()).newPage();
   const second = await (await browser.newContext()).newPage();
   await openE2eEditor(first);

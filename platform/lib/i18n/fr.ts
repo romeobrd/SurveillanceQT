@@ -69,6 +69,10 @@ export const fr = {
     assignmentNotice:
       "Les personnes affichées représentent l'affectation d'un poste, pas une présence réelle.",
     loading: "Chargement de la carte…",
+    rotateLeft: "Tourner la vue vers la gauche",
+    rotateRight: "Tourner la vue vers la droite",
+    rotateHelp:
+      "Clic droit + glisser (ou Alt + glisser) pour tourner et incliner ; touches Q et E.",
     error: "La carte n'a pas pu être affichée (WebGL indisponible ?).",
   },
   nav: {

@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { fr } from "@/lib/i18n/fr";
-import type { EditOverlayData } from "@/lib/map-renderer/draw";
-import { MapRenderer, type EditorBridge } from "@/lib/map-renderer/MapRenderer";
+import {
+  MapRenderer3D as MapRenderer,
+  type EditorBridge,
+} from "@/lib/map-renderer-3d/MapRenderer3D";
+import type { EditOverlayData } from "@/lib/map/edit-overlay";
 import type { PersonMarker } from "@/lib/map/scene";
 import type { Layout } from "@/lib/map/schema";
 
@@ -38,7 +41,7 @@ declare global {
 }
 
 const controlClass =
-  "flex h-10 w-10 items-center justify-center rounded-lg bg-white/90 text-lg font-semibold text-slate-900 shadow hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500";
+  "flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-lg font-semibold text-slate-800 shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500";
 
 export default function MapView({
   layout,
@@ -135,7 +138,7 @@ export default function MapView({
   }, [renderer]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-slate-800">
+    <div className="bg-map relative h-full w-full overflow-hidden">
       <div
         ref={hostRef}
         role="application"
@@ -158,17 +161,17 @@ export default function MapView({
           const tile = renderer?.clientToTile(event.clientX, event.clientY);
           if (tile) onDropItem?.(tile, key);
         }}
-        className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-500"
+        className="focus-visible:outline-brand-500 absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2"
       />
       {!renderer && !failed && (
-        <p className="absolute inset-0 flex items-center justify-center text-slate-200">
+        <p className="absolute inset-0 flex items-center justify-center text-slate-600">
           {fr.map.loading}
         </p>
       )}
       {failed && (
         <p
           role="alert"
-          className="absolute inset-0 flex items-center justify-center p-6 text-center text-red-200"
+          className="absolute inset-0 flex items-center justify-center p-6 text-center text-red-800"
         >
           {fr.map.error}
         </p>
@@ -198,11 +201,29 @@ export default function MapView({
         >
           ⌂
         </button>
+        <button
+          type="button"
+          className={controlClass}
+          aria-label={fr.map.rotateLeft}
+          title={fr.map.rotateHelp}
+          onClick={() => renderer?.rotateBy(-Math.PI / 4)}
+        >
+          ⟲
+        </button>
+        <button
+          type="button"
+          className={controlClass}
+          aria-label={fr.map.rotateRight}
+          title={fr.map.rotateHelp}
+          onClick={() => renderer?.rotateBy(Math.PI / 4)}
+        >
+          ⟳
+        </button>
       </div>
       {hoveredName && (
         <p
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-slate-900/85 px-3 py-1.5 text-sm text-white"
+          className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/95 px-3 py-1.5 text-sm font-medium text-slate-900 shadow-sm"
         >
           {hoveredName}
         </p>

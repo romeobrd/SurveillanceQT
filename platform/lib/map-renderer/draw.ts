@@ -278,20 +278,8 @@ function diamond(rect: Rect): number[] {
   ]);
 }
 
-/** Calques de l'éditeur : fantômes (vert/rouge), sélection, arête visée, pièce en cours de tracé, rectangle de sélection. */
-export interface EditOverlayData {
-  ghosts: Array<{
-    catalogKey: string;
-    x: number;
-    y: number;
-    rotation: 0 | 90 | 180 | 270;
-    valid: boolean;
-  }>;
-  selection: Rect[];
-  edge: { edge: Pick<Edge, "x" | "y" | "side">; valid: boolean } | null;
-  rect: { rect: Rect; valid: boolean } | null;
-  marquee: Rect | null;
-}
+export type { EditOverlayData } from "../map/edit-overlay";
+import type { EditOverlayData } from "../map/edit-overlay";
 
 export function drawEditOverlay(
   layers: {

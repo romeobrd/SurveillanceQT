@@ -24,7 +24,7 @@ import {
   type EditorState,
 } from "@/features/editor/state";
 import { fr } from "@/lib/i18n/fr";
-import type { EditorBridge } from "@/lib/map-renderer/MapRenderer";
+import type { EditorBridge } from "@/lib/map-renderer-3d/types";
 import { validateForSave, type SaveProblem } from "@/lib/map/edit/save";
 import {
   isImpactEmpty,
@@ -246,7 +246,7 @@ export default function LayoutEditor({
                 aria-selected={tab === name}
                 aria-controls={`panel-${name}`}
                 onClick={() => setTab(name)}
-                className="flex-1 px-2 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-600 aria-selected:border-b-2 aria-selected:border-orange-600 aria-selected:font-medium"
+                className="focus-visible:outline-brand-600 aria-selected:border-brand-600 flex-1 px-2 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 aria-selected:border-b-2 aria-selected:font-medium"
               >
                 {fr.editor.tabs[name]}
               </button>
