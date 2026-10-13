@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import LoginForm from "@/components/LoginForm";
@@ -47,6 +48,15 @@ export default function LoginPage() {
         <RedirectIfSignedIn />
       </Suspense>
       <LoginForm />
+      <p className="text-sm text-slate-600">
+        {fr.signup.noAccount}{" "}
+        <Link
+          href="/inscription"
+          className="font-medium text-slate-900 underline"
+        >
+          {fr.signup.startTrial}
+        </Link>
+      </p>
       <DemoAccounts />
     </main>
   );
