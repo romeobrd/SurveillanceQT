@@ -5,7 +5,8 @@ export const fr = {
     description:
       "Plateforme de gestion d'entreprise avec carte isométrique des locaux",
     homeTitle: "Gestion d'entreprise",
-    homeSubtitle: "Projet en cours de développement.",
+    homeSubtitle:
+      "Pilotez vos locaux, vos postes, votre stock, votre matériel et vos projets depuis une carte isométrique de l'entreprise.",
     openMap: "Ouvrir la carte des locaux",
   },
   auth: {
@@ -19,6 +20,14 @@ export const fr = {
     locked: "Trop de tentatives. Réessayez dans quelques minutes.",
     invalidForm: "Renseignez une adresse e-mail valide et votre mot de passe.",
     forbidden: "Vous n'avez pas les droits nécessaires pour cette action.",
+    demoTitle: "Comptes de démonstration",
+    demoHelp:
+      "Visible uniquement en développement. Mot de passe commun : Demo-Password-2026!",
+    demoRoles: {
+      admin: "Administrateur",
+      manager: "Manager",
+      employee: "Employé",
+    },
   },
   map: {
     pageTitle: "Carte des locaux",
