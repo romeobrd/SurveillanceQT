@@ -12,6 +12,7 @@ type Delegate = Record<string, (args?: unknown) => Promise<unknown>>;
 // Une modification anodine par modèle (les valeurs n'ont pas besoin d'être réalistes : elles ne doivent jamais être écrites)
 const TOUCH: Record<string, Record<string, unknown>> = {
   User: { passwordHash: "piratage" },
+  DailyMetric: { lowStock: 999 },
   Team: { name: "piratage" },
   Person: { jobTitle: "piratage" },
   Layout: { isActive: false },

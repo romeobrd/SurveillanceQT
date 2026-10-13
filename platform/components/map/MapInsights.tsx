@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDelta, type Trends } from "@/features/dashboard/trends";
 import type { MapKpis, ZoneAlert } from "@/features/map/insights";
 import type { ProjectFn } from "@/components/MapView";
 import { fr } from "@/lib/i18n/fr";
@@ -44,7 +45,28 @@ function Icon({ name }: { name: IconName }) {
 }
 
 /** Indicateurs posés en haut de la carte (totaux uniquement, aucune donnée personnelle). */
-export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
+export function MapKpiBar({
+  kpis,
+  trends = null,
+}: {
+  kpis: MapKpis;
+  trends?: Trends | null;
+}) {
+  // Évolution sur une semaine ; pour les alertes, une hausse est une mauvaise nouvelle
+  const trend = (delta: number | undefined, badWhenUp: boolean) =>
+    trends && delta !== undefined
+      ? {
+          text: t.trend
+            .replace("{delta}", formatDelta(delta))
+            .replace("{days}", String(trends.days)),
+          tone:
+            delta === 0 || !badWhenUp
+              ? "text-slate-500"
+              : delta > 0
+                ? "text-red-700"
+                : "text-green-700",
+        }
+      : null;
   const items: Array<{
     label: string;
     value: string;
@@ -52,6 +74,7 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
     href: string;
     alert: boolean;
     icon: IconName;
+    trend: { text: string; tone: string } | null;
   }> = [
     {
       label: t.people,
@@ -60,6 +83,7 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
       href: "/collaborateurs",
       alert: false,
       icon: "people",
+      trend: trend(trends?.people, false),
     },
     {
       label: t.occupied,
@@ -77,6 +101,7 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
       href: "/postes",
       alert: false,
       icon: "desk",
+      trend: trend(trends?.workstationsOccupied, false),
     },
     {
       label: t.lowStock,
@@ -85,6 +110,7 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
       href: "/stock?alert=low",
       alert: kpis.lowStock > 0,
       icon: "box",
+      trend: trend(trends?.lowStock, true),
     },
     {
       label: t.broken,
@@ -93,6 +119,7 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
       href: "/materiel?state=BROKEN",
       alert: kpis.brokenAssets > 0,
       icon: "wrench",
+      trend: trend(trends?.brokenAssets, true),
     },
   ];
   return (
@@ -121,7 +148,12 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
               >
                 {item.value}
               </span>
-              <span className="text-[11px] text-slate-500">{item.detail}</span>
+              <span
+                className={`text-[11px] ${item.trend ? item.trend.tone : "text-slate-500"}`}
+                data-testid={item.trend ? "kpi-trend" : undefined}
+              >
+                {item.trend ? item.trend.text : item.detail}
+              </span>
             </span>
           </Link>
         </li>

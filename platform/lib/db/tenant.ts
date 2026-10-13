@@ -20,6 +20,7 @@ const MODEL_NAMES = [
   "presenceStatus",
   "auditLog",
   "privacyRequest",
+  "dailyMetric",
 ] as const;
 
 function extend(organizationId: string) {

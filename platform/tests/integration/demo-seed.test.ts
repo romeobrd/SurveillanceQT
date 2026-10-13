@@ -63,3 +63,11 @@ describe("seed de démonstration", () => {
     expect(demo.accounts.admin.email).toBe("admin@atelier-lumiere.example");
   });
 });
+
+describe("historique de démonstration", () => {
+  it("fournit un relevé d'il y a 7 jours : les tendances s'affichent dès l'installation", async () => {
+    const { trends } = await repos.dashboard.trends();
+    expect(trends).not.toBeNull();
+    expect(trends!.days).toBe(7);
+  });
+});

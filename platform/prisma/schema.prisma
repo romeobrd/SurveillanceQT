@@ -86,6 +86,7 @@ model Organization {
   auditLogs        AuditLog[]
   privacyRequests  PrivacyRequest[]
   assetAssignments AssetAssignment[]
+  dailyMetrics     DailyMetric[]
 }
 
 model User {
@@ -361,4 +362,21 @@ model PrivacyRequest {
   requester    User         @relation(fields: [requesterId, organizationId], references: [id, organizationId], onDelete: NoAction)
 
   @@unique([id, organizationId])
+}
+
+/// Relevé quotidien des indicateurs (totaux uniquement, aucune donnée personnelle) : sert aux tendances.
+model DailyMetric {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  date                 DateTime @db.Date
+  people               Int
+  workstationsOccupied Int
+  workstationsTotal    Int
+  lowStock             Int
+  brokenAssets         Int
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, date])
 }

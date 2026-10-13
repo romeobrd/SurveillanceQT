@@ -61,6 +61,7 @@ export const fr = {
       lowStockDetail: "articles sous le seuil",
       broken: "Matériel en panne",
       brokenDetail: "à réparer ou remplacer",
+      trend: "{delta} en {days} j",
       alertsLabel: "Pièces avec des alertes",
       pin: "{zone} : {count} alerte(s)",
       inStock: "En stock",
@@ -229,7 +230,8 @@ export const fr = {
       "Articles passés sous leur seuil d'alerte, avec la quantité conseillée pour revenir à deux fois le seuil.",
     suggested: "À commander",
     export: "Exporter (CSV)",
-    exportHelp: "Fichier lisible par un tableur, à transmettre à votre fournisseur.",
+    exportHelp:
+      "Fichier lisible par un tableur, à transmettre à votre fournisseur.",
     empty: "Aucun article sous le seuil : rien à commander.",
     open: "Liste de réapprovisionnement",
   },

@@ -12,6 +12,7 @@ import type { VersionInfo } from "@/components/editor/VersionsPanel";
 import MapViewLazy from "@/components/MapViewLazy";
 import ActionForm from "@/components/ui/ActionForm";
 import { MapKpiBar, ZonePins } from "@/components/map/MapInsights";
+import type { Trends } from "@/features/dashboard/trends";
 import { computeMapKpis, computeZoneAlerts } from "@/features/map/insights";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
@@ -40,6 +41,8 @@ interface MapExplorerProps {
   /** Aménagement enregistré, pour « repartir de la carte enregistrée ». */
   savedLayout: Layout | null;
   versions: VersionInfo[];
+  /** Évolution des indicateurs sur une semaine (null sans historique). */
+  trends?: Trends | null;
 }
 
 /** Largeur du panneau flottant (24rem) + ses marges. */
@@ -62,6 +65,7 @@ export default function MapExplorer({
   baseVersion,
   savedLayout,
   versions,
+  trends = null,
 }: MapExplorerProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -261,7 +265,7 @@ export default function MapExplorer({
                   />
                 )}
               />
-              {mode === "active" && <MapKpiBar kpis={kpis} />}
+              {mode === "active" && <MapKpiBar kpis={kpis} trends={trends} />}
             </div>
             <aside
               aria-label={selectedZone ? selectedZone.name : fr.map.zoneList}

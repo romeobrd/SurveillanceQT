@@ -15,7 +15,7 @@ export { rawPrisma as testRawPrisma };
 
 export async function resetDatabase(): Promise<void> {
   await rawPrisma.$executeRawUnsafe(
-    `TRUNCATE "AssetAssignment","AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
+    `TRUNCATE "DailyMetric","AssetAssignment","AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
       `"Workstation","Zone","Layout","User","Person","Team","LoginAttempt","Organization" CASCADE`,
   );
 }
@@ -106,6 +106,17 @@ export async function seedFullOrganization(
       type: "ACCESS",
     },
   });
+  const metric = await rawPrisma.dailyMetric.create({
+    data: {
+      organizationId,
+      date: new Date("2026-01-05"),
+      people: 3,
+      workstationsOccupied: 2,
+      workstationsTotal: 5,
+      lowStock: 1,
+      brokenAssets: 0,
+    },
+  });
   const layout = await rawPrisma.layout.findFirstOrThrow({
     where: { organizationId, isActive: true },
   });
@@ -132,6 +143,7 @@ export async function seedFullOrganization(
       PresenceStatus: presence.id,
       AuditLog: audit.id,
       PrivacyRequest: privacyRequest.id,
+      DailyMetric: metric.id,
     },
   };
 }

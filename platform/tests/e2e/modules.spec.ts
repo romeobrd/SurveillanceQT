@@ -539,3 +539,16 @@ test("réapprovisionnement : liste des articles sous le seuil et export CSV", as
   );
   expect(csv).toContain("PAP-A4");
 });
+
+test("les indicateurs montrent leur évolution sur une semaine (tableau de bord et carte)", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await expect(page.getByTestId("stat-trend").first()).toContainText(
+    / en \d+ j/,
+  );
+  await page.goto("/carte");
+  await expect(page.getByTestId("kpi-trend").first()).toContainText(
+    / en \d+ j/,
+  );
+});

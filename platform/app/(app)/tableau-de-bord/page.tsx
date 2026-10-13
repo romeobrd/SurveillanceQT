@@ -7,6 +7,7 @@ import {
   secondaryLink,
 } from "@/components/ui/layout";
 import { getAppContext } from "@/lib/app-context";
+import { formatDelta } from "@/features/dashboard/trends";
 import { fr } from "@/lib/i18n/fr";
 
 export const metadata: Metadata = {
@@ -18,11 +19,18 @@ function Stat({
   value,
   href,
   tone,
+  delta,
+  days,
+  badWhenUp = false,
 }: {
   label: string;
   value: number;
   href?: string;
   tone?: "alert";
+  /** Évolution sur environ une semaine (absente sans historique). */
+  delta?: number;
+  days?: number;
+  badWhenUp?: boolean;
 }) {
   const body = (
     <>
@@ -32,6 +40,22 @@ function Stat({
         {value}
       </span>
       <span className="text-sm text-slate-700">{label}</span>
+      {delta !== undefined && days !== undefined && (
+        <span
+          data-testid="stat-trend"
+          className={`block text-xs ${
+            delta === 0 || !badWhenUp
+              ? "text-slate-500"
+              : delta > 0
+                ? "text-red-700"
+                : "text-green-700"
+          }`}
+        >
+          {fr.map.insights.trend
+            .replace("{delta}", formatDelta(delta))
+            .replace("{days}", String(days))}
+        </span>
+      )}
     </>
   );
   const className =
@@ -47,7 +71,11 @@ function Stat({
 
 export default async function DashboardPage() {
   const { repos } = await getAppContext();
-  const dashboard = await repos.dashboard.get();
+  const [dashboard, { trends }] = await Promise.all([
+    repos.dashboard.get(),
+    repos.dashboard.trends(),
+  ]);
+  const days = trends?.days;
   return (
     <div className="mx-auto max-w-6xl p-4">
       <h1 className="mb-4 text-2xl font-semibold">{fr.dashboard.title}</h1>
@@ -59,11 +87,15 @@ export default async function DashboardPage() {
           label={fr.dashboard.activePeople}
           value={dashboard.activePeople}
           href="/collaborateurs"
+          delta={trends?.people}
+          days={days}
         />
         <Stat
           label={fr.dashboard.workstationsOccupied}
           value={dashboard.workstations.occupied}
           href="/postes?status=occupied"
+          delta={trends?.workstationsOccupied}
+          days={days}
         />
         <Stat
           label={fr.dashboard.workstationsFree}
@@ -74,12 +106,18 @@ export default async function DashboardPage() {
           label={fr.dashboard.stockAlerts}
           value={dashboard.lowStock.length}
           href="/stock?alert=low"
+          delta={trends?.lowStock}
+          days={days}
+          badWhenUp
           tone="alert"
         />
         <Stat
           label={fr.dashboard.assetsBroken}
           value={dashboard.assets.broken}
           href="/materiel?state=BROKEN"
+          delta={trends?.brokenAssets}
+          days={days}
+          badWhenUp
           tone="alert"
         />
         <Stat

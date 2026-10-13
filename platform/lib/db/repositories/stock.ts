@@ -39,7 +39,7 @@ export interface StockItemView {
 
 type Reader = Pick<TenantDb, "stockMovement">;
 
-async function quantitiesByItem(
+export async function quantitiesByItem(
   db: Reader,
   itemIds: string[],
 ): Promise<Map<string, number>> {

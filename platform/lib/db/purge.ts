@@ -3,7 +3,13 @@
 import "server-only";
 import { retentionCutoff, todayInParis } from "@/lib/privacy/retention";
 import { rawPrisma } from "./client";
+import {
+  computeCurrentMetrics,
+  METRICS_RETENTION_DAYS,
+  recordDailyMetrics,
+} from "./metrics";
 import { anonymizePerson } from "./privacy-core";
+import { createTenantDb } from "./tenant";
 
 export interface OrganizationPurgeReport {
   organizationId: string;
@@ -86,6 +92,20 @@ export async function runPurge(now: Date = new Date()): Promise<PurgeReport> {
       });
       for (const person of due)
         await anonymizePerson(organizationId, person.id, now);
+
+      // Relevé quotidien des indicateurs (totaux, pour les tendances), puis suppression des relevés trop anciens
+      const tenantDb = createTenantDb(organizationId);
+      await recordDailyMetrics(
+        tenantDb,
+        today,
+        await computeCurrentMetrics(tenantDb),
+      );
+      await rawPrisma.dailyMetric.deleteMany({
+        where: {
+          organizationId,
+          date: { lt: retentionCutoff(now, METRICS_RETENTION_DAYS) },
+        },
+      });
 
       const report: OrganizationPurgeReport = {
         organizationId,

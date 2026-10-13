@@ -4,7 +4,10 @@ import "server-only";
 import { hashPassword } from "@/lib/auth/password";
 import type { AccessContext } from "@/lib/auth/permissions";
 import { generateLayout } from "@/lib/map/generator";
+import { todayInParis } from "@/lib/privacy/retention";
 import { rawPrisma } from "./client";
+import { computeCurrentMetrics, recordDailyMetrics } from "./metrics";
+import { createTenantDb } from "./tenant";
 import { getRepositories } from "./index";
 import type { Role } from "./types";
 
@@ -639,6 +642,7 @@ export async function seedDevelopment(): Promise<SeededOrganization[]> {
   for (const spec of DEV_ORGANIZATIONS) {
     const organization = await seedOrganization(spec);
     await seedSampleData(organization);
+    await seedMetricHistory(organization);
     result.push(organization);
   }
   return result;
@@ -694,4 +698,24 @@ export async function resetE2eOrganization(): Promise<SeededOrganization> {
   const organization = await seedOrganization(E2E_ORGANIZATION);
   await seedSampleData(organization);
   return organization;
+}
+
+/**
+ * Relevé fictif d'il y a 7 jours (totaux seulement) : la démonstration montre des tendances dès l'installation.
+ * Les écarts sont inventés (données de démonstration).
+ */
+export async function seedMetricHistory(
+  organization: SeededOrganization,
+  now: Date = new Date(),
+): Promise<void> {
+  const db = createTenantDb(organization.organizationId);
+  const current = await computeCurrentMetrics(db);
+  const today = todayInParis(now);
+  await recordDailyMetrics(db, new Date(today.getTime() - 7 * 86_400_000), {
+    people: Math.max(0, current.people - 2),
+    workstationsOccupied: Math.max(0, current.workstationsOccupied - 3),
+    workstationsTotal: current.workstationsTotal,
+    lowStock: current.lowStock + 1,
+    brokenAssets: Math.max(0, current.brokenAssets - 1),
+  });
 }

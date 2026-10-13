@@ -78,9 +78,11 @@ export default async function CartePage({
     );
   }
   const mode: MapMode = active ? "active" : "empty";
+  const { trends } = active ? await repos.dashboard.trends() : { trends: null };
   return (
     <MapExplorer
       {...common}
+      trends={trends}
       mode={mode}
       layout={active?.layout ?? null}
       data={active?.data ?? EMPTY_DATA}
