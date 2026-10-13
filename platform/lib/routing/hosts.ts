@@ -12,9 +12,9 @@ const SHARED_PAGES = new Set([
 ]);
 
 export interface HostConfig {
-  /** URL publique du site vitrine (SITE_URL), ex. https://www.isoplan.fr */
+  /** URL publique du site vitrine (SITE_URL), ex. https://www.spacora.tech */
   siteUrl?: string;
-  /** URL publique du service (AUTH_URL), ex. https://app.isoplan.fr */
+  /** URL publique du service (AUTH_URL), ex. https://app.spacora.tech */
   appUrl?: string;
 }
 

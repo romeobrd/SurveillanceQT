@@ -31,7 +31,7 @@ beforeEach(async () => {
   await testRawPrisma.emailToken.deleteMany();
   // Boîte d'envoi propre à chaque test (jamais celle du développement)
   process.env.EMAIL_OUTBOX_DIR = mkdtempSync(
-    path.join(tmpdir(), "isoplan-mails-"),
+    path.join(tmpdir(), "spacora-mails-"),
   );
 });
 

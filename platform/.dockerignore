@@ -1,0 +1,11 @@
+# Jamais dans l'image : secrets, dépendances et fichiers générés localement
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.dev-emails
+test-results
+playwright-report
+lib/db/generated
+.git

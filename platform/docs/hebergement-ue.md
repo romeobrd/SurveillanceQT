@@ -13,8 +13,8 @@ L'application est conçue pour être hébergée en UE sans service tiers : un se
 
 ## Purge nocturne
 
-Planifier `npm run purge` (ou un appel POST à `/api/cron/purge` avec l'en-tête `Authorization: Bearer <CRON_SECRET>`) chaque nuit. Voir `deploy/purge.cron`.
+Planifier `npm run purge` (ou un appel POST à `/api/cron/purge` avec l'en-tête `Authorization: Bearer <CRON_SECRET>`) chaque nuit. Voir `deploy/crontab` (installé par le guide `docs/deploiement-ovh.md`).
 
-## Fichiers d'exemple
+## Déploiement
 
-Le dossier `deploy/` contient un Dockerfile, un docker-compose de production et une tâche cron d'exemple. **Ils n'ont pas été testés** dans l'environnement de développement : à valider avant tout usage réel.
+Le dossier `deploy/` contient la mise en production complète (Caddy pour le HTTPS, application, PostgreSQL, purge et sauvegardes planifiées), testée dans un environnement isolé. Pas à pas pour un VPS OVH en France : `docs/deploiement-ovh.md`.

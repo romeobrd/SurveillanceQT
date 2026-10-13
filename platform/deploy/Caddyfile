@@ -1,0 +1,15 @@
+# Caddy : HTTPS automatique (Let's Encrypt) pour les trois adresses, puis relais vers l'application.
+{
+	email {$ACME_EMAIL}
+}
+
+# spacora.tech (sans www) → site vitrine
+{$DOMAIN} {
+	redir https://www.{$DOMAIN}{uri} permanent
+}
+
+# Site vitrine et service : même application, aiguillée par proxy.ts selon l'adresse
+www.{$DOMAIN}, app.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

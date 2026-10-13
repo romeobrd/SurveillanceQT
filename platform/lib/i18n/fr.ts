@@ -2,7 +2,7 @@
 export const fr = {
   app: {
     // Nom commercial PROVISOIRE : il se change ici, une seule fois
-    name: "Isoplan",
+    name: "Spacora",
     description:
       "Gérez vos bureaux, vos postes, votre stock, votre matériel et vos projets depuis une carte 3D de vos locaux.",
     homeTitle: "Vos locaux en 3D, toute votre gestion au même endroit",

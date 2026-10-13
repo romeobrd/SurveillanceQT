@@ -1,4 +1,4 @@
-# Isoplan (nom provisoire)
+# Spacora
 
 Plateforme de gestion d'entreprise avec carte 3D des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
 
@@ -95,7 +95,7 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 
 ## SaaS : inscription, essai, abonnements (phase 9)
 
-- **Site public** (`/`) : présentation, captures, tarifs ; pages **Mentions légales**, **CGU**, **CGV**, **Confidentialité** (modèles à faire valider par un juriste, informations d'éditeur à compléter entre crochets). Le nom commercial se change dans `lib/i18n/fr.ts` (`app.name`).
+- **Site public** (`/`) : présentation, captures, tarifs ; pages **Mentions légales**, **CGU**, **CGV**, **Confidentialité** (modèles à faire valider par un juriste, informations d'éditeur à compléter entre crochets). Nom commercial : **Spacora** (modifiable dans `lib/i18n/fr.ts`, `app.name`).
 - **Inscription** (`/inscription`) : l'entreprise crée son espace et son premier admin (preuve d'acceptation des CGU enregistrée : date et version), puis arrive sur la carte vide. **Essai gratuit de 14 jours** sur l'offre Pro, sans carte bancaire.
 - **Offres** (`features/billing/plans.ts`, seul endroit à modifier) : Essentiel 19 € (15 collaborateurs), Pro 49 € (50), Business 99 € (150), HT / mois, deux mois offerts en annuel. Au-delà de la limite, l'ajout de collaborateurs est refusé.
 - **Fin d'essai ou d'abonnement** : **lecture seule** (consultation, exports et droits RGPD restent possibles ; toute modification est refusée côté serveur). Un bandeau prévient tous les utilisateurs.
@@ -106,7 +106,7 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 ## Site vitrine et service : www et app
 
 - **En local** (ou sur un seul domaine) : `http://localhost:3000` est le site vitrine ; le service est derrière **Connexion** / **Mon espace**. Un client connecté peut toujours revenir sur l'accueil.
-- **En production sur deux domaines** : renseigner `SITE_URL` (ex. `https://www.isoplan.fr`) et `AUTH_URL` (ex. `https://app.isoplan.fr`), et faire pointer les deux domaines vers le même conteneur. `proxy.ts` aiguille chaque requête **avant tout affichage** : www sert l'accueil et les pages légales, et envoie connexion, inscription et service vers app ; sur app, l'accueil mène directement au tableau de bord (ou à la connexion). Les e-mails pointent vers app.
+- **En production sur deux domaines** (voir `docs/deploiement-ovh.md`, qui configure tout) : renseigner `SITE_URL` (ex. `https://www.spacora.tech`) et `AUTH_URL` (ex. `https://app.spacora.tech`), et faire pointer les deux domaines vers le même conteneur. `proxy.ts` aiguille chaque requête **avant tout affichage** : www sert l'accueil et les pages légales, et envoie connexion, inscription et service vers app ; sur app, l'accueil mène directement au tableau de bord (ou à la connexion). Les e-mails pointent vers app.
 
 ## E-mails, import et premiers pas (phase B)
 
@@ -152,7 +152,7 @@ La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, 
 - **Purge nocturne** : `npm run purge`, ou `POST /api/cron/purge` avec `Authorization: Bearer $CRON_SECRET` (secret de 32 caractères minimum ; sans lui la route répond 503).
 - **Sécurité navigateur** : CSP sans aucune origine externe, HSTS en production, `X-Frame-Options`, `Permissions-Policy` (géolocalisation, caméra, micro refusés). Limite connue : la CSP garde `'unsafe-inline'` pour les scripts, car le prérendu partiel (`cacheComponents`) est incompatible avec un nonce.
 - **Variables** : voir `.env.example` (`AUTH_URL` et `APP_ORIGIN` en production, `CRON_SECRET`).
-- **Documents** dans `docs/` (modèles à faire valider par un juriste ou un DPO) : registre des traitements, politique de confidentialité, note aux salariés, sous-traitants, procédure de réponse aux demandes, hébergement UE. Exemples de déploiement dans `deploy/` (non testés).
+- **Documents** dans `docs/` (modèles à faire valider par un juriste ou un DPO) : registre des traitements, politique de confidentialité, note aux salariés, sous-traitants, procédure de réponse aux demandes, hébergement UE. **Mise en ligne** : `deploy/` (testé) et le pas à pas `docs/deploiement-ovh.md` (VPS OVH, www.spacora.tech et app.spacora.tech).
 - E2E sur la version de production : `npm run build` puis `E2E_PROD=1 npx playwright test` (port 3100).
 
 ## Avancement

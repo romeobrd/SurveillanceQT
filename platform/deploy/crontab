@@ -1,0 +1,5 @@
+# Tâches planifiées du serveur. Installer avec : crontab /opt/spacora/platform/deploy/crontab
+# 03:15 purge RGPD (durées de conservation, liens expirés, e-mails de fin d'essai)
+15 3 * * * cd /opt/spacora/platform/deploy && docker compose exec -T app npm run purge >> logs/purge.log 2>&1
+# 03:45 sauvegarde de la base (conservée 14 jours dans deploy/backups)
+45 3 * * * cd /opt/spacora/platform/deploy && ./backup.sh >> logs/backup.log 2>&1

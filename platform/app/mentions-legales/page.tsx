@@ -21,7 +21,7 @@ export default function LegalNoticePage() {
         {
           title: "Hébergement",
           paragraphs: [
-            "Le service est hébergé dans l'Union européenne par [hébergeur, raison sociale], [adresse], [téléphone].",
+            "Le service est hébergé en France par OVH SAS, 2 rue Kellermann, 59100 Roubaix, France [coordonnées à vérifier sur ovhcloud.com].",
           ],
         },
         {

@@ -1,0 +1,51 @@
+# Mise en production de Spacora sur un serveur (VPS) : voir docs/deploiement-ovh.md.
+# Depuis ce dossier : docker compose up -d --build
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificats HTTPS
+      - caddy-config:/config
+    depends_on: [app]
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file: .env # secrets, Stripe, SMTP : voir deploy/.env.example
+    environment:
+      DATABASE_URL: postgresql://spacora:${DB_PASSWORD}@db:5432/spacora
+      AUTH_URL: https://app.${DOMAIN}
+      SITE_URL: https://www.${DOMAIN}
+      APP_ORIGIN: app.${DOMAIN}
+      AUTH_TRUST_HOST: "true"
+    expose: ["3000"] # joignable uniquement par Caddy, jamais directement depuis Internet
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spacora
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: spacora
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spacora -d spacora"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

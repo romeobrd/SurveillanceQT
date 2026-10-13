@@ -48,3 +48,7 @@ next-env.d.ts
 
 # Boîte d'envoi de développement (e-mails jamais envoyés en local)
 /.dev-emails/
+
+# Serveur de production : sauvegardes et journaux
+/deploy/backups
+/deploy/logs

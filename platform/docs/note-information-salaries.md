@@ -2,7 +2,7 @@
 
 > **MODÈLE — à faire valider par un juriste ou un DPO.** Ce document est un point de départ rédigé à partir du fonctionnement réel de l'application ; il ne constitue pas un avis juridique. Les passages entre crochets [ ] sont à compléter par l'entreprise utilisatrice (responsable de traitement).
 
-**Objet : mise en place de l'outil « Gestion d'entreprise »**
+**Objet : mise en place de l'outil « Spacora »**
 
 Madame, Monsieur,
 
