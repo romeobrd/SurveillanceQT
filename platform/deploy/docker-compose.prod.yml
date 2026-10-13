@@ -10,6 +10,9 @@ services:
       AUTH_URL: ${APP_URL}
       CRON_SECRET: ${CRON_SECRET}
       APP_ORIGIN: ${APP_HOST}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      # + STRIPE_PRICE_<OFFRE>_<MONTH|YEAR> (voir .env.example)
     depends_on: [db]
     ports: ["127.0.0.1:3000:3000"] # exposé uniquement au proxy HTTPS local
   db:

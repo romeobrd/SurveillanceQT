@@ -7,4 +7,4 @@
 | [Hébergeur de l'application et de la base] | Hébergement, sauvegardes | Toutes les données de l'application | [UE – pays]  | [à signer / référence] |
 | [Prestataire de messagerie, si utilisé]    | Envoi d'e-mails          | [adresses e-mail]                   | [UE]         | [à signer]             |
 
-L'application elle-même n'appelle **aucun service tiers** (pas de mesure d'audience, de cartographie, de police ou de script distant). Tout sous-traitant ajouté plus tard doit être inscrit ici et au registre des traitements.
+L'application n'appelle **aucun autre service tiers** que ceux listés ci-dessus (Stripe uniquement côté serveur, et par redirection vers ses pages de paiement : aucun script Stripe dans l'application) (pas de mesure d'audience, de cartographie, de police ou de script distant). Tout sous-traitant ajouté plus tard doit être inscrit ici et au registre des traitements.

@@ -45,6 +45,32 @@ async function AppShell({ children }: { children: ReactNode }) {
           </form>
         </div>
       </header>
+      {(session.access === "readonly" || session.trialDaysLeft > 0) && (
+        <p
+          role="status"
+          data-testid="billing-banner"
+          className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5 text-sm ${
+            session.access === "readonly"
+              ? "bg-red-50 text-red-900"
+              : "bg-brand-50 text-brand-900"
+          }`}
+        >
+          {session.access === "readonly"
+            ? fr.billing.bannerReadonly
+            : fr.billing.bannerTrial.replace(
+                "{days}",
+                String(session.trialDaysLeft),
+              )}
+          {session.role === "ADMIN" && (
+            <Link
+              href="/administration/abonnement"
+              className="font-medium underline"
+            >
+              {fr.billing.bannerCta}
+            </Link>
+          )}
+        </p>
+      )}
       <main className="min-h-0 flex-1 overflow-auto">{children}</main>
     </div>
   );

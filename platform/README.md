@@ -1,4 +1,4 @@
-# Gestion d'entreprise
+# Isoplan (nom provisoire)
 
 Plateforme de gestion d'entreprise avec carte 3D des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
 
@@ -92,6 +92,16 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - **Objets** : survol d'un objet = info-bulle (nom ; pour un poste, son occupant ou « Poste libre ») ; clic sur un objet = sa pièce. Choisir une pièce (carte, liste, épingle) fait **voler la caméra** jusqu'à elle (instantané si le système demande de réduire les animations).
 - **Projets** : la barre du bas montre les **étapes** du projet choisi (faite, en cours, à faire) et la carte éclaire les pièces où travaille son équipe.
 - **Tendances** : chaque indicateur indique son évolution sur une semaine (« +3 en 7 j »), à partir d'un relevé quotidien de totaux (aucune donnée personnelle, conservé 400 jours, fait à la consultation et par la purge nocturne).
+
+## SaaS : inscription, essai, abonnements (phase 9)
+
+- **Site public** (`/`) : présentation, captures, tarifs ; pages **Mentions légales**, **CGU**, **CGV**, **Confidentialité** (modèles à faire valider par un juriste, informations d'éditeur à compléter entre crochets). Le nom commercial se change dans `lib/i18n/fr.ts` (`app.name`).
+- **Inscription** (`/inscription`) : l'entreprise crée son espace et son premier admin (preuve d'acceptation des CGU enregistrée : date et version), puis arrive sur la carte vide. **Essai gratuit de 14 jours** sur l'offre Pro, sans carte bancaire.
+- **Offres** (`features/billing/plans.ts`, seul endroit à modifier) : Essentiel 19 € (15 collaborateurs), Pro 49 € (50), Business 99 € (150), HT / mois, deux mois offerts en annuel. Au-delà de la limite, l'ajout de collaborateurs est refusé.
+- **Fin d'essai ou d'abonnement** : **lecture seule** (consultation, exports et droits RGPD restent possibles ; toute modification est refusée côté serveur). Un bandeau prévient tous les utilisateurs.
+- **Paiement** : **Administration > Abonnement** redirige vers la page de paiement hébergée par **Stripe**, puis vers le portail client Stripe (factures, carte, résiliation). Aucun script Stripe dans l'application ; seuls les identifiants Stripe sont stockés. Le webhook signé `/api/stripe/webhook` synchronise l'abonnement. Variables : voir `.env.example` (`STRIPE_*`). Sans elles, le paiement est simplement désactivé.
+- Les entreprises de démonstration (seed) sont en abonnement actif « Business ».
+- Tester Stripe en local : `stripe listen --forward-to localhost:3000/api/stripe/webhook` (CLI Stripe), puis une carte de test `4242 4242 4242 4242`.
 
 ## Comptes et mots de passe
 

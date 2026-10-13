@@ -147,3 +147,18 @@ export async function seedFullOrganization(
     },
   };
 }
+
+/** Tests e2e : termine l'essai de l'entreprise d'un compte (la date de fin passe dans le passé). */
+export async function expireTrial(email: string): Promise<void> {
+  const user = await rawPrisma.user.findUniqueOrThrow({
+    where: { email: email.toLowerCase() },
+    select: { organizationId: true },
+  });
+  await rawPrisma.organization.update({
+    where: { id: user.organizationId },
+    data: {
+      subscriptionStatus: "TRIALING",
+      trialEndsAt: new Date(Date.now() - 60_000),
+    },
+  });
+}

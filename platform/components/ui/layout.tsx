@@ -180,7 +180,7 @@ export function ProgressBar({
   return (
     <div className="flex items-center gap-2">
       <progress
-        className="h-2 w-40"
+        className="[&::-webkit-progress-value]:bg-brand-600 [&::-moz-progress-bar]:bg-brand-600 h-2 w-40 appearance-none overflow-hidden rounded-full bg-slate-200 [&::-webkit-progress-bar]:bg-slate-200"
         value={value}
         max={100}
         aria-label={label}

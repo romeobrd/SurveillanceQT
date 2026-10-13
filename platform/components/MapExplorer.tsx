@@ -19,7 +19,6 @@ import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
 import { CATALOG } from "@/lib/map/catalog";
-import { ACCENT } from "@/lib/map/models";
 import { createEmptyLayout } from "@/lib/map/edit";
 import type { Layout } from "@/lib/map/schema";
 import ZonePanel from "./ZonePanel";
@@ -338,8 +337,7 @@ export default function MapExplorer({
               {project && (
                 <div className="flex min-w-40 items-center gap-2">
                   <progress
-                    className="h-3 flex-1"
-                    style={{ accentColor: ACCENT }}
+                    className="[&::-webkit-progress-value]:bg-brand-600 [&::-moz-progress-bar]:bg-brand-600 h-2.5 flex-1 appearance-none overflow-hidden rounded-full bg-slate-200 [&::-webkit-progress-bar]:bg-slate-200"
                     value={project.progress}
                     max={100}
                     aria-label={`${project.name} : ${project.progress} %`}

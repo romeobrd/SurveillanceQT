@@ -14,6 +14,12 @@ const PAGES = [
   "/administration",
   "/administration/demandes",
   "/administration/journal",
+  "/administration/comptes",
+  "/administration/abonnement",
+  "/stock/reapprovisionnement",
+  "/mon-compte",
+  "/cgu",
+  "/confidentialite",
 ];
 
 /** Observe une page : violations de CSP, erreurs de script et requêtes vers d'autres origines. */

@@ -1,12 +1,13 @@
 // Textes d'interface centralisés (français uniquement en V1)
 export const fr = {
   app: {
-    name: "Gestion d'entreprise",
+    // Nom commercial PROVISOIRE : il se change ici, une seule fois
+    name: "Isoplan",
     description:
-      "Plateforme de gestion d'entreprise avec carte isométrique des locaux",
-    homeTitle: "Gestion d'entreprise",
+      "Gérez vos bureaux, vos postes, votre stock, votre matériel et vos projets depuis une carte 3D de vos locaux.",
+    homeTitle: "Vos locaux en 3D, toute votre gestion au même endroit",
     homeSubtitle:
-      "Pilotez vos locaux, vos postes, votre stock, votre matériel et vos projets depuis une carte isométrique de l'entreprise.",
+      "Pilotez vos locaux, vos postes, votre stock, votre matériel et vos projets depuis une carte 3D de l'entreprise.",
     openMap: "Ouvrir la carte des locaux",
   },
   auth: {
@@ -155,6 +156,10 @@ export const fr = {
       "La carte a été modifiée par quelqu'un d'autre depuis l'ouverture de l'éditeur. Rechargez la page.",
     generic: "Une erreur est survenue. Réessayez.",
     wrongPassword: "Le mot de passe actuel est incorrect.",
+    subscription:
+      "Votre essai ou votre abonnement est terminé : les données restent consultables, mais plus modifiables. Choisissez une offre dans Administration > Abonnement.",
+    planLimit:
+      "Votre offre est limitée à {limit} collaborateurs actifs. Passez à l'offre supérieure dans Administration > Abonnement.",
   },
   dashboard: {
     title: "Tableau de bord",
@@ -416,6 +421,141 @@ export const fr = {
     temporaryHelp:
       "Copiez-le maintenant : il ne sera plus jamais affiché. Transmettez-le à la personne par un canal sûr.",
     roles: { ADMIN: "Administrateur", MANAGER: "Manager", EMPLOYEE: "Employé" },
+  },
+  billing: {
+    title: "Abonnement",
+    tab: "Abonnement",
+    currentPlan: "Offre actuelle",
+    status: {
+      TRIALING: "Essai gratuit",
+      ACTIVE: "Abonnement actif",
+      PAST_DUE: "Paiement en attente",
+      CANCELED: "Abonnement résilié",
+    },
+    trialLeft: "{days} jour(s) d'essai restant(s), jusqu'au {date}.",
+    trialOver: "L'essai est terminé.",
+    periodEnd: "Prochaine échéance : {date}.",
+    accessUntil: "Accès jusqu'au {date}.",
+    readonly:
+      "Vos données restent consultables et exportables, mais ne sont plus modifiables. Choisissez une offre pour reprendre.",
+    pastDue:
+      "Le dernier paiement a échoué. Mettez à jour votre moyen de paiement pour éviter l'interruption.",
+    usage: "{count} / {max} collaborateurs actifs",
+    monthly: "Mensuel",
+    yearly: "Annuel (2 mois offerts)",
+    perMonth: "€ HT / mois",
+    perYear: "€ HT / an",
+    choose: "Choisir {plan}",
+    current: "Offre actuelle",
+    manage: "Gérer la facturation (factures, carte, résiliation)",
+    paid: "Merci ! Le paiement est enregistré ; l'abonnement s'active dans quelques secondes.",
+    notConfigured:
+      "Le paiement en ligne n'est pas encore configuré sur ce serveur (clés Stripe absentes).",
+    noCustomer: "Aucun moyen de paiement enregistré pour l'instant.",
+    secure:
+      "Paiement sécurisé par Stripe : vos coordonnées bancaires ne transitent jamais par nos serveurs.",
+    bannerTrial: "Essai gratuit : {days} jour(s) restant(s).",
+    bannerReadonly:
+      "Lecture seule : votre essai ou votre abonnement est terminé.",
+    bannerCta: "Choisir une offre",
+  },
+  landing: {
+    nav: {
+      features: "Fonctionnalités",
+      pricing: "Tarifs",
+      privacy: "RGPD",
+      login: "Connexion",
+    },
+    badge: "Pour les PME de bureaux · Hébergé en Europe",
+    cta: "Essai gratuit 14 jours",
+    ctaNote: "Sans carte bancaire · Prêt en 5 minutes",
+    secondary: "Voir les tarifs",
+    screenshotAlt:
+      "Carte 3D des bureaux : indicateurs en haut, épingles d'alerte sur les pièces, panneau de détail à droite.",
+    zoomAlt:
+      "Vue rapprochée : bureaux, collaborateurs à leur poste et noms des pièces peints au sol.",
+    featuresTitle: "Tout ce qui se passe dans vos locaux, sur une seule carte",
+    features: [
+      {
+        title: "Carte 3D de vos locaux",
+        text: "Générez vos bureaux en un clic ou dessinez-les : pièces, postes, mobilier. Tournez, zoomez, cliquez.",
+      },
+      {
+        title: "Postes et collaborateurs",
+        text: "Qui est installé où, quels postes sont libres, en un coup d'œil. Réaffectation guidée quand vous réaménagez.",
+      },
+      {
+        title: "Stock et réapprovisionnement",
+        text: "Alertes sous le seuil, épingles sur la carte, liste de réapprovisionnement exportable pour votre fournisseur.",
+      },
+      {
+        title: "Matériel",
+        text: "Ordinateurs, écrans, imprimantes : qui a quoi, ce qui est en panne, ce qui est à renouveler, avec l'historique.",
+      },
+      {
+        title: "Projets d'équipe",
+        text: "Étapes, avancement, et les pièces de l'équipe mises en évidence sur la carte.",
+      },
+      {
+        title: "RGPD intégré",
+        text: "Export des données, demandes des salariés, anonymisation des départs, journal d'audit, aucun traceur.",
+      },
+    ],
+    privacyTitle: "Conçu pour le RGPD, pas l'inverse",
+    privacyPoints: [
+      "Aucune géolocalisation, aucun suivi de présence : la carte montre des affectations, pas des personnes.",
+      "Hébergement dans l'Union européenne, aucun script ni traceur tiers.",
+      "Chaque salarié consulte et exporte ses données ; les départs sont anonymisés automatiquement.",
+      "Journal d'audit de tous les accès aux données personnelles.",
+    ],
+    pricingTitle: "Des tarifs simples, selon la taille de votre équipe",
+    pricingNote:
+      "Prix HT. Annuel : deux mois offerts. Essai gratuit de 14 jours sur l'offre Pro, sans engagement.",
+    perMonth: "€ HT / mois",
+    choose: "Commencer l'essai",
+    popular: "Le plus choisi",
+    finalTitle: "Prêt à voir vos locaux autrement ?",
+    footer: {
+      legal: "Mentions légales",
+      terms: "CGU",
+      sales: "CGV",
+      privacy: "Confidentialité",
+      login: "Connexion",
+    },
+  },
+  legal: {
+    draft:
+      "MODÈLE — à faire valider par un juriste ou un DPO avant toute mise en ligne. Les passages entre crochets sont à compléter.",
+    updated: "Dernière mise à jour : octobre 2026",
+    back: "Retour à l'accueil",
+  },
+  signup: {
+    title: "Créer votre espace",
+    subtitle:
+      "14 jours d'essai gratuit, sans carte bancaire. Vos données restent en Europe.",
+    company: "Nom de l'entreprise",
+    firstName: "Votre prénom",
+    lastName: "Votre nom",
+    email: "Votre e-mail professionnel",
+    password: "Mot de passe (12 caractères minimum)",
+    acceptTerms:
+      "J'accepte les conditions générales d'utilisation et la politique de confidentialité",
+    terms: "conditions générales",
+    privacy: "politique de confidentialité",
+    submit: "Démarrer l'essai gratuit",
+    submitting: "Création de votre espace…",
+    haveAccount: "Déjà un compte ?",
+    noAccount: "Pas encore de compte ?",
+    startTrial: "Essai gratuit",
+    errors: {
+      invalid:
+        "Vérifiez les champs : tous sont obligatoires, et le mot de passe fait au moins 12 caractères.",
+      terms:
+        "Vous devez accepter les conditions générales pour créer votre espace.",
+      duplicate:
+        "Cet e-mail a déjà un compte. Connectez-vous, ou utilisez une autre adresse.",
+      locked: "Trop de tentatives. Réessayez dans quelques minutes.",
+    },
   },
   myAccount: {
     title: "Mon compte",
