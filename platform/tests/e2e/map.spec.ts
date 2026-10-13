@@ -172,3 +172,48 @@ test("la vue tourne avec les boutons et le clavier, et le recentrage la rétabli
     .poll(() => page.evaluate(() => window.__mapDebug!.tileCenter(0, 0)))
     .toEqual(before);
 });
+
+test("survoler un objet affiche son info-bulle ; un poste montre son occupant ou « Poste libre »", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/carte");
+  await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
+    timeout: 30_000,
+  });
+  const box = (await page.getByTestId("map-host").boundingBox())!;
+  const ids = await page.evaluate(() =>
+    window.__mapDebug!.elementIds("bureau_double"),
+  );
+  const tooltip = page.getByTestId("element-tooltip");
+  // Le premier bureau dont le dessus est visible (non masqué par un mur ou le panneau) suffit
+  let text = "";
+  for (const id of ids) {
+    const point = await page.evaluate(
+      (elementId) => window.__mapDebug!.elementPoint(elementId),
+      id,
+    );
+    if (!point || point.x < 0 || point.x > box.width - 420) continue;
+    await page.mouse.move(box.x + point.x, box.y + point.y);
+    if (await tooltip.isVisible().catch(() => false)) {
+      text = await tooltip.innerText();
+      break;
+    }
+  }
+  expect(text).toMatch(/Poste libre|·/);
+});
+
+test("choisir une pièce fait voler la caméra jusqu'à elle", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/carte");
+  await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
+    timeout: 30_000,
+  });
+  const before = await page.evaluate(() => window.__mapDebug!.stats().zoom);
+  await page.getByTestId("zone-pin").first().click();
+  await expect
+    .poll(() => page.evaluate(() => window.__mapDebug!.stats().zoom))
+    .toBeGreaterThan(before * 1.2);
+});

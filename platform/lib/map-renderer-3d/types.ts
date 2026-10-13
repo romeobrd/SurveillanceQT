@@ -6,6 +6,11 @@ export interface MapRendererOptions {
   onZoneClick?: (zoneId: string | null) => void;
   /** Appelé quand la vue change (caméra, taille) : pour repositionner les étiquettes posées sur la carte. */
   onViewChange?: () => void;
+  /** Survol d'un élément de la carte (bureau, étagère…), avec la position du pointeur dans la carte. */
+  onElementHover?: (
+    elementId: string | null,
+    point: { x: number; y: number } | null,
+  ) => void;
 }
 
 export interface BenchmarkResult {

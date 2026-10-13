@@ -184,3 +184,42 @@ export function rayToGround(
   if (t < 0) return null;
   return { x: origin.x + direction.x * t, z: origin.z + direction.z * t };
 }
+
+/** Courbe d'accélération douce (départ et arrivée lents), t ∈ [0, 1]. */
+export function easeInOutCubic(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
+}
+
+/** Interpolation entre deux caméras ; l'angle horizontal prend le plus court chemin. */
+export function lerpOrbit(
+  from: OrbitCamera,
+  to: OrbitCamera,
+  t: number,
+): OrbitCamera {
+  const mix = (a: number, b: number) => a + (b - a) * t;
+  let delta = normalizeAngle(to.azimuth) - normalizeAngle(from.azimuth);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return {
+    targetX: mix(from.targetX, to.targetX),
+    targetZ: mix(from.targetZ, to.targetZ),
+    distance: mix(from.distance, to.distance),
+    azimuth: normalizeAngle(from.azimuth + delta * t),
+    polar: mix(from.polar, to.polar),
+  };
+}
+
+/** Caméra qui s'approche d'un rectangle du sol (une pièce) sans jamais reculer. */
+export function focusOn(
+  camera: OrbitCamera,
+  rect: { x: number; y: number; w: number; h: number },
+): OrbitCamera {
+  const wanted = Math.max(MIN_DISTANCE + 2, Math.max(rect.w, rect.h) * 2.4 + 4);
+  return {
+    ...camera,
+    targetX: rect.x + rect.w / 2,
+    targetZ: rect.y + rect.h / 2,
+    distance: Math.min(camera.distance, wanted),
+  };
+}

@@ -3,6 +3,9 @@ import {
   cameraPosition,
   clampOrbit,
   DEFAULT_AZIMUTH,
+  easeInOutCubic,
+  focusOn,
+  lerpOrbit,
   fitCamera,
   groundAxes,
   MAX_POLAR,
@@ -128,5 +131,38 @@ describe("caméra 3D en orbite", () => {
     });
     expect(hit!.x).toBeCloseTo(base.targetX);
     expect(hit!.z).toBeCloseTo(base.targetZ);
+  });
+});
+
+describe("animations de caméra", () => {
+  it("la courbe part de 0, arrive à 1 et reste bornée", () => {
+    expect(easeInOutCubic(0)).toBe(0);
+    expect(easeInOutCubic(1)).toBe(1);
+    expect(easeInOutCubic(0.5)).toBeCloseTo(0.5);
+    expect(easeInOutCubic(-2)).toBe(0);
+    expect(easeInOutCubic(3)).toBe(1);
+  });
+
+  it("interpole tout, et tourne par le plus court chemin", () => {
+    const from = { ...base, azimuth: 0.1 };
+    const to = {
+      ...base,
+      azimuth: Math.PI * 2 - 0.1,
+      targetX: 30,
+      distance: 10,
+    };
+    const middle = lerpOrbit(from, to, 0.5);
+    expect(middle.targetX).toBeCloseTo(25);
+    expect(middle.distance).toBeCloseTo(20);
+    expect(middle.azimuth).toBeCloseTo(0); // passe par 0, pas par π
+    expect(lerpOrbit(from, to, 1).azimuth).toBeCloseTo(to.azimuth);
+  });
+
+  it("vole vers une pièce : centrée, plus près, jamais plus loin qu'avant", () => {
+    const focused = focusOn(base, { x: 4, y: 6, w: 4, h: 2 });
+    expect(focused).toMatchObject({ targetX: 6, targetZ: 7 });
+    expect(focused.distance).toBeLessThan(base.distance);
+    const close = { ...base, distance: 5 };
+    expect(focusOn(close, { x: 0, y: 0, w: 20, h: 20 }).distance).toBe(5);
   });
 });

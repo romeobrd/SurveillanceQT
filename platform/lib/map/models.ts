@@ -20,6 +20,8 @@ export interface Part {
   color: string;
   /** Matériau translucide (vitres). */
   glass?: boolean;
+  /** Élément de la carte auquel appartient la forme (pour le survol et le clic). */
+  owner?: string;
 }
 
 /** Hauteur des murs en unités de monde (volontairement basse : on voit l'intérieur des pièces). */

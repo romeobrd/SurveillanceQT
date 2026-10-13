@@ -50,6 +50,7 @@ export const fr = {
     assets: "Matériel",
     stock: "Stock",
     stockAlert: "Sous le seuil",
+    freeWorkstation: "Poste libre",
     insights: {
       label: "Indicateurs de l'entreprise",
       people: "Collaborateurs",

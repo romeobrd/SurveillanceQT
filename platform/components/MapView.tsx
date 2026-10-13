@@ -8,6 +8,7 @@ import {
 } from "@/lib/map-renderer-3d/MapRenderer3D";
 import type { EditOverlayData } from "@/lib/map/edit-overlay";
 import type { PersonMarker } from "@/lib/map/scene";
+import { CATALOG } from "@/lib/map/catalog";
 import type { Layout } from "@/lib/map/schema";
 
 interface MapViewProps {
@@ -29,6 +30,12 @@ interface MapViewProps {
   labels?: (project: ProjectFn) => ReactNode;
   /** Largeur (px) couverte à droite par un panneau posé sur la carte : la vue et les boutons s'en écartent. */
   insetRight?: number;
+  /** Texte de l'info-bulle d'un objet survolé (nom, occupant…), ou null pour ne rien afficher. */
+  describeElement?: (
+    elementId: string,
+  ) => { title: string; detail?: string } | null;
+  /** La caméra vole jusqu'à la pièce choisie (vue ; jamais en mode Aménager). */
+  flyToSelection?: boolean;
 }
 
 export type ProjectFn = (
@@ -47,6 +54,10 @@ declare global {
       zoneCenter: (zoneId: string) => { x: number; y: number } | null;
       tileCenter: (x: number, y: number) => { x: number; y: number };
       gridPoint: (gx: number, gy: number) => { x: number; y: number };
+      /** Point de l'écran au-dessus du centre d'un élément (pour viser l'objet lui-même). */
+      elementPoint: (elementId: string) => { x: number; y: number } | null;
+      /** Identifiants des éléments d'une famille du catalogue (ex. postes de travail). */
+      elementIds: (catalogKey?: string) => string[];
       benchmark: (frames?: number) => ReturnType<MapRenderer["benchmark"]>;
       stats: () => ReturnType<MapRenderer["getStats"]>;
     };
@@ -67,6 +78,8 @@ export default function MapView({
   onDropItem,
   labels: renderLabels,
   insetRight = 0,
+  describeElement,
+  flyToSelection = false,
 }: MapViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelectZone);
@@ -77,6 +90,10 @@ export default function MapView({
   // Incrémenté quand la caméra bouge : les étiquettes posées sur la carte se repositionnent (une fois par image au plus)
   const [, setViewVersion] = useState(0);
   const viewFrame = useRef(0);
+  const [hoveredElement, setHoveredElement] = useState<{
+    id: string;
+    point: { x: number; y: number };
+  } | null>(null);
 
   useEffect(() => {
     selectRef.current = onSelectZone;
@@ -98,6 +115,8 @@ export default function MapView({
           setViewVersion((version) => version + 1);
         });
       },
+      onElementHover: (elementId, point) =>
+        setHoveredElement(elementId && point ? { id: elementId, point } : null),
       onZoneHover: (zoneId) =>
         setHoveredName(
           layoutRef.current.zones.find((zone) => zone.id === zoneId)?.name ??
@@ -155,11 +174,34 @@ export default function MapView({
   }, [renderer, insetRight]);
 
   useEffect(() => {
+    if (flyToSelection && selectedZoneId) renderer?.flyToZone(selectedZoneId);
+  }, [renderer, selectedZoneId, flyToSelection]);
+
+  useEffect(() => {
     if (!renderer || process.env.NODE_ENV === "production") return;
     window.__mapDebug = {
       zoneCenter: (zoneId) => renderer.getZoneScreenCenter(zoneId),
       tileCenter: (x, y) => renderer.getTileScreenCenter(x, y),
       gridPoint: (gx, gy) => renderer.getGridScreenPoint(gx, gy),
+      elementIds: (catalogKey) =>
+        layoutRef.current.elements
+          .filter((e) => !catalogKey || e.catalogKey === catalogKey)
+          .map((e) => e.id),
+      elementPoint: (elementId) => {
+        const element = layoutRef.current.elements.find(
+          (candidate) => candidate.id === elementId,
+        );
+        if (!element) return null;
+        const rotated = element.rotation === 90 || element.rotation === 270;
+        const entry = CATALOG[element.catalogKey];
+        const w = entry ? (rotated ? entry.h : entry.w) : 1;
+        const h = entry ? (rotated ? entry.w : entry.h) : 1;
+        return renderer.projectGround(
+          element.x + w / 2,
+          element.y + h / 2,
+          (entry?.height ?? 0.5) * 0.9,
+        );
+      },
       benchmark: (frames) => renderer.benchmark(frames),
       stats: () => renderer.getStats(),
     };
@@ -261,6 +303,28 @@ export default function MapView({
           ⟳
         </button>
       </div>
+      {hoveredElement &&
+        describeElement &&
+        (() => {
+          const text = describeElement(hoveredElement.id);
+          if (!text) return null;
+          return (
+            <div
+              aria-hidden="true"
+              data-testid="element-tooltip"
+              className="pointer-events-none absolute z-10 max-w-64 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-sm shadow-md"
+              style={{
+                left: hoveredElement.point.x + 14,
+                top: hoveredElement.point.y + 14,
+              }}
+            >
+              <p className="font-semibold">{text.title}</p>
+              {text.detail && (
+                <p className="text-xs text-slate-600">{text.detail}</p>
+              )}
+            </div>
+          );
+        })()}
       {hoveredName && (
         <p
           aria-hidden="true"

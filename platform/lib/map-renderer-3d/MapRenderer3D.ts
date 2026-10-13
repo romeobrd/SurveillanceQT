@@ -8,6 +8,7 @@ import {
   DirectionalLight,
   Frustum,
   Group,
+  InstancedMesh,
   HemisphereLight,
   LineBasicMaterial,
   LineSegments,
@@ -29,7 +30,10 @@ import {
 import {
   cameraPosition,
   clampOrbit,
+  easeInOutCubic,
   fitCamera,
+  focusOn,
+  lerpOrbit,
   fitDistance,
   orbitBy,
   panBetween,
@@ -143,6 +147,14 @@ export class MapRenderer3D {
     polar: 0.95,
   };
   private hoverZoneId: string | null = null;
+  private hoverElementId: string | null = null;
+  private pendingHover: PointerEvent | null = null;
+  private animation: {
+    from: OrbitCamera;
+    to: OrbitCamera;
+    start: number;
+    duration: number;
+  } | null = null;
   private selectedZoneId: string | null = null;
   private quality: RenderQuality = "high";
   /** Largeur (px) masquée à droite par un panneau flottant : la vue se centre dans l'espace libre. */
@@ -244,7 +256,9 @@ export class MapRenderer3D {
           : item.kind === "door"
             ? doorParts(item.edge)
             : item.kind === "element"
-              ? catalogParts(item.catalogKey, f.x, f.y, item.rotation)
+              ? catalogParts(item.catalogKey, f.x, f.y, item.rotation).map(
+                  (part) => ({ ...part, owner: item.elementId }),
+                )
               : personParts(f.x, f.y, item.color);
       for (const part of parts) (part.glass ? glass : solid).push(part);
       const box = new Box3();
@@ -374,6 +388,58 @@ export class MapRenderer3D {
     this.resize();
     // Changement de disposition (rare) : on recadre la carte dans le nouvel espace libre
     if (this.layout) this.resetView();
+  }
+
+  /** La caméra vole jusqu'à une pièce (instantané si l'utilisateur préfère réduire les animations). */
+  flyToZone(zoneId: string): void {
+    const zone = this.layout?.zones.find(
+      (candidate) => candidate.id === zoneId,
+    );
+    if (!zone) return;
+    const minX = Math.min(...zone.rects.map((r) => r.x));
+    const minY = Math.min(...zone.rects.map((r) => r.y));
+    const maxX = Math.max(...zone.rects.map((r) => r.x + r.w));
+    const maxY = Math.max(...zone.rects.map((r) => r.y + r.h));
+    const to = clampOrbit(
+      focusOn(this.orbit, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }),
+      this.bounds,
+      this.maxDistance(),
+    );
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      this.setOrbit(to);
+      return;
+    }
+    this.animation = {
+      from: this.orbit,
+      to,
+      start: performance.now(),
+      duration: 550,
+    };
+    this.dirty = true;
+  }
+
+  /** Élément de la carte (bureau, étagère…) visible sous un point de l'écran, ou null. */
+  pickElement(clientX: number, clientY: number): string | null {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new Vector2(
+      ((clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
+      -((clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(ndc, this.camera3d);
+    const meshes = this.mapGroup.children.filter(
+      (child): child is InstancedMesh =>
+        child instanceof InstancedMesh && Array.isArray(child.userData.owners),
+    );
+    for (const hit of this.raycaster.intersectObjects(meshes, false)) {
+      const owners = hit.object.userData.owners as Array<string | null>;
+      if (hit.instanceId === undefined) continue;
+      // Le premier objet touché masque ceux de derrière : on s'arrête dès qu'on touche quelque chose
+      return owners[hit.instanceId] ?? null;
+    }
+    return null;
   }
 
   /** Tourne la vue autour du point visé (radians, sens trigonométrique vu de dessus). */
@@ -748,6 +814,20 @@ export class MapRenderer3D {
 
   private readonly frame = (): void => {
     if (this.destroyed) return;
+    if (this.pendingHover) {
+      const event = this.pendingHover;
+      this.pendingHover = null;
+      this.setElementHover(
+        this.pickElement(event.clientX, event.clientY),
+        event,
+      );
+    }
+    if (this.animation) {
+      const { from, to, start, duration } = this.animation;
+      const t = Math.min(1, (performance.now() - start) / duration);
+      this.applyOrbit(lerpOrbit(from, to, easeInOutCubic(t)));
+      if (t >= 1) this.animation = null;
+    }
     if (this.dirty) {
       this.dirty = false;
       this.countVisible();
@@ -781,6 +861,29 @@ export class MapRenderer3D {
     );
   }
 
+  /** Pièce visée : celle de l'objet touché s'il y en a un (une étagère haute peut masquer le sol voisin), sinon celle du sol. */
+  private zoneUnder(clientX: number, clientY: number): string | null {
+    const elementId = this.pickElement(clientX, clientY);
+    const element = elementId
+      ? this.layout?.elements.find((candidate) => candidate.id === elementId)
+      : undefined;
+    return element?.zoneId ?? this.zoneAt(clientX, clientY);
+  }
+
+  private setElementHover(
+    elementId: string | null,
+    event: PointerEvent | null,
+  ): void {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const point = event
+      ? { x: event.clientX - rect.left, y: event.clientY - rect.top }
+      : null;
+    if (elementId === this.hoverElementId && elementId === null) return;
+    this.hoverElementId = elementId;
+    this.renderer.domElement.style.cursor = elementId ? "pointer" : "";
+    this.options.onElementHover?.(elementId, elementId ? point : null);
+  }
+
   private setHover(zoneId: string | null): void {
     if (zoneId === this.hoverZoneId) return;
     this.hoverZoneId = zoneId;
@@ -802,6 +905,7 @@ export class MapRenderer3D {
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    this.animation = null;
     this.renderer.domElement.setPointerCapture(event.pointerId);
     this.options.host.focus({ preventScroll: true });
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -843,11 +947,11 @@ export class MapRenderer3D {
     }
     if (!previous) {
       if (this.editor) return;
-      this.setHover(
-        event.pointerType === "mouse"
-          ? this.zoneAt(event.clientX, event.clientY)
-          : null,
-      );
+      const mouse = event.pointerType === "mouse";
+      this.setHover(mouse ? this.zoneAt(event.clientX, event.clientY) : null);
+      // Le lancer de rayon sur les objets est fait une fois par image au plus (voir frame)
+      this.pendingHover = mouse ? event : null;
+      if (!mouse) this.setElementHover(null, null);
       return;
     }
     const current = { x: event.clientX, y: event.clientY };
@@ -906,7 +1010,7 @@ export class MapRenderer3D {
       return;
     }
     if (wasSingle && !this.dragMoved && !this.editor && event.button === 0)
-      this.options.onZoneClick?.(this.zoneAt(event.clientX, event.clientY));
+      this.options.onZoneClick?.(this.zoneUnder(event.clientX, event.clientY));
     if (this.pointers.size === 0) this.dragStart = null;
     this.pinchDistance = 0;
   };
@@ -923,11 +1027,16 @@ export class MapRenderer3D {
   };
 
   private readonly onPointerLeave = (): void => {
-    if (this.pointers.size === 0) this.setHover(null);
+    if (this.pointers.size === 0) {
+      this.pendingHover = null;
+      this.setHover(null);
+      this.setElementHover(null, null);
+    }
   };
 
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
+    this.animation = null;
     const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.0015));
     this.setOrbit(
       zoomToward(

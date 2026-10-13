@@ -61,6 +61,8 @@ export function buildBatches(
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
+    // Propriétaire de chaque instance : retrouve l'élément de la carte touché par un rayon
+    mesh.userData.owners = ofShape.map((part) => part.owner ?? null);
     mesh.castShadow = options.shadows;
     mesh.receiveShadow = options.shadows;
     meshes.push(mesh);

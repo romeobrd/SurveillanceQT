@@ -16,6 +16,7 @@ import { computeMapKpis, computeZoneAlerts } from "@/features/map/insights";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
+import { CATALOG } from "@/lib/map/catalog";
 import { createEmptyLayout } from "@/lib/map/edit";
 import type { Layout } from "@/lib/map/schema";
 import ZonePanel from "./ZonePanel";
@@ -84,6 +85,31 @@ export default function MapExplorer({
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
+  // Info-bulle des objets : nom de l'objet ; pour un poste, son occupant (affectation, pas présence)
+  const describeElement = useMemo(() => {
+    const elements = new Map(layout?.elements.map((e) => [e.id, e]) ?? []);
+    const zones = new Map(layout?.zones.map((z) => [z.id, z.name]) ?? []);
+    const stations = new Map(data.workstations.map((w) => [w.elementId, w]));
+    const peopleById = new Map(data.people.map((p) => [p.id, p]));
+    return (elementId: string) => {
+      const element = elements.get(elementId);
+      const entry = element ? CATALOG[element.catalogKey] : undefined;
+      if (!element || !entry) return null;
+      const station = stations.get(elementId);
+      if (station || entry.isWorkstation) {
+        const person = station?.personId
+          ? peopleById.get(station.personId)
+          : undefined;
+        return {
+          title: station?.label ?? entry.name,
+          detail: person
+            ? `${person.firstName} ${person.lastName} · ${person.jobTitle}`
+            : fr.map.freeWorkstation,
+        };
+      }
+      return { title: entry.name, detail: zones.get(element.zoneId) };
+    };
+  }, [layout, data]);
   const alerts = useMemo(
     () => computeZoneAlerts(data, layout?.zones.map((zone) => zone.id) ?? []),
     [data, layout],
@@ -224,6 +250,8 @@ export default function MapExplorer({
                 selectedZoneId={selectedZoneId}
                 onSelectZone={setSelectedZoneId}
                 insetRight={panelInset}
+                describeElement={describeElement}
+                flyToSelection
                 labels={(project) => (
                   <ZonePins
                     alerts={alerts}
