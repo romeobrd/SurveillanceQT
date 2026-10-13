@@ -112,3 +112,59 @@ test("le glisser déplace la carte sans sélectionner de zone", async ({
     page.getByRole("heading", { name: "Zones", level: 2 }),
   ).toBeVisible();
 });
+
+test("les indicateurs de l'entreprise sont posés sur la carte et mènent aux modules", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/carte");
+  await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
+    timeout: 30_000,
+  });
+  const kpis = page.getByTestId("map-kpis");
+  await expect(kpis).toContainText("Collaborateurs");
+  await expect(kpis).toContainText("Alertes de stock");
+  await kpis.getByRole("link", { name: /Alertes de stock/ }).click();
+  await expect(page).toHaveURL(/\/stock\?alert=low/);
+});
+
+test("une épingle signale une pièce à traiter et ouvre sa fiche flottante", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/carte");
+  await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
+    timeout: 30_000,
+  });
+  const pin = page.getByTestId("zone-pin").first();
+  await expect(pin).toBeVisible();
+  await expect(pin).toHaveAccessibleName(/alerte/);
+  await pin.click();
+  const card = page.getByTestId("zone-card");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(/Stock bas|en panne/);
+  await card.getByRole("button", { name: "Fermer la fiche" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Zones", level: 2 }),
+  ).toBeVisible();
+});
+
+test("la vue tourne avec les boutons et le clavier, et le recentrage la rétablit", async ({
+  page,
+}) => {
+  await openMap(page, 5);
+  const before = await page.evaluate(() => window.__mapDebug!.tileCenter(0, 0));
+  await page
+    .getByRole("button", { name: "Tourner la vue vers la droite" })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => window.__mapDebug!.tileCenter(0, 0)))
+    .not.toEqual(before);
+  await page.getByTestId("map-host").focus();
+  await page.keyboard.press("q");
+  await page.getByRole("button", { name: "Recentrer la vue" }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.__mapDebug!.tileCenter(0, 0)))
+    .toEqual(before);
+});

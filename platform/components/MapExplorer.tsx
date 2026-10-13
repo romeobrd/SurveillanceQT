@@ -11,6 +11,8 @@ import LayoutEditor from "@/components/editor/LayoutEditor";
 import type { VersionInfo } from "@/components/editor/VersionsPanel";
 import MapViewLazy from "@/components/MapViewLazy";
 import ActionForm from "@/components/ui/ActionForm";
+import { MapKpiBar, ZoneCard, ZonePins } from "@/components/map/MapInsights";
+import { computeMapKpis, computeZoneAlerts } from "@/features/map/insights";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
@@ -63,6 +65,11 @@ export default function MapExplorer({
   const leaveDialog = useRef<HTMLDialogElement>(null);
   const leaveTitle = useId();
   const people = useMemo(() => getPersonMarkers(data), [data]);
+  const kpis = useMemo(() => computeMapKpis(data), [data]);
+  const alerts = useMemo(
+    () => computeZoneAlerts(data, layout?.zones.map((zone) => zone.id) ?? []),
+    [data, layout],
+  );
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(
     layout?.zones.some((zone) => zone.id === initialZoneId)
       ? initialZoneId
@@ -192,13 +199,32 @@ export default function MapExplorer({
       ) : (
         <>
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-            <div className="min-h-[50vh] flex-1">
+            <div className="relative min-h-[50vh] flex-1">
               <MapViewLazy
                 layout={layout}
                 people={people}
                 selectedZoneId={selectedZoneId}
                 onSelectZone={setSelectedZoneId}
+                labels={(project) => (
+                  <>
+                    <ZonePins
+                      alerts={alerts}
+                      zones={layout.zones}
+                      project={project}
+                      onSelectZone={setSelectedZoneId}
+                    />
+                    {selectedZone && (
+                      <ZoneCard
+                        zone={selectedZone}
+                        data={data}
+                        project={project}
+                        onClose={() => setSelectedZoneId(null)}
+                      />
+                    )}
+                  </>
+                )}
               />
+              {mode === "active" && <MapKpiBar kpis={kpis} />}
             </div>
             <aside
               aria-label={selectedZone ? selectedZone.name : fr.map.zoneList}

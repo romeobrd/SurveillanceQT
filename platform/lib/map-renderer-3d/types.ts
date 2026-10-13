@@ -4,6 +4,8 @@ export interface MapRendererOptions {
   host: HTMLElement;
   onZoneHover?: (zoneId: string | null) => void;
   onZoneClick?: (zoneId: string | null) => void;
+  /** Appelé quand la vue change (caméra, taille) : pour repositionner les étiquettes posées sur la carte. */
+  onViewChange?: () => void;
 }
 
 export interface BenchmarkResult {

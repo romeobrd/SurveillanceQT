@@ -677,6 +677,7 @@ export class MapRenderer3D {
     this.camera3d.updateProjectionMatrix();
     this.camera3d.updateMatrixWorld();
     this.dirty = true;
+    this.options.onViewChange?.();
   }
 
   private project(point: Vector3): { x: number; y: number } {

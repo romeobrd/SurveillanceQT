@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { fr } from "@/lib/i18n/fr";
 import {
   MapRenderer3D as MapRenderer,
@@ -22,7 +22,18 @@ interface MapViewProps {
   onDragHover?: (tile: { x: number; y: number } | null) => void;
   /** Élément du catalogue déposé sur la carte. */
   onDropItem?: (tile: { x: number; y: number }, catalogKey: string) => void;
+  /**
+   * Étiquettes posées sur la carte (épingles, fiche flottante) : `project` donne la position écran d'un
+   * point de la grille, ou null s'il est hors de vue. Redessinées à chaque mouvement de caméra.
+   */
+  labels?: (project: ProjectFn) => ReactNode;
 }
+
+export type ProjectFn = (
+  gx: number,
+  gy: number,
+  height?: number,
+) => { x: number; y: number } | null;
 
 /** Type de données du glisser-déposer depuis le catalogue. */
 export const CATALOG_DRAG_TYPE = "application/x-catalog-key";
@@ -52,6 +63,7 @@ export default function MapView({
   overlay = null,
   onDragHover,
   onDropItem,
+  labels: renderLabels,
 }: MapViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelectZone);
@@ -59,6 +71,9 @@ export default function MapView({
   const [failed, setFailed] = useState(false);
   const [hoveredName, setHoveredName] = useState<string | null>(null);
   const layoutRef = useRef(layout);
+  // Incrémenté quand la caméra bouge : les étiquettes posées sur la carte se repositionnent (une fois par image au plus)
+  const [, setViewVersion] = useState(0);
+  const viewFrame = useRef(0);
 
   useEffect(() => {
     selectRef.current = onSelectZone;
@@ -73,6 +88,13 @@ export default function MapView({
     MapRenderer.create({
       host,
       onZoneClick: (zoneId) => selectRef.current(zoneId),
+      onViewChange: () => {
+        if (viewFrame.current) return;
+        viewFrame.current = requestAnimationFrame(() => {
+          viewFrame.current = 0;
+          setViewVersion((version) => version + 1);
+        });
+      },
       onZoneHover: (zoneId) =>
         setHoveredName(
           layoutRef.current.zones.find((zone) => zone.id === zoneId)?.name ??
@@ -90,6 +112,8 @@ export default function MapView({
       .catch(() => setFailed(true));
     return () => {
       cancelled = true;
+      cancelAnimationFrame(viewFrame.current);
+      viewFrame.current = 0;
       created?.destroy();
       setRenderer(null);
     };
@@ -163,6 +187,13 @@ export default function MapView({
         }}
         className="focus-visible:outline-brand-500 absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2"
       />
+      {renderer && renderLabels && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {renderLabels((gx, gy, height) =>
+            renderer.projectGround(gx, gy, height),
+          )}
+        </div>
+      )}
       {!renderer && !failed && (
         <p className="absolute inset-0 flex items-center justify-center text-slate-600">
           {fr.map.loading}
