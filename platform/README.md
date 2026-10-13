@@ -2,27 +2,51 @@
 
 Plateforme de gestion d'entreprise avec carte isométrique des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
 
-## Démarrage
+## Démarrage (moins de 10 minutes)
+
+Prérequis : Node.js 22+, Docker (ou un PostgreSQL 16 local).
 
 ```bash
-cp .env.example .env              # puis renseigner AUTH_SECRET (openssl rand -base64 32)
+cp .env.example .env              # puis renseigner AUTH_SECRET : openssl rand -base64 32
 docker compose up -d              # PostgreSQL 16 (bases gestion_dev et gestion_test)
-npm install                       # génère aussi le client Prisma
-npx prisma migrate deploy         # applique les migrations à la base de développement
-npm run db:seed                   # deux entreprises fictives et leurs comptes de test
+npm install                       # installe les dépendances et génère le client Prisma
+npm run setup                     # applique les migrations et charge la démonstration (~5 s)
 npm run dev                       # http://localhost:3000
 ```
 
+Sans Docker : créer deux bases PostgreSQL (`gestion_dev`, `gestion_test`) et ajuster `DATABASE_URL` / `DATABASE_URL_TEST` dans `.env`.
+
 ### Comptes de test (données 100 % fictives, seed de développement uniquement)
 
-Mot de passe commun : `Demo-Password-2026!`
+Mot de passe commun : `Demo-Password-2026!` (rappelé sur la page de connexion en développement uniquement).
 
 | Entreprise                  | Admin                              | Manager                              | Employé                               |
 | --------------------------- | ---------------------------------- | ------------------------------------ | ------------------------------------- |
 | Atelier Lumière (démo A)    | `admin@atelier-lumiere.example`    | `manager@atelier-lumiere.example`    | `employee@atelier-lumiere.example`    |
 | Boulangerie Dupont (démo B) | `admin@boulangerie-dupont.example` | `manager@boulangerie-dupont.example` | `employee@boulangerie-dupont.example` |
 
-Le seed refuse de s'exécuter en production ou sur une base non vide.
+Le seed refuse de s'exécuter en production ou sur une base non vide. Pour repartir de zéro : `npm run db:reset` (efface la base de développement).
+
+### Ce que contient la démonstration
+
+**Atelier Lumière** : 26 collaborateurs en 5 équipes, tous installés à un poste (16 postes restent libres), 7 articles de stock dont 3 sous le seuil, 14 pièces de matériel dont des pannes et des renouvellements, 4 projets (de 0 % à 100 %). **Boulangerie Dupont** : une seconde entreprise, invisible depuis la première (isolation multi-tenant).
+
+### Parcours conseillé (10 minutes)
+
+1. Connectez-vous en **manager** sur Atelier Lumière : le **tableau de bord** montre les alertes de stock, le matériel à traiter et l'avancement des projets.
+2. **Carte** : cliquez une pièce (panneau latéral : personnes, matériel, stock, projets), choisissez un projet pour voir sa progression, zoomez et déplacez la carte.
+3. **Aménager** : posez un meuble, annulez / rétablissez, enregistrez une nouvelle version, restaurez l'ancienne.
+4. **Collaborateurs**, **Postes**, **Stock**, **Matériel**, **Projets** : recherche, filtres, création, modification ; chaque module renvoie vers la carte.
+5. Reconnectez-vous en **employé** : lecture seule, pas d'e-mails des collègues ; **Mes données** pour consulter et exporter vos données.
+6. Reconnectez-vous en **admin** : **Administration** (réglages RGPD, demandes, journal d'audit).
+7. Essayez `boulangerie-dupont` : aucune donnée de l'autre entreprise n'apparaît.
+
+### Dépannage
+
+- `P1001: Can't reach database server` : PostgreSQL n'est pas démarré (`docker compose up -d`).
+- Connexion impossible / erreur d'authentification : vérifiez que `AUTH_SECRET` est renseigné dans `.env`.
+- Port 3000 occupé : `npm run dev -- -p 3001`.
+- `La base contient déjà des données` : le seed ne s'exécute que sur une base vide (`npm run db:reset`).
 
 ## Contrôles qualité
 
@@ -90,4 +114,4 @@ La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, 
 
 ## Avancement
 
-Phases 0 à 6 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 7 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions). La carte est sur `/carte` (paramètre `?seed=`).
