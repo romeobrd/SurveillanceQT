@@ -102,6 +102,12 @@ export default async function AccountsPage() {
                   <Badge tone={account.disabled ? "neutral" : "ok"}>
                     {account.disabled ? t.disabled : t.active}
                   </Badge>
+                  {account.invitationPending && !account.disabled && (
+                    <>
+                      {" "}
+                      <Badge tone="warn">{t.pendingInvite}</Badge>
+                    </>
+                  )}
                   {account.mustChangePassword && !account.disabled && (
                     <>
                       {" "}

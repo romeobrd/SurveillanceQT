@@ -88,3 +88,11 @@ export class PlanLimitError extends Error {
     this.name = "PlanLimitError";
   }
 }
+
+/** Action réservée aux comptes dont l'adresse e-mail est confirmée (ex. souscrire un abonnement). */
+export class EmailNotVerifiedError extends Error {
+  constructor() {
+    super("Adresse e-mail non confirmée");
+    this.name = "EmailNotVerifiedError";
+  }
+}

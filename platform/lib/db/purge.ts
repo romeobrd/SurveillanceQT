@@ -8,7 +8,9 @@ import {
   METRICS_RETENTION_DAYS,
   recordDailyMetrics,
 } from "./metrics";
+import { purgeEmailTokens } from "./email-flows";
 import { anonymizePerson } from "./privacy-core";
+import { sendTrialEmails } from "./trial-emails";
 import { createTenantDb } from "./tenant";
 
 export interface OrganizationPurgeReport {
@@ -36,6 +38,11 @@ export async function runPurge(now: Date = new Date()): Promise<PurgeReport> {
       auditRetentionDays: true,
       privacyRequestRetentionDays: true,
       departedPersonRetentionDays: true,
+      name: true,
+      subscriptionStatus: true,
+      trialEndsAt: true,
+      trialReminderSentAt: true,
+      trialEndedNoticeAt: true,
     },
   });
   const today = todayInParis(now);
@@ -93,6 +100,9 @@ export async function runPurge(now: Date = new Date()): Promise<PurgeReport> {
       for (const person of due)
         await anonymizePerson(organizationId, person.id, now);
 
+      // Rappels de fin d'essai aux administrateurs (un seul envoi de chaque)
+      await sendTrialEmails(organization, now);
+
       // Relevé quotidien des indicateurs (totaux, pour les tendances), puis suppression des relevés trop anciens
       const tenantDb = createTenantDb(organizationId);
       await recordDailyMetrics(
@@ -138,6 +148,9 @@ export async function runPurge(now: Date = new Date()): Promise<PurgeReport> {
       failures.push(error);
     }
   }
+
+  // Liens envoyés par e-mail expirés ou déjà utilisés : rien d'utile à garder
+  await purgeEmailTokens(now);
 
   // Compteurs de connexion anciens et non verrouillés (clé = empreinte d'e-mail : rien de personnel, mais inutile à garder)
   const loginAttempts = await rawPrisma.loginAttempt.deleteMany({

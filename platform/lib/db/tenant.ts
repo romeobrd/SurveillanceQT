@@ -21,6 +21,7 @@ const MODEL_NAMES = [
   "auditLog",
   "privacyRequest",
   "dailyMetric",
+  "emailToken",
 ] as const;
 
 function extend(organizationId: string) {

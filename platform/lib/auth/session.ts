@@ -19,6 +19,7 @@ export type SessionInfo = AccessContext & {
   access: "full" | "readonly";
   plan: string;
   trialDaysLeft: number;
+  emailVerified: boolean;
 };
 
 export const ACCOUNT_PAGE = "/mon-compte";

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { PLAN_KEYS } from "@/features/billing/plans";
 import { guardedValue, type ActionState } from "@/lib/actions";
 import { getBillingProvider } from "@/lib/billing/stripe";
+import { EmailNotVerifiedError } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
 
 const CheckoutSchema = z.object({
@@ -31,6 +32,7 @@ export async function checkoutAction(
   const result = await guardedValue(
     "billing:manage",
     async (repos, session) => {
+      if (!session.emailVerified) throw new EmailNotVerifiedError();
       const { plan, interval } = CheckoutSchema.parse({
         plan: formData.get("plan"),
         interval: formData.get("interval"),

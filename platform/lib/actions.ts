@@ -17,6 +17,7 @@ import {
   WrongPasswordError,
   SubscriptionRequiredError,
   PlanLimitError,
+  EmailNotVerifiedError,
   type Repositories,
 } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
@@ -46,6 +47,8 @@ export function actionErrorMessage(error: unknown): string | null {
   if (error instanceof StaleLayoutError) return fr.errors.stale;
   if (error instanceof WrongPasswordError) return fr.errors.wrongPassword;
   if (error instanceof SubscriptionRequiredError) return fr.errors.subscription;
+  if (error instanceof EmailNotVerifiedError)
+    return fr.email.verifyRequiredForBilling;
   if (error instanceof PlanLimitError)
     return fr.errors.planLimit.replace("{limit}", String(error.limit));
   return null;

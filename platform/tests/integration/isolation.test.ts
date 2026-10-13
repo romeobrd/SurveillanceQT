@@ -13,6 +13,7 @@ type Delegate = Record<string, (args?: unknown) => Promise<unknown>>;
 const TOUCH: Record<string, Record<string, unknown>> = {
   User: { passwordHash: "piratage" },
   DailyMetric: { lowStock: 999 },
+  EmailToken: { usedAt: new Date() },
   Team: { name: "piratage" },
   Person: { jobTitle: "piratage" },
   Layout: { isActive: false },

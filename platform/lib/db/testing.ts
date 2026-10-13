@@ -15,7 +15,7 @@ export { rawPrisma as testRawPrisma };
 
 export async function resetDatabase(): Promise<void> {
   await rawPrisma.$executeRawUnsafe(
-    `TRUNCATE "DailyMetric","AssetAssignment","AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
+    `TRUNCATE "EmailToken","DailyMetric","AssetAssignment","AuditLog","PrivacyRequest","PresenceStatus","ProjectStep","Project","Asset","StockMovement","StockItem",` +
       `"Workstation","Zone","Layout","User","Person","Team","LoginAttempt","Organization" CASCADE`,
   );
 }
@@ -117,6 +117,15 @@ export async function seedFullOrganization(
       brokenAssets: 0,
     },
   });
+  const emailToken = await rawPrisma.emailToken.create({
+    data: {
+      organizationId,
+      userId: base.accounts.employee.userId,
+      purpose: "RESET_PASSWORD",
+      tokenHash: `empreinte-test-${organizationId}`,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+  });
   const layout = await rawPrisma.layout.findFirstOrThrow({
     where: { organizationId, isActive: true },
   });
@@ -144,6 +153,7 @@ export async function seedFullOrganization(
       AuditLog: audit.id,
       PrivacyRequest: privacyRequest.id,
       DailyMetric: metric.id,
+      EmailToken: emailToken.id,
     },
   };
 }

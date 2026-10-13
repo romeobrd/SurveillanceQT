@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, type LoginState } from "@/app/login/actions";
 import { fr } from "@/lib/i18n/fr";
@@ -52,6 +53,12 @@ export default function LoginForm() {
           {fr.auth[state.error]}
         </p>
       )}
+      <Link
+        href="/mot-de-passe-oublie"
+        className="-mt-2 self-end text-sm text-slate-700 underline"
+      >
+        {fr.email.forgotLink}
+      </Link>
       <button
         type="submit"
         disabled={pending}

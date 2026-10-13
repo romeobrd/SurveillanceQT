@@ -23,6 +23,8 @@ export async function findAccessContext(userId: string): Promise<
       plan: string;
       /** Jours d'essai restants (0 hors essai). */
       trialDaysLeft: number;
+      /** Adresse e-mail confirmée par le lien reçu. */
+      emailVerified: boolean;
     })
   | null
 > {
@@ -35,6 +37,7 @@ export async function findAccessContext(userId: string): Promise<
       personId: true,
       disabledAt: true,
       mustChangePassword: true,
+      emailVerifiedAt: true,
       organization: {
         select: {
           name: true,
@@ -58,6 +61,7 @@ export async function findAccessContext(userId: string): Promise<
     access: accessLevel(user.organization, new Date()),
     plan: user.organization.plan,
     trialDaysLeft: trialDaysLeft(user.organization, new Date()),
+    emailVerified: user.emailVerifiedAt !== null,
   };
 }
 

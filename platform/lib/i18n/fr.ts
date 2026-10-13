@@ -418,6 +418,10 @@ export const fr = {
     disableBody:
       "La personne est déconnectée immédiatement et ne peut plus se connecter. Ses données ne sont pas supprimées.",
     temporaryTitle: "Mot de passe provisoire",
+    invited:
+      "Invitation envoyée à {email} : la personne choisira elle-même son mot de passe (lien valable 7 jours).",
+    resetSent: "Lien de réinitialisation envoyé à {email} (valable 24 heures).",
+    pendingInvite: "Invitation en attente",
     temporaryHelp:
       "Copiez-le maintenant : il ne sera plus jamais affiché. Transmettez-le à la personne par un canal sûr.",
     roles: { ADMIN: "Administrateur", MANAGER: "Manager", EMPLOYEE: "Employé" },
@@ -556,6 +560,45 @@ export const fr = {
         "Cet e-mail a déjà un compte. Connectez-vous, ou utilisez une autre adresse.",
       locked: "Trop de tentatives. Réessayez dans quelques minutes.",
     },
+  },
+  email: {
+    verifyBanner: "Confirmez votre adresse e-mail : un lien vous a été envoyé.",
+    resend: "Renvoyer le lien",
+    resent: "Lien envoyé. Pensez à regarder dans les courriers indésirables.",
+    throttled:
+      "Un lien vient d'être envoyé : patientez deux minutes avant d'en demander un autre.",
+    verifyTitle: "Confirmer votre adresse e-mail",
+    verifyButton: "Confirmer mon adresse",
+    verified: "Adresse confirmée, merci !",
+    invalidLink:
+      "Ce lien n'est plus valable (déjà utilisé ou expiré). Demandez-en un nouveau.",
+    continue: "Continuer",
+    forgotLink: "Mot de passe oublié ?",
+    forgotTitle: "Mot de passe oublié",
+    forgotHelp:
+      "Indiquez l'adresse e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    forgotSubmit: "Envoyer le lien",
+    forgotSent:
+      "Si un compte existe avec cette adresse, un e-mail vient de partir. Le lien est valable 1 heure.",
+    forgotUnavailable:
+      "La réinitialisation par e-mail n'est pas disponible : demandez à votre administrateur un nouveau mot de passe provisoire.",
+    resetTitle: "Choisir un nouveau mot de passe",
+    resetSubmit: "Enregistrer le mot de passe",
+    inviteTitle: "Activer votre compte",
+    inviteHelp:
+      "Choisissez votre mot de passe pour rejoindre l'espace de votre entreprise.",
+    inviteSubmit: "Activer mon compte",
+    passwordLabel: "Nouveau mot de passe (12 caractères minimum)",
+    confirmLabel: "Confirmer le mot de passe",
+    passwordInvalid:
+      "Le mot de passe doit faire au moins 12 caractères, et les deux saisies doivent être identiques.",
+    backToLogin: "Retour à la connexion",
+    verifyRequiredForBilling:
+      "Confirmez d'abord votre adresse e-mail (lien reçu à l'inscription) pour souscrire un abonnement.",
+    devOutboxTitle: "Boîte d'envoi de développement",
+    devOutboxHelp:
+      "En local, les e-mails ne partent jamais : ils sont listés ici (les plus récents en premier). Cette page n'existe pas en production.",
+    devOutboxEmpty: "Aucun e-mail pour l'instant.",
   },
   myAccount: {
     title: "Mon compte",

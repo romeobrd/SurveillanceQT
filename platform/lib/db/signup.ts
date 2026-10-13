@@ -9,6 +9,7 @@ import { rethrowUnique } from "./errors";
 export async function createOrganizationWithAdmin(
   input: SignupInput,
   now: Date = new Date(),
+  options: { emailVerified?: boolean } = {},
 ): Promise<{ organizationId: string; userId: string }> {
   const passwordHash = await hashPassword(input.password);
   try {
@@ -42,6 +43,8 @@ export async function createOrganizationWithAdmin(
           personId: person.id,
           termsAcceptedAt: now,
           termsVersion: TERMS_VERSION,
+          // Sans envoi d'e-mails possible, l'adresse ne peut pas être confirmée : on ne bloque pas le client
+          emailVerifiedAt: options.emailVerified ? now : null,
         },
         select: { id: true },
       });

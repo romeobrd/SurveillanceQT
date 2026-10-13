@@ -105,7 +105,7 @@ describe("création d'un compte", () => {
       organizationId: a.organizationId,
     });
     expect(user.passwordHash).not.toContain(temporaryPassword); // jamais stocké en clair
-    expect(await verifyPassword(user.passwordHash, temporaryPassword)).toBe(
+    expect(await verifyPassword(user.passwordHash, temporaryPassword!)).toBe(
       true,
     );
     expect((await findAccessContext(id))?.mustChangePassword).toBe(true);
@@ -225,7 +225,7 @@ describe("mots de passe", () => {
     });
     const { temporaryPassword } = await repos(a, "admin").resetPassword(id);
     const user = await testRawPrisma.user.findUniqueOrThrow({ where: { id } });
-    expect(await verifyPassword(user.passwordHash, temporaryPassword)).toBe(
+    expect(await verifyPassword(user.passwordHash, temporaryPassword!)).toBe(
       true,
     );
     expect(user.mustChangePassword).toBe(true);

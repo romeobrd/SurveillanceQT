@@ -94,6 +94,7 @@ export async function seedOrganization(
         passwordHash,
         role,
         personId: people[index],
+        emailVerifiedAt: new Date(),
       },
     });
     accounts[key] = {

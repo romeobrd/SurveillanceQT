@@ -1,5 +1,6 @@
 // Comptes de connexion : création par l'administrateur, rôles, désactivation, mots de passe.
 // Aucun envoi d'e-mail (pas de service tiers) : l'administrateur transmet lui-même le mot de passe provisoire.
+import { randomBytes } from "node:crypto";
 import { attemptKey } from "@/lib/auth/rate-limit";
 import {
   generateTemporaryPassword,
@@ -14,6 +15,7 @@ import {
 } from "@/features/accounts/schemas";
 import { recordAudit } from "../audit";
 import { rawPrisma } from "../client";
+import { createEmailToken } from "../email-flows";
 import {
   InvalidOperationError,
   NotFoundError,
@@ -32,6 +34,8 @@ export interface AccountView {
   role: Role;
   disabled: boolean;
   mustChangePassword: boolean;
+  /** Invitation envoyée, pas encore acceptée. */
+  invitationPending: boolean;
   createdAt: Date;
   person: { id: string; name: string } | null;
 }
@@ -74,8 +78,18 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
           role: true,
           disabledAt: true,
           mustChangePassword: true,
+          emailVerifiedAt: true,
           createdAt: true,
           person: { select: { id: true, firstName: true, lastName: true } },
+          emailTokens: {
+            where: {
+              purpose: "INVITE",
+              usedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+            take: 1,
+          },
         },
         orderBy: [
           { disabledAt: { sort: "asc", nulls: "first" } },
@@ -92,6 +106,8 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
         role: row.role,
         disabled: row.disabledAt !== null,
         mustChangePassword: row.mustChangePassword,
+        invitationPending:
+          row.emailVerifiedAt === null && row.emailTokens.length > 0,
         createdAt: row.createdAt,
         person: row.person
           ? {
@@ -116,10 +132,17 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
       }));
     },
 
-    /** Crée un compte et renvoie son mot de passe provisoire, affiché UNE fois à l'administrateur. */
+    /**
+     * Crée un compte. Avec `invite` (e-mails disponibles), renvoie un lien d'invitation à envoyer : la personne
+     * choisira son mot de passe. Sinon, renvoie un mot de passe provisoire, affiché UNE fois à l'administrateur.
+     */
     async create(
       input: unknown,
-    ): Promise<{ id: string; temporaryPassword: string }> {
+      options: { invite?: boolean } = {},
+    ): Promise<
+      | { id: string; temporaryPassword: string; inviteToken?: undefined }
+      | { id: string; inviteToken: string; temporaryPassword?: undefined }
+    > {
       assertPermission(context, "users:manage");
       const data = AccountInputSchema.parse(input);
       if (data.personId) {
@@ -133,7 +156,10 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
             "Ce collaborateur est parti ou a déjà un compte",
           );
       }
-      const temporaryPassword = generateTemporaryPassword();
+      // Invitation : mot de passe aléatoire inconnu de tous, remplacé par celui que la personne choisira
+      const secret = options.invite
+        ? randomBytes(32).toString("base64url")
+        : generateTemporaryPassword();
       const account = await db.user
         .create({
           data: {
@@ -141,18 +167,25 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
             email: data.email,
             role: data.role,
             personId: data.personId ?? null,
-            passwordHash: await hashPassword(temporaryPassword),
-            mustChangePassword: true,
+            passwordHash: await hashPassword(secret),
+            mustChangePassword: !options.invite,
           },
           select: { id: true },
         })
         .catch((error: unknown) => rethrowUnique(error, "email"));
       await recordAudit(db, context, {
-        action: "user.create",
+        action: options.invite ? "user.invite" : "user.create",
         resourceType: "User",
         resourceId: account.id,
       });
-      return { id: account.id, temporaryPassword };
+      if (options.invite) {
+        const inviteToken = await createEmailToken(
+          { id: account.id, organizationId: context.organizationId },
+          "INVITE",
+        );
+        return { id: account.id, inviteToken };
+      }
+      return { id: account.id, temporaryPassword: secret };
     },
 
     async setRole(id: string, role: unknown): Promise<void> {
@@ -194,13 +227,36 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
       });
     },
 
-    /** Nouveau mot de passe provisoire (perte du mot de passe) : renvoyé UNE fois, à changer à la connexion. */
-    async resetPassword(id: string): Promise<{ temporaryPassword: string }> {
+    /**
+     * Perte du mot de passe. Avec `byEmail`, renvoie un lien de réinitialisation à envoyer (valable 24 h) ;
+     * sinon un mot de passe provisoire, renvoyé UNE fois, à changer à la connexion.
+     */
+    async resetPassword(
+      id: string,
+      options: { byEmail?: boolean } = {},
+    ): Promise<
+      | { temporaryPassword: string; resetToken?: undefined; email: string }
+      | { resetToken: string; temporaryPassword?: undefined; email: string }
+    > {
       assertPermission(context, "users:manage");
       assertNotSelf(id);
       const account = await findAccount(id);
       if (account.disabledAt)
         throw new InvalidOperationError("Réactivez d'abord ce compte");
+      if (options.byEmail) {
+        const resetToken = await createEmailToken(
+          { id, organizationId: context.organizationId },
+          "RESET_PASSWORD",
+          new Date(),
+          24 * 3_600_000,
+        );
+        await recordAudit(db, context, {
+          action: "user.password.reset.link",
+          resourceType: "User",
+          resourceId: id,
+        });
+        return { resetToken, email: account.email };
+      }
       const temporaryPassword = generateTemporaryPassword();
       await db.user.update({
         where: { id },
@@ -218,7 +274,7 @@ export function accountsRepository(db: TenantDb, context: AccessContext) {
         resourceType: "User",
         resourceId: id,
       });
-      return { temporaryPassword };
+      return { temporaryPassword, email: account.email };
     },
 
     /** Chacun change son propre mot de passe (obligatoire après un mot de passe provisoire). */

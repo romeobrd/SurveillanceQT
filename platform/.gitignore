@@ -45,3 +45,6 @@ next-env.d.ts
 
 # client Prisma généré (npm run db:generate / postinstall)
 /lib/db/generated
+
+# Boîte d'envoi de développement (e-mails jamais envoyés en local)
+/.dev-emails/

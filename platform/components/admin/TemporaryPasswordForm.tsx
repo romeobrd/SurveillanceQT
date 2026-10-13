@@ -7,6 +7,7 @@ export type PasswordActionState = {
   error: string | null;
   temporaryPassword?: string;
   email?: string;
+  notice?: string;
 };
 
 /**
@@ -55,6 +56,15 @@ export default function TemporaryPasswordForm({
           className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {state.error}
+        </p>
+      )}
+      {state.notice && (
+        <p
+          role="status"
+          data-testid="account-notice"
+          className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900"
+        >
+          {state.notice}
         </p>
       )}
       {state.temporaryPassword && (

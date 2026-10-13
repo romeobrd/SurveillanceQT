@@ -5,7 +5,9 @@ import { SignupSchema } from "@/features/signup/schemas";
 import { signIn } from "@/lib/auth/config";
 import { isEmailLocked } from "@/lib/auth/lockout";
 import { DuplicateError } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/db/email-flows";
 import { createOrganizationWithAdmin } from "@/lib/db/signup";
+import { emailAvailable } from "@/lib/email/send";
 
 export type SignupState = {
   error: "invalid" | "terms" | "duplicate" | "locked" | null;
@@ -46,12 +48,17 @@ export async function signupAction(
   // Même verrou que la connexion (empreinte de l'e-mail, aucune adresse IP conservée)
   if (await isEmailLocked(parsed.data.email))
     return { error: "locked", values };
+  let userId: string;
   try {
-    await createOrganizationWithAdmin(parsed.data);
+    ({ userId } = await createOrganizationWithAdmin(parsed.data, new Date(), {
+      emailVerified: !emailAvailable(),
+    }));
   } catch (error) {
     if (error instanceof DuplicateError) return { error: "duplicate", values };
     throw error;
   }
+  // Lien de confirmation d'adresse (l'essai démarre tout de suite, sans attendre la confirmation)
+  await sendVerificationEmail(userId);
   await signIn("credentials", {
     email: parsed.data.email,
     password: parsed.data.password,

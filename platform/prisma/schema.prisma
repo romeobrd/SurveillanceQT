@@ -47,6 +47,13 @@ enum PresenceKind {
   ABSENT
 }
 
+/// Objet d'un lien envoyé par e-mail.
+enum EmailTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+  INVITE
+}
+
 /// État de l'abonnement de l'entreprise (synchronisé depuis Stripe par webhook).
 enum SubscriptionStatus {
   TRIALING
@@ -91,6 +98,10 @@ model Organization {
   currentPeriodEnd            DateTime?
   stripeCustomerId            String?            @unique
   stripeSubscriptionId        String?            @unique
+  /// Rappels de fin d'essai déjà envoyés (un seul envoi de chaque) ; liste « Premiers pas » masquée.
+  trialReminderSentAt         DateTime?
+  trialEndedNoticeAt          DateTime?
+  onboardingDismissedAt       DateTime?
   createdAt                   DateTime           @default(now())
 
   users            User[]
@@ -109,6 +120,7 @@ model Organization {
   privacyRequests  PrivacyRequest[]
   assetAssignments AssetAssignment[]
   dailyMetrics     DailyMetric[]
+  emailTokens      EmailToken[]
 }
 
 model User {
@@ -125,6 +137,8 @@ model User {
   /// Preuve d'acceptation du contrat (CGU) lors de l'inscription : date et version du texte accepté.
   termsAcceptedAt    DateTime?
   termsVersion       String?
+  /// Adresse e-mail confirmée (lien reçu par e-mail). Null tant que la confirmation n'est pas faite.
+  emailVerifiedAt    DateTime?
   createdAt          DateTime  @default(now())
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -132,6 +146,7 @@ model User {
   layouts         Layout[]
   stockMovements  StockMovement[]
   privacyRequests PrivacyRequest[]
+  emailTokens     EmailToken[]
 
   @@unique([id, organizationId])
   @@unique([personId, organizationId])
@@ -404,4 +419,22 @@ model DailyMetric {
 
   @@unique([id, organizationId])
   @@unique([organizationId, date])
+}
+
+/// Lien à usage unique envoyé par e-mail : seule l'empreinte (SHA-256) est stockée, jamais le lien lui-même.
+model EmailToken {
+  id             String            @id @default(cuid())
+  organizationId String
+  userId         String
+  purpose        EmailTokenPurpose
+  tokenHash      String            @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([userId, purpose])
 }

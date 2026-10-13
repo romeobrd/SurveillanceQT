@@ -56,6 +56,7 @@ export {
   WrongPasswordError,
   SubscriptionRequiredError,
   PlanLimitError,
+  EmailNotVerifiedError,
 } from "./errors";
 export {
   ReassignmentRequiredError,

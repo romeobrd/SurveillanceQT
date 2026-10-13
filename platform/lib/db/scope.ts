@@ -26,6 +26,7 @@ export const TENANT_MODELS: ReadonlySet<string> = new Set([
   "AuditLog",
   "PrivacyRequest",
   "DailyMetric",
+  "EmailToken",
 ]);
 
 type Args = Record<string, unknown>;
