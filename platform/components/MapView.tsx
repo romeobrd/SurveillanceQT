@@ -27,6 +27,8 @@ interface MapViewProps {
    * point de la grille, ou null s'il est hors de vue. Redessinées à chaque mouvement de caméra.
    */
   labels?: (project: ProjectFn) => ReactNode;
+  /** Largeur (px) couverte à droite par un panneau posé sur la carte : la vue et les boutons s'en écartent. */
+  insetRight?: number;
 }
 
 export type ProjectFn = (
@@ -64,6 +66,7 @@ export default function MapView({
   onDragHover,
   onDropItem,
   labels: renderLabels,
+  insetRight = 0,
 }: MapViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelectZone);
@@ -148,6 +151,10 @@ export default function MapView({
   }, [renderer, selectedZoneId]);
 
   useEffect(() => {
+    renderer?.setViewInset(insetRight);
+  }, [renderer, insetRight]);
+
+  useEffect(() => {
     if (!renderer || process.env.NODE_ENV === "production") return;
     window.__mapDebug = {
       zoneCenter: (zoneId) => renderer.getZoneScreenCenter(zoneId),
@@ -207,7 +214,10 @@ export default function MapView({
           {fr.map.error}
         </p>
       )}
-      <div className="absolute top-3 right-3 flex flex-col gap-2">
+      <div
+        className="absolute top-3 flex flex-col gap-2"
+        style={{ right: insetRight + 12 }}
+      >
         <button
           type="button"
           className={controlClass}

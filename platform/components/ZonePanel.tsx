@@ -3,6 +3,7 @@ import { useId } from "react";
 import { fr } from "@/lib/i18n/fr";
 import type { Layout, Zone } from "@/lib/map/schema";
 import { ZONE_LABELS } from "@/lib/map/zoneTypes";
+import { summarizeZone } from "@/features/map/insights";
 import type { MapData, Role } from "@/features/map/types";
 
 interface ZonePanelProps {
@@ -66,7 +67,8 @@ export default function ZonePanel({
   const peopleById = new Map(data.people.map((p) => [p.id, p]));
   const occupiedCount = workstations.filter((w) => w.personId).length;
   const assets = data.assets.filter((a) => a.zoneId === zone.id);
-  const stock = data.stock.filter((s) => s.zoneId === zone.id);
+  // Articles à réapprovisionner en premier
+  const stock = summarizeZone(data, zone.id).stock;
   const teams = [
     ...new Set(
       workstations.flatMap((w) => {
@@ -170,30 +172,37 @@ export default function ZonePanel({
         {stock.length === 0 ? (
           <p className="text-sm text-slate-600">{fr.map.none}</p>
         ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {stock.map((item) => {
-              const low = item.quantity < item.threshold;
-              return (
-                <li key={item.id} className="flex justify-between gap-2">
-                  <span>{item.name}</span>
-                  <span
-                    className={
-                      low ? "font-medium text-red-700" : "text-slate-600"
-                    }
-                  >
-                    {low && <span aria-hidden="true">⚠ </span>}
-                    {item.quantity} {item.unit}
-                    {low && (
-                      <span className="sr-only"> — {fr.map.stockAlert}</span>
-                    )}
-                    {low && (
-                      <span aria-hidden="true"> ({fr.map.stockAlert})</span>
-                    )}
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {stock.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-2"
+              >
+                <span>{item.name}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-semibold tabular-nums">
+                    {item.quantity}{" "}
+                    <span className="font-normal text-slate-600">
+                      {item.unit}
+                    </span>
                   </span>
-                </li>
-              );
-            })}
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-xs font-medium ${item.low ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-900"}`}
+                  >
+                    {item.low ? fr.map.stockAlert : fr.map.insights.inStock}
+                  </span>
+                </span>
+              </li>
+            ))}
           </ul>
+        )}
+        {stock.some((item) => item.low) && (
+          <Link
+            href="/stock?alert=low"
+            className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 mt-3 block rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            {fr.map.insights.showMissing}
+          </Link>
         )}
       </section>
 

@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import type { MapKpis, ZoneAlert } from "@/features/map/insights";
-import { summarizeZone } from "@/features/map/insights";
-import type { MapData } from "@/features/map/types";
 import type { ProjectFn } from "@/components/MapView";
 import { fr } from "@/lib/i18n/fr";
 import type { Zone } from "@/lib/map/schema";
-import { ZONE_LABELS } from "@/lib/map/zoneTypes";
 
 const t = fr.map.insights;
 const card =
@@ -19,32 +16,83 @@ function zoneCenter(zone: Zone) {
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
 }
 
+type IconName = "people" | "desk" | "box" | "wrench";
+
+/** Icônes dessinées en SVG dans le code (aucune police ni image externe). */
+function Icon({ name }: { name: IconName }) {
+  const paths: Record<IconName, string> = {
+    people:
+      "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM2 19c0-3 2.7-5 6-5s6 2 6 5M14 14.5c.6-.3 1.3-.5 2-.5 2.8 0 5 1.8 5 4.5",
+    desk: "M3 10h18M5 10v9M19 10v9M8 10V6h8v4M9 14h6",
+    box: "M4 8l8-4 8 4-8 4-8-4Zm0 0v8l8 4 8-4V8M12 12v8",
+    wrench: "M14.5 5.5a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3l9-9a4 4 0 0 0-2-2Z",
+  };
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
 /** Indicateurs posés en haut de la carte (totaux uniquement, aucune donnée personnelle). */
 export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
-  const items = [
+  const items: Array<{
+    label: string;
+    value: string;
+    detail: string;
+    href: string;
+    alert: boolean;
+    icon: IconName;
+  }> = [
     {
       label: t.people,
       value: String(kpis.people),
+      detail: t.peopleDetail,
       href: "/collaborateurs",
       alert: false,
+      icon: "people",
     },
     {
       label: t.occupied,
       value: `${kpis.workstationsOccupied} / ${kpis.workstationsTotal}`,
+      detail: t.occupiedDetail.replace(
+        "{rate}",
+        String(
+          kpis.workstationsTotal
+            ? Math.round(
+                (kpis.workstationsOccupied / kpis.workstationsTotal) * 100,
+              )
+            : 0,
+        ),
+      ),
       href: "/postes",
       alert: false,
+      icon: "desk",
     },
     {
       label: t.lowStock,
       value: String(kpis.lowStock),
+      detail: t.lowStockDetail,
       href: "/stock?alert=low",
       alert: kpis.lowStock > 0,
+      icon: "box",
     },
     {
       label: t.broken,
       value: String(kpis.brokenAssets),
+      detail: t.brokenDetail,
       href: "/materiel?state=BROKEN",
       alert: kpis.brokenAssets > 0,
+      icon: "wrench",
     },
   ];
   return (
@@ -57,14 +105,24 @@ export function MapKpiBar({ kpis }: { kpis: MapKpis }) {
         <li key={item.label}>
           <Link
             href={item.href}
-            className={`${card} focus-visible:outline-brand-600 flex flex-col px-3 py-1.5 hover:bg-white focus-visible:outline-2`}
+            className={`${card} focus-visible:outline-brand-600 flex items-center gap-3 px-3 py-2 hover:bg-white focus-visible:outline-2`}
           >
             <span
-              className={`text-lg leading-tight font-semibold ${item.alert ? "text-red-700" : "text-slate-900"}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.alert ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}
             >
-              {item.value}
+              <Icon name={item.icon} />
             </span>
-            <span className="text-xs text-slate-600">{item.label}</span>
+            <span className="flex flex-col">
+              <span className="text-xs font-medium text-slate-600">
+                {item.label}
+              </span>
+              <span
+                className={`text-lg leading-tight font-semibold tabular-nums ${item.alert ? "text-red-700" : "text-slate-900"}`}
+              >
+                {item.value}
+              </span>
+              <span className="text-[11px] text-slate-500">{item.detail}</span>
+            </span>
           </Link>
         </li>
       ))}
@@ -125,97 +183,5 @@ export function ZonePins({
         );
       })}
     </ul>
-  );
-}
-
-/** Fiche flottante d'une pièce, posée près de la pièce sélectionnée. */
-export function ZoneCard({
-  zone,
-  data,
-  project,
-  onClose,
-}: {
-  zone: Zone;
-  data: MapData;
-  project: ProjectFn;
-  onClose: () => void;
-}) {
-  const center = zoneCenter(zone);
-  const point = project(center.x, center.y, 1.2);
-  if (!point) return null;
-  const summary = summarizeZone(data, zone.id);
-  return (
-    <section
-      aria-label={zone.name}
-      data-testid="zone-card"
-      className={`${card} absolute flex w-72 flex-col gap-2 p-3`}
-      style={{
-        left: `clamp(8px, ${point.x + 24}px, calc(100% - 296px))`,
-        top: `clamp(8px, ${point.y - 140}px, calc(100% - 300px))`,
-      }}
-    >
-      <header className="flex items-start justify-between gap-2">
-        <div>
-          <p className="leading-tight font-semibold">{zone.name}</p>
-          <p className="text-xs text-slate-600">{ZONE_LABELS[zone.type]}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.cardClose}
-          className="focus-visible:outline-brand-600 rounded-md px-2 py-0.5 text-slate-600 hover:bg-slate-100 focus-visible:outline-2"
-        >
-          ×
-        </button>
-      </header>
-      {summary.workstations > 0 && (
-        <p className="text-sm">
-          {t.occupied} :{" "}
-          <strong>
-            {summary.occupied} / {summary.workstations}
-          </strong>
-        </p>
-      )}
-      {summary.brokenAssets > 0 && (
-        <p className="text-sm font-medium text-red-700">
-          {t.brokenHere.replace("{count}", String(summary.brokenAssets))}
-        </p>
-      )}
-      <div>
-        <p className="mb-1 text-xs font-semibold tracking-wide text-slate-600 uppercase">{t.inventory}</p>
-        {summary.stock.length === 0 ? (
-          <p className="text-sm text-slate-600">{t.noInventory}</p>
-        ) : (
-          <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-            {summary.stock.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="truncate">{item.name}</span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="font-semibold tabular-nums">
-                    {item.quantity}
-                  </span>
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-xs font-medium ${item.low ? "bg-amber-100 text-amber-900" : "bg-green-100 text-green-900"}`}
-                  >
-                    {item.low ? t.lowBadge : t.inStock}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {summary.lowStock > 0 && (
-        <Link
-          href="/stock?alert=low"
-          className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          {t.showMissing}
-        </Link>
-      )}
-    </section>
   );
 }

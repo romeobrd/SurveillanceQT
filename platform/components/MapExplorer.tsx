@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   generateFirstLayoutAction,
   saveLayoutAction,
@@ -11,7 +11,7 @@ import LayoutEditor from "@/components/editor/LayoutEditor";
 import type { VersionInfo } from "@/components/editor/VersionsPanel";
 import MapViewLazy from "@/components/MapViewLazy";
 import ActionForm from "@/components/ui/ActionForm";
-import { MapKpiBar, ZoneCard, ZonePins } from "@/components/map/MapInsights";
+import { MapKpiBar, ZonePins } from "@/components/map/MapInsights";
 import { computeMapKpis, computeZoneAlerts } from "@/features/map/insights";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
@@ -41,6 +41,9 @@ interface MapExplorerProps {
   versions: VersionInfo[];
 }
 
+/** Largeur du panneau flottant (24rem) + ses marges. */
+const PANEL_INSET_PX = 408;
+
 const buttonClass =
   "rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
@@ -66,6 +69,21 @@ export default function MapExplorer({
   const leaveTitle = useId();
   const people = useMemo(() => getPersonMarkers(data), [data]);
   const kpis = useMemo(() => computeMapKpis(data), [data]);
+  // Grand écran : le panneau de détail flotte sur la carte, à droite ; la vue se centre dans l'espace libre
+  // Calculé dès le premier rendu côté client : la carte (rendue uniquement dans le navigateur) se cadre directement juste
+  const [panelInset, setPanelInset] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 1024px)").matches
+      ? PANEL_INSET_PX
+      : 0,
+  );
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const update = () => setPanelInset(query.matches ? PANEL_INSET_PX : 0);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const alerts = useMemo(
     () => computeZoneAlerts(data, layout?.zones.map((zone) => zone.id) ?? []),
     [data, layout],
@@ -198,37 +216,28 @@ export default function MapExplorer({
         </div>
       ) : (
         <>
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-            <div className="relative min-h-[50vh] flex-1">
+          <div className="relative flex min-h-0 flex-1 flex-col lg:block">
+            <div className="relative min-h-[50vh] flex-1 lg:absolute lg:inset-0">
               <MapViewLazy
                 layout={layout}
                 people={people}
                 selectedZoneId={selectedZoneId}
                 onSelectZone={setSelectedZoneId}
+                insetRight={panelInset}
                 labels={(project) => (
-                  <>
-                    <ZonePins
-                      alerts={alerts}
-                      zones={layout.zones}
-                      project={project}
-                      onSelectZone={setSelectedZoneId}
-                    />
-                    {selectedZone && (
-                      <ZoneCard
-                        zone={selectedZone}
-                        data={data}
-                        project={project}
-                        onClose={() => setSelectedZoneId(null)}
-                      />
-                    )}
-                  </>
+                  <ZonePins
+                    alerts={alerts}
+                    zones={layout.zones}
+                    project={project}
+                    onSelectZone={setSelectedZoneId}
+                  />
                 )}
               />
               {mode === "active" && <MapKpiBar kpis={kpis} />}
             </div>
             <aside
               aria-label={selectedZone ? selectedZone.name : fr.map.zoneList}
-              className="max-h-[45vh] overflow-y-auto border-t border-slate-200 p-4 lg:max-h-none lg:w-96 lg:border-t-0 lg:border-l"
+              className="max-h-[45vh] overflow-y-auto border-t border-slate-200 bg-white p-4 lg:absolute lg:top-3 lg:right-3 lg:bottom-3 lg:max-h-none lg:w-96 lg:rounded-2xl lg:border lg:bg-white/95 lg:p-5 lg:shadow-xl lg:backdrop-blur"
             >
               <ZonePanel
                 layout={layout}
@@ -263,7 +272,7 @@ export default function MapExplorer({
               {project && (
                 <div className="flex min-w-48 flex-1 items-center gap-2">
                   <progress
-                    className="h-3 flex-1"
+                    className="accent-brand-600 h-3 flex-1"
                     value={project.progress}
                     max={100}
                     aria-label={`${project.name} : ${project.progress} %`}
