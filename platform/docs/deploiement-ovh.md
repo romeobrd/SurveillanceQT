@@ -60,6 +60,8 @@ Espace client OVH → **Web Cloud** → **Noms de domaine** → **spacora.tech**
 | www          | A    | IP_DU_VPS |
 | app          | A    | IP_DU_VPS |
 
+**Ne pas toucher aux entrées MX, TXT, SRV ni aux CNAME `autoconfig` / `autodiscover`** : elles font fonctionner la boîte e-mail (Zimbra) livrée avec le domaine.
+
 La prise en compte prend de quelques minutes à quelques heures. Vérifier depuis le PC :
 
 ```powershell
@@ -96,7 +98,7 @@ openssl rand -hex 32   # à lancer trois fois : une valeur pour DB_PASSWORD, AUT
 nano .env
 ```
 
-Dans `nano`, remplir `ACME_EMAIL` (votre e-mail, pour les alertes de certificat) et les trois secrets ; laisser les lignes SMTP vides pour l'instant (étape 9). Enregistrer avec `Ctrl+O`, `Entrée`, puis quitter avec `Ctrl+X`.
+Dans `nano`, remplir `ACME_EMAIL` (votre e-mail, par exemple votre adresse @spacora.tech, pour les alertes de certificat) et les trois secrets ; laisser les lignes SMTP vides pour l'instant (étape 9). Enregistrer avec `Ctrl+O`, `Entrée`, puis quitter avec `Ctrl+X`.
 
 **Garder une copie de ce fichier `.env` en lieu sûr** (gestionnaire de mots de passe) : sans lui, la base ne peut pas être rouverte.
 
@@ -146,6 +148,7 @@ Sans cette étape l'application fonctionne, mais aucun e-mail ne part : les comp
 
 1. Créer un compte sur brevo.com (société française, serveurs en UE).
 2. **Expéditeurs, domaines** → **Domaines** → ajouter `spacora.tech`. Brevo affiche des entrées DNS (code Brevo, DKIM, DMARC) : les ajouter dans la **Zone DNS** OVH (étape 4), exactement comme indiqué, puis cliquer sur « Authentifier » dans Brevo.
+   **Une seule entrée SPF par domaine** : la zone contient déjà celle de la messagerie OVH (TXT commençant par `v=spf1`). Si Brevo demande d'y ajouter `include:spf.brevo.com`, **modifier** cette entrée existante au lieu d'en créer une seconde, par exemple : `v=spf1 include:mx.ovh.com include:spf.brevo.com ~all`.
 3. **SMTP & API** → onglet **SMTP** → **Générer une clé SMTP**.
 4. Sur le serveur, compléter `SMTP_USER` (l'identifiant affiché par Brevo) et `SMTP_PASSWORD` (la clé) dans `deploy/.env`, puis :
 
