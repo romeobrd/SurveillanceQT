@@ -89,6 +89,19 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - **Données sur la carte** : indicateurs (collaborateurs, postes occupés, alertes de stock, matériel en panne) qui mènent aux modules ; **épingles rouges** sur les pièces à traiter ; **fiche flottante** de la pièce choisie (inventaire avec badges « Stock bas » / « En stock », bouton **Voir le manquant**). Les figurines représentent l'affectation d'un poste, jamais une présence réelle.
 - **Performances** : objets identiques regroupés (instanciation) ; si l'ordinateur est trop lent, le moteur passe seul en qualité basse (sans ombres).
 - **Couleur de la marque** : définie une seule fois dans `app/globals.css` (classes `brand-*`).
+- **Objets** : survol d'un objet = info-bulle (nom ; pour un poste, son occupant ou « Poste libre ») ; clic sur un objet = sa pièce. Choisir une pièce (carte, liste, épingle) fait **voler la caméra** jusqu'à elle (instantané si le système demande de réduire les animations).
+- **Projets** : la barre du bas montre les **étapes** du projet choisi (faite, en cours, à faire) et la carte éclaire les pièces où travaille son équipe.
+- **Tendances** : chaque indicateur indique son évolution sur une semaine (« +3 en 7 j »), à partir d'un relevé quotidien de totaux (aucune donnée personnelle, conservé 400 jours, fait à la consultation et par la purge nocturne).
+
+## Comptes et mots de passe
+
+- **Administration > Comptes** (admin) : créer un compte (e-mail, rôle, collaborateur rattaché), changer un rôle, désactiver / réactiver, générer un nouveau mot de passe provisoire. Le mot de passe provisoire est affiché **une seule fois** à l'admin, qui le transmet lui-même : aucun e-mail n'est envoyé (pas de service tiers).
+- À la connexion avec un mot de passe provisoire, seule la page **Mon compte** est accessible tant qu'il n'a pas été changé (12 caractères minimum).
+- L'entreprise garde toujours au moins un administrateur actif ; un admin ne modifie pas son propre compte depuis cette page. Toutes ces actions sont journalisées.
+
+## Stock : réapprovisionnement
+
+**Stock > Liste de réapprovisionnement** (et le bouton « Voir le manquant » du panneau de la carte) : articles sous le seuil et quantité conseillée (retour à deux fois le seuil), avec **export CSV** pour le fournisseur (séparateur « ; », formules de tableur neutralisées).
 
 ## Mode Aménager
 
