@@ -26,25 +26,28 @@ export interface Part {
 export const WALL_HEIGHT_3D = 1;
 export const WALL_THICKNESS = 0.1;
 
-/** Palette de rendu : surfaces claires, accents de la marque. */
+/** Couleur d'accent de la marque dans la carte (orange-600, comme les classes brand-* de l'interface). */
+export const ACCENT = "#ea580c";
+
+/** Palette de rendu : tout en blanc et gris, l'accent réservé aux éléments forts (racks, assises, comptoir). */
 export const PALETTE = {
-  wall: "#f8f8f6",
-  glass: "#b9dcef",
-  glassFrame: "#9aa5b1",
-  threshold: "#cdbfae",
-  deskTop: "#f3efe8",
-  deskLeg: "#9aa3ad",
+  wall: "#fbfbfb",
+  glass: "#cfe3ee",
+  glassFrame: "#a3abb5",
+  threshold: "#d5d9de",
+  deskTop: "#fafafa",
+  deskLeg: "#a7afb8",
   screen: "#2b2f36",
-  chair: "#46546a",
-  chairBase: "#2f3540",
-  meetingTop: "#ebe5dc",
-  sofa: "#e8734a",
-  shelfFrame: "#c3c9d1",
-  boxes: ["#d9b98c", "#e8734a", "#aab4c0", "#efe1c4"],
-  pot: "#ddd6cb",
+  chair: "#3f4752",
+  chairBase: "#2a2f37",
+  meetingTop: "#f1f1ef",
+  sofa: ACCENT,
+  shelfFrame: ACCENT,
+  boxes: ["#e9e4da", "#cfd4db", "#d9cfbf", ACCENT],
+  pot: "#e6e3de",
   leaves: ["#5fae6e", "#7cc489"],
   counter: "#ffffff",
-  counterTop: "#e8734a",
+  counterTop: ACCENT,
   server: "#2d3440",
   led: "#38d27a",
   coffee: "#3a3f47",

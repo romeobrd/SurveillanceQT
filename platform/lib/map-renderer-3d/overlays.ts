@@ -8,6 +8,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
+  Texture,
   type Material,
   type Object3D,
 } from "three";
@@ -36,8 +37,13 @@ export function disposeOverlay(
     const materials: Material[] = Array.isArray(object.material)
       ? object.material
       : [object.material];
-    for (const material of materials)
-      if (!keep.has(material)) material.dispose();
+    for (const material of materials) {
+      if (keep.has(material)) continue;
+      // Textures des noms de pièces peints au sol
+      if ("map" in material && material.map instanceof Texture)
+        material.map.dispose();
+      material.dispose();
+    }
   });
   group.clear();
 }

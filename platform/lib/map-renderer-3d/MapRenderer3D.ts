@@ -58,6 +58,7 @@ import {
   disposeGeometries,
   type SharedGeometries,
 } from "./batches";
+import { buildFloorMarks } from "./floorMarks";
 import { disposeOverlay, editOverlay, zoneHighlight } from "./overlays";
 import type {
   BenchmarkResult,
@@ -144,6 +145,8 @@ export class MapRenderer3D {
   private hoverZoneId: string | null = null;
   private selectedZoneId: string | null = null;
   private quality: RenderQuality = "high";
+  /** Largeur (px) masquée à droite par un panneau flottant : la vue se centre dans l'espace libre. */
+  private insetRight = 0;
   private slowFrames = 0;
   private measuredFrames = 0;
 
@@ -266,7 +269,7 @@ export class MapRenderer3D {
     }
 
     this.mapGroup.add(this.buildBase(layout), this.buildFloors(layout));
-    this.mapGroup.add(this.buildGrid(layout));
+    this.mapGroup.add(this.buildGrid(layout), buildFloorMarks(layout.zones));
     const shadows = this.quality === "high";
     for (const mesh of buildBatches(
       solid,
@@ -363,6 +366,16 @@ export class MapRenderer3D {
     this.setOrbit(zoomToward(this.orbit, factor, null, this.maxDistance()));
   }
 
+  /** Réserve une bande à droite (panneau posé sur la carte) : recadrage et centre de la vue en tiennent compte. */
+  setViewInset(rightPx: number): void {
+    const inset = Math.max(0, Math.min(rightPx, this.viewWidth * 0.6));
+    if (inset === this.insetRight) return;
+    this.insetRight = inset;
+    this.resize();
+    // Changement de disposition (rare) : on recadre la carte dans le nouvel espace libre
+    if (this.layout) this.resetView();
+  }
+
   /** Tourne la vue autour du point visé (radians, sens trigonométrique vu de dessus). */
   rotateBy(angle: number): void {
     this.setOrbit(orbitBy(this.orbit, angle, 0));
@@ -382,11 +395,18 @@ export class MapRenderer3D {
     const corners = [0, maxX].flatMap((x) =>
       [0, maxZ].flatMap((z) => [0, height].map((y) => new Vector3(x, y, z))),
     );
+    // Espace libre (hors panneau) en coordonnées normalisées : centré en -inset/largeur
+    const centerX = -this.insetRight / this.viewWidth;
+    const halfWidth = 1 - this.insetRight / this.viewWidth;
     const fits = (distance: number) => {
       this.applyOrbit({ ...orbit, distance });
       return corners.every((corner) => {
         const ndc = corner.clone().project(this.camera3d);
-        return Math.abs(ndc.x) <= 0.92 && Math.abs(ndc.y) <= 0.9 && ndc.z < 1;
+        return (
+          Math.abs(ndc.x - centerX) <= halfWidth * 0.92 &&
+          Math.abs(ndc.y) <= 0.9 &&
+          ndc.z < 1
+        );
       });
     };
     let low = 1;
@@ -533,7 +553,7 @@ export class MapRenderer3D {
     const group = new Group();
     for (const zone of layout.zones) {
       const material = this.floorMaterial(
-        mixHex(zone.floorColor, "#ffffff", 0.4),
+        mixHex(zone.floorColor, "#ffffff", 0.8),
       );
       for (const rect of zone.rects) {
         const floor = new Mesh(new PlaneGeometry(rect.w, rect.h), material);
@@ -578,7 +598,7 @@ export class MapRenderer3D {
       new LineBasicMaterial({
         color: "#64748b",
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.05,
       }),
     );
   }
@@ -659,6 +679,16 @@ export class MapRenderer3D {
     if (this.destroyed) return;
     this.renderer.setSize(this.viewWidth, this.viewHeight);
     this.camera3d.aspect = this.aspect();
+    if (this.insetRight > 0)
+      this.camera3d.setViewOffset(
+        this.viewWidth,
+        this.viewHeight,
+        this.insetRight / 2,
+        0,
+        this.viewWidth,
+        this.viewHeight,
+      );
+    else this.camera3d.clearViewOffset();
     this.camera3d.updateProjectionMatrix();
     this.applyOrbit(this.orbit);
   }
