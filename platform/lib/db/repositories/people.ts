@@ -11,6 +11,7 @@ import {
   type PeopleQuery,
   type PersonInput,
 } from "@/features/people/schemas";
+import { canAddPerson, getPlan } from "@/features/billing/plans";
 import { recordAudit } from "../audit";
 import { anonymizePerson, departPerson } from "../privacy-core";
 import {
@@ -18,6 +19,7 @@ import {
   InUseError,
   NotFoundError,
   rethrowUnique,
+  PlanLimitError,
 } from "../errors";
 import type { TenantDb } from "../tenant";
 
@@ -146,6 +148,17 @@ export function peopleRepository(db: TenantDb, context: AccessContext) {
     async create(input: PersonInput): Promise<{ id: string }> {
       assertPermission(context, "people:write");
       const data = PersonInputSchema.parse(input);
+      // Limite de l'offre : nombre de collaborateurs actifs
+      const [organization, activePeople] = await Promise.all([
+        db.organization.findUnique({
+          where: { id: context.organizationId },
+          select: { plan: true },
+        }),
+        db.person.count({ where: { status: "ACTIVE" } }),
+      ]);
+      const plan = getPlan(organization?.plan ?? "");
+      if (!canAddPerson(plan.key, activePeople))
+        throw new PlanLimitError(plan.maxPeople);
       const person = await db.person.create({
         data: {
           ...data,

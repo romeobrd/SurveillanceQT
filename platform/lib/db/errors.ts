@@ -72,3 +72,19 @@ export class WrongPasswordError extends Error {
     this.name = "WrongPasswordError";
   }
 }
+
+/** Écriture refusée : l'entreprise est en lecture seule (essai terminé ou abonnement expiré). */
+export class SubscriptionRequiredError extends Error {
+  constructor() {
+    super("Abonnement requis pour modifier les données");
+    this.name = "SubscriptionRequiredError";
+  }
+}
+
+/** Limite de l'offre atteinte (nombre de collaborateurs actifs). */
+export class PlanLimitError extends Error {
+  constructor(public readonly limit: number) {
+    super(`Limite de l'offre atteinte : ${limit}`);
+    this.name = "PlanLimitError";
+  }
+}

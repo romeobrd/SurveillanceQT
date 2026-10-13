@@ -15,6 +15,10 @@ export type SessionInfo = AccessContext & {
   organizationName: string;
   /** Mot de passe provisoire : tant qu'il n'est pas changé, seule la page « Mon compte » est accessible. */
   mustChangePassword: boolean;
+  /** Lecture seule quand l'essai ou l'abonnement est terminé (voir features/billing/plans.ts). */
+  access: "full" | "readonly";
+  plan: string;
+  trialDaysLeft: number;
 };
 
 export const ACCOUNT_PAGE = "/mon-compte";

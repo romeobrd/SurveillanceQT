@@ -1,7 +1,7 @@
 // Aides communes aux server actions : droits vérifiés côté serveur, erreurs métier traduites.
 import "server-only";
 import { ZodError } from "zod";
-import type { Permission } from "@/lib/auth/permissions";
+import { WRITE_PERMISSIONS, type Permission } from "@/lib/auth/permissions";
 import { requirePermission, type SessionInfo } from "@/lib/auth/session";
 import {
   DuplicateError,
@@ -15,11 +15,21 @@ import {
   ReassignmentRequiredError,
   StaleLayoutError,
   WrongPasswordError,
+  SubscriptionRequiredError,
+  PlanLimitError,
   type Repositories,
 } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
 
 export type ActionState = { error: string | null };
+
+/** Droit vérifié, puis refus de toute écriture quand l'entreprise est en lecture seule. */
+async function requireWritable(permission: Permission): Promise<SessionInfo> {
+  const session = await requirePermission(permission);
+  if (session.access === "readonly" && WRITE_PERMISSIONS.has(permission))
+    throw new SubscriptionRequiredError();
+  return session;
+}
 
 export function actionErrorMessage(error: unknown): string | null {
   if (error instanceof ZodError) return fr.errors.invalid;
@@ -35,6 +45,9 @@ export function actionErrorMessage(error: unknown): string | null {
   if (error instanceof InvalidLayoutError) return fr.errors.invalidLayout;
   if (error instanceof StaleLayoutError) return fr.errors.stale;
   if (error instanceof WrongPasswordError) return fr.errors.wrongPassword;
+  if (error instanceof SubscriptionRequiredError) return fr.errors.subscription;
+  if (error instanceof PlanLimitError)
+    return fr.errors.planLimit.replace("{limit}", String(error.limit));
   return null;
 }
 
@@ -47,7 +60,7 @@ export async function guarded(
   run: (repos: Repositories, session: SessionInfo) => Promise<void>,
 ): Promise<ActionState> {
   try {
-    const session = await requirePermission(permission);
+    const session = await requireWritable(permission);
     await run(getRepositories(session), session);
     return { error: null };
   } catch (error) {
@@ -69,7 +82,7 @@ export async function guardedValue<T>(
   run: (repos: Repositories, session: SessionInfo) => Promise<T>,
 ): Promise<{ error: string | null; value?: T }> {
   try {
-    const session = await requirePermission(permission);
+    const session = await requireWritable(permission);
     return { error: null, value: await run(getRepositories(session), session) };
   } catch (error) {
     const message = actionErrorMessage(error);

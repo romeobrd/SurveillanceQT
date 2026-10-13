@@ -3,6 +3,7 @@ import "server-only";
 import type { AccessContext } from "@/lib/auth/permissions";
 import { accountsRepository } from "./repositories/accounts";
 import { assetsRepository } from "./repositories/assets";
+import { billingRepository } from "./repositories/billing";
 import { dashboardRepository } from "./repositories/dashboard";
 import {
   layoutsRepository,
@@ -39,6 +40,7 @@ export function getRepositories(context: AccessContext) {
     settings: settingsRepository(db, context),
     audit: auditRepository(db, context),
     accounts: accountsRepository(db, context),
+    billing: billingRepository(db, context),
   };
 }
 
@@ -52,6 +54,8 @@ export {
   NotFoundError,
   StaleLayoutError,
   WrongPasswordError,
+  SubscriptionRequiredError,
+  PlanLimitError,
 } from "./errors";
 export {
   ReassignmentRequiredError,

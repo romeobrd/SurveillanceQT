@@ -47,6 +47,19 @@ enum PresenceKind {
   ABSENT
 }
 
+/// État de l'abonnement de l'entreprise (synchronisé depuis Stripe par webhook).
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
 enum PrivacyRequestType {
   ACCESS
   RECTIFICATION
@@ -61,15 +74,24 @@ enum PrivacyRequestStatus {
 }
 
 model Organization {
-  id                          String   @id @default(cuid())
+  id                          String             @id @default(cuid())
   name                        String
   sector                      String
-  presenceEnabled             Boolean  @default(false)
+  presenceEnabled             Boolean            @default(false)
   // Durées de conservation (jours), paramétrables par l'admin (appliquées en phase 6)
-  auditRetentionDays          Int      @default(365)
-  privacyRequestRetentionDays Int      @default(1095)
-  departedPersonRetentionDays Int      @default(30)
-  createdAt                   DateTime @default(now())
+  auditRetentionDays          Int                @default(365)
+  privacyRequestRetentionDays Int                @default(1095)
+  departedPersonRetentionDays Int                @default(30)
+  // Abonnement (identifiants Stripe uniquement : aucune donnée de carte ni de facturation stockée ici).
+  // Par défaut « actif » : les entreprises créées hors inscription (démonstration, migration) gardent tout l'accès.
+  plan                        String             @default("business")
+  subscriptionStatus          SubscriptionStatus @default(ACTIVE)
+  billingInterval             BillingInterval?
+  trialEndsAt                 DateTime?
+  currentPeriodEnd            DateTime?
+  stripeCustomerId            String?            @unique
+  stripeSubscriptionId        String?            @unique
+  createdAt                   DateTime           @default(now())
 
   users            User[]
   people           Person[]
@@ -100,6 +122,9 @@ model User {
   disabledAt         DateTime?
   /// Mot de passe provisoire (création ou réinitialisation par un admin) : à changer à la prochaine connexion.
   mustChangePassword Boolean   @default(false)
+  /// Preuve d'acceptation du contrat (CGU) lors de l'inscription : date et version du texte accepté.
+  termsAcceptedAt    DateTime?
+  termsVersion       String?
   createdAt          DateTime  @default(now())
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)

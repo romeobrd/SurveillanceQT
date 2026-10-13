@@ -21,6 +21,8 @@ export const PERMISSIONS = {
   "privacy:manageRequests": ["ADMIN"],
   /** « Mes données » : chacun consulte, exporte et demande la rectification ou l'effacement de SES données. */
   "privacy:self": ["ADMIN", "MANAGER", "EMPLOYEE"],
+  /** Abonnement de l'entreprise : offre, paiement, factures. */
+  "billing:manage": ["ADMIN"],
   /** Son propre compte : changer son mot de passe. */
   "account:self": ["ADMIN", "MANAGER", "EMPLOYEE"],
   /** Présence déclarative : saisie par le salarié lui-même, jamais par un tiers. */
@@ -28,6 +30,22 @@ export const PERMISSIONS = {
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;
+
+/**
+ * Droits qui modifient des données : refusés quand l'entreprise est en lecture seule (essai terminé, abonnement
+ * expiré). Restent ouverts : la consultation, l'export et les droits RGPD, son mot de passe, l'abonnement.
+ */
+export const WRITE_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+  "layout:write",
+  "people:write",
+  "workstation:assign",
+  "stock:write",
+  "asset:write",
+  "project:write",
+  "org:settings",
+  "users:manage",
+  "presence:declare",
+]);
 
 /** Identité vérifiée côté serveur : n'est construite que depuis la session (jamais depuis une entrée utilisateur). */
 export interface AccessContext {

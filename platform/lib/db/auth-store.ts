@@ -3,6 +3,7 @@
 import "server-only";
 import type { AccessContext } from "@/lib/auth/permissions";
 import { stateAfterFailure, type AttemptState } from "@/lib/auth/rate-limit";
+import { accessLevel, trialDaysLeft } from "@/features/billing/plans";
 import { rawPrisma } from "./client";
 
 export async function findUserForLogin(email: string) {
@@ -13,10 +14,16 @@ export async function findUserForLogin(email: string) {
 }
 
 /** Identité faisant foi : relue en base à chaque requête (rôle ou compte modifié = effet immédiat). */
-export async function findAccessContext(
-  userId: string,
-): Promise<
-  | (AccessContext & { organizationName: string; mustChangePassword: boolean })
+export async function findAccessContext(userId: string): Promise<
+  | (AccessContext & {
+      organizationName: string;
+      mustChangePassword: boolean;
+      /** Lecture seule quand l'essai ou l'abonnement est terminé. */
+      access: "full" | "readonly";
+      plan: string;
+      /** Jours d'essai restants (0 hors essai). */
+      trialDaysLeft: number;
+    })
   | null
 > {
   const user = await rawPrisma.user.findUnique({
@@ -28,7 +35,15 @@ export async function findAccessContext(
       personId: true,
       disabledAt: true,
       mustChangePassword: true,
-      organization: { select: { name: true } },
+      organization: {
+        select: {
+          name: true,
+          plan: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
+          currentPeriodEnd: true,
+        },
+      },
     },
   });
   // Compte désactivé (départ, anonymisation) : plus aucune session valide, effet immédiat
@@ -40,6 +55,9 @@ export async function findAccessContext(
     personId: user.personId,
     organizationName: user.organization.name,
     mustChangePassword: user.mustChangePassword,
+    access: accessLevel(user.organization, new Date()),
+    plan: user.organization.plan,
+    trialDaysLeft: trialDaysLeft(user.organization, new Date()),
   };
 }
 
