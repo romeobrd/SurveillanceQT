@@ -217,3 +217,40 @@ test("choisir une pièce fait voler la caméra jusqu'à elle", async ({
     .poll(() => page.evaluate(() => window.__mapDebug!.stats().zoom))
     .toBeGreaterThan(before * 1.2);
 });
+
+test("la barre de projet montre les étapes et la carte éclaire les pièces de l'équipe", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  await page.goto("/carte");
+  await page.waitForFunction(() => window.__mapDebug !== undefined, null, {
+    timeout: 30_000,
+  });
+  await page
+    .locator("#map-project")
+    .selectOption({ label: "Refonte de la base de connaissances" });
+  const steps = page.getByTestId("project-steps");
+  await expect(steps.getByRole("listitem")).toHaveCount(4);
+  await expect(steps).toContainText("Inventaire des articles");
+  await expect(steps).toContainText("(en cours)");
+});
+
+test("les indicateurs de la carte reprennent les chiffres du tableau de bord", async ({
+  page,
+}) => {
+  await login(page, "manager");
+  const dashboardAlerts = (
+    await page
+      .getByRole("link", { name: /Alertes de stock/ })
+      .first()
+      .locator("span")
+      .first()
+      .innerText()
+  ).trim();
+  await page.goto("/carte");
+  await expect(
+    page
+      .getByTestId("map-kpis")
+      .getByRole("link", { name: /Alertes de stock/ }),
+  ).toContainText(dashboardAlerts);
+});

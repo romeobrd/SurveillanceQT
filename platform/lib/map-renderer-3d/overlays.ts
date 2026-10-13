@@ -97,14 +97,16 @@ export function flatRect(
 /** Calque de survol / sélection d'une zone. */
 export function zoneHighlight(
   rects: readonly Rect[],
-  mode: "hover" | "selected",
+  mode: "hover" | "selected" | "emphasis",
 ): Group {
   const group = new Group();
   for (const rect of rects) {
     group.add(
       mode === "selected"
         ? flatRect(rect, OVERLAY_COLORS.selected, 0.16, 0.95)
-        : flatRect(rect, OVERLAY_COLORS.hover, 0.3, 0.9),
+        : mode === "emphasis"
+          ? flatRect(rect, OVERLAY_COLORS.selected, 0.14, 0.7, 0.012, 0.06)
+          : flatRect(rect, OVERLAY_COLORS.hover, 0.3, 0.9),
     );
   }
   return group;

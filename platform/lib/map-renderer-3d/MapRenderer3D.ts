@@ -156,6 +156,7 @@ export class MapRenderer3D {
     duration: number;
   } | null = null;
   private selectedZoneId: string | null = null;
+  private emphasizedZoneIds: ReadonlySet<string> = new Set();
   private quality: RenderQuality = "high";
   /** Largeur (px) masquée à droite par un panneau flottant : la vue se centre dans l'espace libre. */
   private insetRight = 0;
@@ -373,6 +374,18 @@ export class MapRenderer3D {
   setSelectedZone(zoneId: string | null): void {
     if (zoneId === this.selectedZoneId) return;
     this.selectedZoneId = zoneId;
+    this.redrawHighlights();
+  }
+
+  /** Pièces mises en évidence (ex. où travaille l'équipe du projet affiché). */
+  setEmphasizedZones(zoneIds: readonly string[]): void {
+    const next = new Set(zoneIds);
+    if (
+      next.size === this.emphasizedZoneIds.size &&
+      [...next].every((id) => this.emphasizedZoneIds.has(id))
+    )
+      return;
+    this.emphasizedZoneIds = next;
     this.redrawHighlights();
   }
 
@@ -710,6 +723,13 @@ export class MapRenderer3D {
     disposeOverlay(this.highlightGroup, this.shared);
     const find = (id: string | null) =>
       this.layout?.zones.find((zone) => zone.id === id);
+    for (const zone of this.layout?.zones ?? []) {
+      if (
+        this.emphasizedZoneIds.has(zone.id) &&
+        zone.id !== this.selectedZoneId
+      )
+        this.highlightGroup.add(zoneHighlight(zone.rects, "emphasis"));
+    }
     const selected = find(this.selectedZoneId);
     if (selected)
       this.highlightGroup.add(zoneHighlight(selected.rects, "selected"));

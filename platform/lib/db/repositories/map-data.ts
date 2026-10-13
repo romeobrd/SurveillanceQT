@@ -86,6 +86,11 @@ export function mapDataRepository(db: TenantDb, context: AccessContext) {
         orderBy: [{ type: "asc" }, { id: "asc" }],
       });
       const projects = await projectsRepository(db, context).list({});
+      // Étapes des projets (noms et statuts, aucune donnée personnelle) pour la barre d'étapes de la carte
+      const steps = await db.projectStep.findMany({
+        select: { projectId: true, name: true, status: true },
+        orderBy: [{ projectId: "asc" }, { order: "asc" }],
+      });
       const zones = await db.zone.findMany({ select: { id: true, key: true } });
 
       await recordAudit(db, context, {
@@ -124,6 +129,9 @@ export function mapDataRepository(db: TenantDb, context: AccessContext) {
             name: project.name,
             team: project.teamName ?? "",
             progress: project.progress,
+            steps: steps
+              .filter((step) => step.projectId === project.id)
+              .map((step) => ({ name: step.name, status: step.status })),
           })),
         },
       };

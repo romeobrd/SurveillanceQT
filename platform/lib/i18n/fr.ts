@@ -51,6 +51,13 @@ export const fr = {
     stock: "Stock",
     stockAlert: "Sous le seuil",
     freeWorkstation: "Poste libre",
+    steps: {
+      label: "Étapes du projet {project}",
+      done: "(terminée)",
+      inProgress: "(en cours)",
+      todo: "(à faire)",
+      teamZones: "Pièces de l'équipe mises en évidence",
+    },
     insights: {
       label: "Indicateurs de l'entreprise",
       people: "Collaborateurs",

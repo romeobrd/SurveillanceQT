@@ -78,11 +78,15 @@ export default async function CartePage({
     );
   }
   const mode: MapMode = active ? "active" : "empty";
-  const { trends } = active ? await repos.dashboard.trends() : { trends: null };
+  // Totaux de toute l'entreprise et leur évolution : mêmes chiffres qu'au tableau de bord
+  const { current, trends } = active
+    ? await repos.dashboard.trends()
+    : { current: null, trends: null };
   return (
     <MapExplorer
       {...common}
       trends={trends}
+      totals={current}
       mode={mode}
       layout={active?.layout ?? null}
       data={active?.data ?? EMPTY_DATA}

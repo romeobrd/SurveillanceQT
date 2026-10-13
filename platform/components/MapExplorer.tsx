@@ -12,12 +12,14 @@ import type { VersionInfo } from "@/components/editor/VersionsPanel";
 import MapViewLazy from "@/components/MapViewLazy";
 import ActionForm from "@/components/ui/ActionForm";
 import { MapKpiBar, ZonePins } from "@/components/map/MapInsights";
-import type { Trends } from "@/features/dashboard/trends";
+import ProjectSteps from "@/components/map/ProjectSteps";
+import type { MetricValues, Trends } from "@/features/dashboard/trends";
 import { computeMapKpis, computeZoneAlerts } from "@/features/map/insights";
 import { getPersonMarkers } from "@/features/map/markers";
 import type { MapData, Role } from "@/features/map/types";
 import { fr } from "@/lib/i18n/fr";
 import { CATALOG } from "@/lib/map/catalog";
+import { ACCENT } from "@/lib/map/models";
 import { createEmptyLayout } from "@/lib/map/edit";
 import type { Layout } from "@/lib/map/schema";
 import ZonePanel from "./ZonePanel";
@@ -43,6 +45,8 @@ interface MapExplorerProps {
   versions: VersionInfo[];
   /** Évolution des indicateurs sur une semaine (null sans historique). */
   trends?: Trends | null;
+  /** Totaux de toute l'entreprise (les mêmes qu'au tableau de bord), calculés côté serveur. */
+  totals?: MetricValues | null;
 }
 
 /** Largeur du panneau flottant (24rem) + ses marges. */
@@ -66,6 +70,7 @@ export default function MapExplorer({
   savedLayout,
   versions,
   trends = null,
+  totals = null,
 }: MapExplorerProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -73,7 +78,20 @@ export default function MapExplorer({
   const leaveDialog = useRef<HTMLDialogElement>(null);
   const leaveTitle = useId();
   const people = useMemo(() => getPersonMarkers(data), [data]);
-  const kpis = useMemo(() => computeMapKpis(data), [data]);
+  // Mêmes chiffres qu'au tableau de bord (toute l'entreprise, y compris le stock rangé hors des pièces)
+  const kpis = useMemo(
+    () =>
+      totals
+        ? {
+            people: totals.people,
+            workstationsOccupied: totals.workstationsOccupied,
+            workstationsTotal: totals.workstationsTotal,
+            lowStock: totals.lowStock,
+            brokenAssets: totals.brokenAssets,
+          }
+        : computeMapKpis(data),
+    [totals, data],
+  );
   // Grand écran : le panneau de détail flotte sur la carte, à droite ; la vue se centre dans l'espace libre
   // Calculé dès le premier rendu côté client : la carte (rendue uniquement dans le navigateur) se cadre directement juste
   const [panelInset, setPanelInset] = useState(() =>
@@ -131,6 +149,20 @@ export default function MapExplorer({
   const selectedZone =
     layout?.zones.find((zone) => zone.id === selectedZoneId) ?? null;
   const project = data.projects.find((candidate) => candidate.id === projectId);
+  // Pièces où travaille l'équipe du projet affiché (postes attribués à des membres de l'équipe)
+  const teamZoneIds = useMemo(() => {
+    if (!project?.team) return [];
+    const teamPeople = new Set(
+      data.people.filter((p) => p.team === project.team).map((p) => p.id),
+    );
+    return [
+      ...new Set(
+        data.workstations
+          .filter((w) => w.personId && teamPeople.has(w.personId))
+          .map((w) => w.zoneId),
+      ),
+    ];
+  }, [project, data]);
 
   return (
     <div className="flex h-full flex-col">
@@ -255,6 +287,7 @@ export default function MapExplorer({
                 onSelectZone={setSelectedZoneId}
                 insetRight={panelInset}
                 describeElement={describeElement}
+                emphasizedZoneIds={teamZoneIds}
                 flyToSelection
                 labels={(project) => (
                   <ZonePins
@@ -283,7 +316,7 @@ export default function MapExplorer({
           </div>
           {data.projects.length > 0 && (
             <div
-              className="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2"
+              className="flex flex-wrap items-center gap-4 border-t border-slate-200 bg-white px-4 py-2"
               data-testid="project-bar"
             >
               <label htmlFor="map-project" className="text-sm font-medium">
@@ -301,10 +334,12 @@ export default function MapExplorer({
                   </option>
                 ))}
               </select>
+              {project && <ProjectSteps project={project} />}
               {project && (
-                <div className="flex min-w-48 flex-1 items-center gap-2">
+                <div className="flex min-w-40 items-center gap-2">
                   <progress
-                    className="accent-brand-600 h-3 flex-1"
+                    className="h-3 flex-1"
+                    style={{ accentColor: ACCENT }}
                     value={project.progress}
                     max={100}
                     aria-label={`${project.name} : ${project.progress} %`}

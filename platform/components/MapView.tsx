@@ -36,6 +36,8 @@ interface MapViewProps {
   ) => { title: string; detail?: string } | null;
   /** La caméra vole jusqu'à la pièce choisie (vue ; jamais en mode Aménager). */
   flyToSelection?: boolean;
+  /** Pièces à mettre en évidence (équipe du projet affiché). */
+  emphasizedZoneIds?: readonly string[];
 }
 
 export type ProjectFn = (
@@ -45,6 +47,8 @@ export type ProjectFn = (
 ) => { x: number; y: number } | null;
 
 /** Type de données du glisser-déposer depuis le catalogue. */
+const NO_ZONES: readonly string[] = [];
+
 export const CATALOG_DRAG_TYPE = "application/x-catalog-key";
 
 declare global {
@@ -80,6 +84,7 @@ export default function MapView({
   insetRight = 0,
   describeElement,
   flyToSelection = false,
+  emphasizedZoneIds = NO_ZONES,
 }: MapViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelectZone);
@@ -172,6 +177,10 @@ export default function MapView({
   useEffect(() => {
     renderer?.setViewInset(insetRight);
   }, [renderer, insetRight]);
+
+  useEffect(() => {
+    renderer?.setEmphasizedZones(emphasizedZoneIds);
+  }, [renderer, emphasizedZoneIds]);
 
   useEffect(() => {
     if (flyToSelection && selectedZoneId) renderer?.flyToZone(selectedZoneId);

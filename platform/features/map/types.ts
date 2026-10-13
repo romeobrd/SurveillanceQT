@@ -42,6 +42,8 @@ export interface MapProject {
   team: string;
   /** Avancement en pourcentage (0 à 100). */
   progress: number;
+  /** Étapes dans l'ordre (absentes des anciennes données : liste vide). */
+  steps?: Array<{ name: string; status: "TODO" | "IN_PROGRESS" | "DONE" }>;
 }
 
 export interface MapData {
