@@ -103,6 +103,11 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - Les entreprises de démonstration (seed) sont en abonnement actif « Business ».
 - Tester Stripe en local : `stripe listen --forward-to localhost:3000/api/stripe/webhook` (CLI Stripe), puis une carte de test `4242 4242 4242 4242`.
 
+## Site vitrine et service : www et app
+
+- **En local** (ou sur un seul domaine) : `http://localhost:3000` est le site vitrine ; le service est derrière **Connexion** / **Mon espace**. Un client connecté peut toujours revenir sur l'accueil.
+- **En production sur deux domaines** : renseigner `SITE_URL` (ex. `https://www.isoplan.fr`) et `AUTH_URL` (ex. `https://app.isoplan.fr`), et faire pointer les deux domaines vers le même conteneur. `proxy.ts` aiguille chaque requête **avant tout affichage** : www sert l'accueil et les pages légales, et envoie connexion, inscription et service vers app ; sur app, l'accueil mène directement au tableau de bord (ou à la connexion). Les e-mails pointent vers app.
+
 ## E-mails, import et premiers pas (phase B)
 
 - **E-mails de service** : confirmation d'adresse à l'inscription, **mot de passe oublié** (lien valable 1 h), **invitation** des collègues (lien valable 7 jours : la personne choisit son mot de passe), rappel 3 jours avant la fin de l'essai puis avis de fin d'essai. Liens à usage unique : seule leur empreinte est stockée. Envoi par **SMTP** (Brevo conseillé, variables `SMTP_*` et `EMAIL_FROM` dans `.env.example`).
