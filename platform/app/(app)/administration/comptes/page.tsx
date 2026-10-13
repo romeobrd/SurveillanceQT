@@ -22,6 +22,7 @@ import {
 import { ROLES } from "@/features/accounts/schemas";
 import { getAppContext } from "@/lib/app-context";
 import { can } from "@/lib/auth/permissions";
+import { emailAvailable } from "@/lib/email/send";
 import { fr } from "@/lib/i18n/fr";
 
 export const metadata: Metadata = {
@@ -132,7 +133,11 @@ export default async function AccountsPage() {
                         <>
                           <TemporaryPasswordForm
                             action={resetPasswordAction}
-                            submitLabel={t.resetPassword}
+                            submitLabel={
+                              emailAvailable()
+                                ? t.sendResetLink
+                                : t.resetPassword
+                            }
                             variant="secondary"
                             className="flex flex-col gap-1"
                           >

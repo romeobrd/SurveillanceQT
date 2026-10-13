@@ -2,6 +2,7 @@
 import { execSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 import { logout, uniqueId } from "./helpers";
+import { lastLinkTo } from "./mailbox";
 
 async function signUp(page: Page, email: string) {
   await page.goto("/inscription");
@@ -68,6 +69,70 @@ test("une entreprise s'inscrit seule et démarre son essai sur la carte vide", a
   await expect(page.getByTestId("signup-error")).toContainText(
     "déjà un compte",
   );
+});
+
+test("l'adresse e-mail se confirme par le lien reçu à l'inscription", async ({
+  page,
+}) => {
+  const email = `confirm.${uniqueId()}@horizon.example`;
+  await signUp(page, email);
+  await expect(page).toHaveURL(/\/carte/);
+  await expect(page.getByTestId("verify-banner")).toBeVisible();
+
+  await page.goto(await lastLinkTo(email, /Confirmez votre adresse/));
+  await page.getByRole("button", { name: "Confirmer mon adresse" }).click();
+  await expect(page.getByText("Adresse confirmée, merci !")).toBeVisible();
+  await page.goto("/tableau-de-bord");
+  await expect(page.getByTestId("verify-banner")).toHaveCount(0);
+  // « Premiers pas » accueille la nouvelle entreprise
+  await expect(
+    page.getByRole("heading", { name: "Premiers pas" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("onboarding-layout")).toHaveAttribute(
+    "data-done",
+    "false",
+  );
+  await page.getByRole("button", { name: "Masquer" }).click();
+  await expect(page.getByRole("heading", { name: "Premiers pas" })).toHaveCount(
+    0,
+  );
+});
+
+test("mot de passe oublié : le lien reçu permet d'en choisir un nouveau, une seule fois", async ({
+  page,
+}) => {
+  const email = `oubli.${uniqueId()}@horizon.example`;
+  await signUp(page, email);
+  await expect(page).toHaveURL(/\/carte/);
+  await logout(page);
+
+  await expect(
+    page.getByRole("link", { name: "Mot de passe oublié ?" }),
+  ).toHaveAttribute("href", "/mot-de-passe-oublie");
+  await page.goto("/mot-de-passe-oublie");
+  await page.getByLabel("Adresse e-mail professionnelle").fill(email);
+  await page.getByRole("button", { name: "Envoyer le lien" }).click();
+  await expect(page.getByText(/Si un compte existe/)).toBeVisible();
+
+  const link = await lastLinkTo(email, /Réinitialisation/);
+  await page.goto(link);
+  await page.getByLabel(/Nouveau mot de passe/).fill("phrase-toute-neuve");
+  await page.getByLabel("Confirmer le mot de passe").fill("phrase-toute-neuve");
+  await page
+    .getByRole("button", { name: "Enregistrer le mot de passe" })
+    .click();
+  await expect(page).toHaveURL(/\/tableau-de-bord/);
+  await logout(page);
+
+  // Le lien ne sert qu'une fois
+  await page.goto(link);
+  await expect(page.getByText(/n'est plus valable/)).toBeVisible();
+  // Le nouveau mot de passe fonctionne
+  await page.goto("/login");
+  await page.getByLabel("Adresse e-mail professionnelle").fill(email);
+  await page.getByLabel("Mot de passe").fill("phrase-toute-neuve");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page).toHaveURL(/\/tableau-de-bord/);
 });
 
 test("l'inscription exige les CGU", async ({ page }) => {

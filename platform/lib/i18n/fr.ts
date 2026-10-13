@@ -411,6 +411,7 @@ export const fr = {
     disable: "Désactiver",
     enable: "Réactiver",
     resetPassword: "Nouveau mot de passe provisoire",
+    sendResetLink: "Envoyer un lien de réinitialisation",
     resetTitle: "Générer un nouveau mot de passe provisoire ?",
     resetBody:
       "L'ancien mot de passe ne fonctionnera plus. La personne devra choisir un nouveau mot de passe à sa connexion.",

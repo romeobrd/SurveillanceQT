@@ -2,6 +2,7 @@
 // Ne jamais importer hors des tests.
 import "server-only";
 import { rawPrisma } from "./client";
+import { hashPassword } from "@/lib/auth/password";
 import {
   seedOrganization,
   type OrganizationSpec,
@@ -169,6 +170,20 @@ export async function expireTrial(email: string): Promise<void> {
     data: {
       subscriptionStatus: "TRIALING",
       trialEndsAt: new Date(Date.now() - 60_000),
+    },
+  });
+}
+
+/** Tests e2e : donne au compte un mot de passe provisoire connu, à changer à la prochaine connexion. */
+export async function setTemporaryPassword(
+  email: string,
+  password: string,
+): Promise<void> {
+  await rawPrisma.user.update({
+    where: { email: email.toLowerCase() },
+    data: {
+      passwordHash: await hashPassword(password),
+      mustChangePassword: true,
     },
   });
 }

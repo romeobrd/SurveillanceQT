@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import EmailLinkPage from "@/components/EmailLinkPage";
 import { VerifyEmailForm } from "@/components/EmailLinkForms";
@@ -15,6 +16,8 @@ async function Content({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Validité du lien calculée à chaque requête (date du jour), jamais au pré-rendu
+  await connection();
   const raw = (await searchParams).jeton;
   const token = typeof raw === "string" ? raw : "";
   // Lien vérifié sans être consommé : il ne l'est qu'à l'envoi du formulaire
