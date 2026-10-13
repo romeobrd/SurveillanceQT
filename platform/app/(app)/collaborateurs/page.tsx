@@ -156,7 +156,7 @@ export default async function PeoplePage({
                 {person.zoneKey && (
                   <Link
                     href={`/carte?zone=${person.zoneKey}`}
-                    className="text-orange-800 underline"
+                    className="text-brand-800 underline"
                   >
                     {fr.common.viewOnMap}
                   </Link>

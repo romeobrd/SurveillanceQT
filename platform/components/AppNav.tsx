@@ -30,9 +30,9 @@ export default function AppNav({ isAdmin = false }: { isAdmin?: boolean }) {
               <Link
                 href={item.href}
                 aria-current={current ? "page" : undefined}
-                className={`block rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-orange-600 ${
+                className={`focus-visible:outline-brand-600 block rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 ${
                   current
-                    ? "bg-orange-100 text-orange-900"
+                    ? "bg-brand-100 text-brand-900"
                     : "text-slate-700 hover:bg-slate-100"
                 }`}
               >

@@ -1,20 +1,26 @@
 @import "tailwindcss";
 
+/* Thème clair unique (V1). La couleur d'accent de la marque se change ICI, et nulle part ailleurs :
+   toutes les interfaces utilisent les classes brand-* (bg-brand-600, text-brand-800…). */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Fond de la carte 3D (repris par le moteur de rendu via la page) */
+  --map-background: #e6eaf0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-map: var(--map-background);
+  --color-brand-50: var(--color-orange-50);
+  --color-brand-100: var(--color-orange-100);
+  --color-brand-300: var(--color-orange-300);
+  --color-brand-500: var(--color-orange-500);
+  --color-brand-600: var(--color-orange-600);
+  --color-brand-700: var(--color-orange-700);
+  --color-brand-800: var(--color-orange-800);
+  --color-brand-900: var(--color-orange-900);
 }
 
 body {

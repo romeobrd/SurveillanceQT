@@ -28,7 +28,7 @@ async function AppShell({ children }: { children: ReactNode }) {
           <form action={logoutAction}>
             <button
               type="submit"
-              className="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
+              className="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600"
             >
               {fr.auth.logout}
             </button>

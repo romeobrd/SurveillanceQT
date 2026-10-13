@@ -55,7 +55,7 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
+            className="focus-visible:outline-brand-600 rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2"
           >
             {fr.common.cancel}
           </button>

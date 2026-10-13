@@ -6,7 +6,7 @@ import { fr } from "@/lib/i18n/fr";
 
 const initial: LoginState = { error: null, email: "" };
 const fieldClass =
-  "w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-orange-600";
+  "w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600";
 
 export default function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initial);
@@ -55,7 +55,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-60"
+        className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 rounded-md px-4 py-2 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
       >
         {pending ? fr.auth.submitting : fr.auth.submit}
       </button>

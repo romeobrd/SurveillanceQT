@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 
 const tones = { TODO: "neutral", IN_PROGRESS: "warn", DONE: "ok" } as const;
 const smallButton =
-  "rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600 disabled:opacity-50";
+  "rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-50";
 
 export default async function ProjectPage({
   params,

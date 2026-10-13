@@ -155,7 +155,7 @@ export default async function AssetsPage({
                 {asset.zoneKey && (
                   <Link
                     href={`/carte?zone=${asset.zoneKey}`}
-                    className="text-orange-800 underline"
+                    className="text-brand-800 underline"
                   >
                     {fr.common.viewOnMap}
                   </Link>

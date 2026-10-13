@@ -4,8 +4,8 @@ import { fr } from "@/lib/i18n/fr";
 import { inputClass } from "./fields";
 
 export const linkButtonClass =
-  "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600";
-export const primaryLink = `${linkButtonClass} bg-orange-600 text-white hover:bg-orange-700`;
+  "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
+export const primaryLink = `${linkButtonClass} bg-brand-600 text-white hover:bg-brand-700`;
 export const secondaryLink = `${linkButtonClass} border border-slate-300 bg-white text-slate-900 hover:bg-slate-100`;
 
 export function PageHeader({

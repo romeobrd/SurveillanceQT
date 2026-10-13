@@ -12,7 +12,7 @@ import { fr } from "@/lib/i18n/fr";
 const TOOLS: Tool[] = ["select", "zone", "solid", "glass", "door", "erase"];
 
 const toolButton =
-  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600 aria-pressed:border-orange-500 aria-pressed:bg-orange-50 aria-pressed:font-medium disabled:opacity-40";
+  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600 aria-pressed:border-brand-500 aria-pressed:bg-brand-50 aria-pressed:font-medium disabled:opacity-40";
 
 interface EditorToolbarProps {
   state: EditorState;
@@ -83,7 +83,7 @@ export default function EditorToolbar({
           type="button"
           disabled={!dirty || busy}
           onClick={onSave}
-          className="rounded-md bg-orange-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50"
+          className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 rounded-md px-4 py-1.5 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
         >
           {busy ? fr.editor.saving : fr.editor.save}
         </button>

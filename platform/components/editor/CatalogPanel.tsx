@@ -24,7 +24,7 @@ const STRUCTURE_TOOLS: Record<string, Tool> = {
 };
 
 const itemClass =
-  "flex w-full items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-orange-600 aria-pressed:border-orange-500 aria-pressed:bg-orange-50";
+  "flex w-full items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand-600 aria-pressed:border-brand-500 aria-pressed:bg-brand-50";
 
 export default function CatalogPanel({
   state,
@@ -39,7 +39,7 @@ export default function CatalogPanel({
     state.selection.includes(element.id),
   );
   const button =
-    "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600";
+    "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600";
 
   return (
     <div className="flex flex-col gap-5">
@@ -124,7 +124,7 @@ export default function CatalogPanel({
       {selected.length > 0 && (
         <section
           aria-labelledby="selection-title"
-          className="rounded-lg border border-orange-300 bg-orange-50 p-3"
+          className="border-brand-300 bg-brand-50 rounded-lg border p-3"
         >
           <h2 id="selection-title" className="text-sm font-semibold">
             {fr.editor.selection} : {selected.length} {fr.editor.selectedCount}

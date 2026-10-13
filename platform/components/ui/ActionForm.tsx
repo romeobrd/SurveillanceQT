@@ -16,7 +16,7 @@ interface ActionFormProps {
 }
 
 const buttonStyles = {
-  primary: "bg-orange-600 text-white hover:bg-orange-700",
+  primary: "bg-brand-600 text-white hover:bg-brand-700",
   danger: "bg-red-700 text-white hover:bg-red-800",
   secondary:
     "border border-slate-300 bg-white text-slate-900 hover:bg-slate-100",
@@ -48,7 +48,7 @@ export default function ActionForm({
           <button
             type="submit"
             disabled={pending}
-            className={`rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-60 ${buttonStyles[variant]}`}
+            className={`focus-visible:outline-brand-600 rounded-md px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60 ${buttonStyles[variant]}`}
           >
             {pending ? fr.common.saving : submitLabel}
           </button>

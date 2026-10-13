@@ -29,7 +29,7 @@ const dateFormat = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Paris",
 });
 const button =
-  "rounded-md border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600 disabled:opacity-50";
+  "rounded-md border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-50";
 
 /** Historique (numéro et date seulement, jamais de nom d'auteur) : ouvrir une version ou la restaurer. */
 export default function VersionsPanel({

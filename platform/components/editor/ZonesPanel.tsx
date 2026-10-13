@@ -19,7 +19,7 @@ import { ZONE_LABELS } from "@/lib/map/zoneTypes";
 import { inputClass, SelectField, TextInput } from "@/components/ui/fields";
 
 const button =
-  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600";
+  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600";
 
 export default function ZonesPanel({
   state,
@@ -78,7 +78,7 @@ export default function ZonesPanel({
             type="button"
             aria-pressed={state.tool === "zone"}
             onClick={() => dispatch({ type: "set-tool", tool: "zone" })}
-            className={`${button} aria-pressed:border-orange-500 aria-pressed:bg-orange-50`}
+            className={`${button} aria-pressed:border-brand-500 aria-pressed:bg-brand-50`}
           >
             {fr.editor.tools.zone}
           </button>
@@ -95,7 +95,7 @@ export default function ZonesPanel({
                   onClick={() =>
                     dispatch({ type: "select-zone", zoneId: candidate.id })
                   }
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600 aria-pressed:bg-orange-50 aria-pressed:font-medium"
+                  className="focus-visible:outline-brand-600 aria-pressed:bg-brand-50 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 focus-visible:outline-2 aria-pressed:font-medium"
                 >
                   <span
                     aria-hidden="true"

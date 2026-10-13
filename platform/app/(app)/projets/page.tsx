@@ -124,7 +124,7 @@ export default async function ProjectsPage({
               <td className={td}>
                 <Link
                   href={`/carte?project=${project.id}`}
-                  className="text-orange-800 underline"
+                  className="text-brand-800 underline"
                 >
                   {fr.projects.openOnMap}
                 </Link>

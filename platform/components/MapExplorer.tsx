@@ -40,7 +40,7 @@ interface MapExplorerProps {
 }
 
 const buttonClass =
-  "rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600";
+  "rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 export default function MapExplorer({
   mode,
@@ -113,7 +113,7 @@ export default function MapExplorer({
               onClick={() =>
                 dirty ? leaveDialog.current?.showModal() : setEditing(false)
               }
-              className="px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-600 aria-pressed:bg-orange-100 aria-pressed:font-medium"
+              className="focus-visible:outline-brand-600 aria-pressed:bg-brand-100 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 aria-pressed:font-medium"
             >
               {fr.editor.view}
             </button>
@@ -121,7 +121,7 @@ export default function MapExplorer({
               type="button"
               aria-pressed={editing}
               onClick={() => setEditing(true)}
-              className="border-l border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-600 aria-pressed:bg-orange-100 aria-pressed:font-medium"
+              className="focus-visible:outline-brand-600 aria-pressed:bg-brand-100 border-l border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 aria-pressed:font-medium"
             >
               {fr.editor.edit}
             </button>
@@ -278,7 +278,7 @@ export default function MapExplorer({
           <button
             type="button"
             onClick={() => leaveDialog.current?.close()}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600"
+            className="focus-visible:outline-brand-600 rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2"
           >
             {fr.editor.leave.stay}
           </button>

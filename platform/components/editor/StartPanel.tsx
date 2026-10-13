@@ -12,7 +12,7 @@ import type { Layout } from "@/lib/map/schema";
 import { TextInput } from "@/components/ui/fields";
 
 const button =
-  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-orange-600";
+  "rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600";
 
 /** Point de départ : carte enregistrée, carte générée ou locaux vides. Remplace le brouillon (annulable). */
 export default function StartPanel({

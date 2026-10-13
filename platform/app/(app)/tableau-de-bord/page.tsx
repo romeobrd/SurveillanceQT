@@ -35,7 +35,7 @@ function Stat({
     </>
   );
   const className =
-    "block rounded-lg border border-slate-200 p-4 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-orange-600";
+    "block rounded-lg border border-slate-200 p-4 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand-600";
   return href ? (
     <Link href={href} className={className}>
       {body}
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
                     {item.zoneKey && (
                       <Link
                         href={`/carte?zone=${item.zoneKey}`}
-                        className="text-orange-800 underline"
+                        className="text-brand-800 underline"
                       >
                         {fr.common.viewOnMap}
                       </Link>
