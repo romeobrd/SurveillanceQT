@@ -15,7 +15,10 @@ export async function findUserForLogin(email: string) {
 /** Identité faisant foi : relue en base à chaque requête (rôle ou compte modifié = effet immédiat). */
 export async function findAccessContext(
   userId: string,
-): Promise<(AccessContext & { organizationName: string }) | null> {
+): Promise<
+  | (AccessContext & { organizationName: string; mustChangePassword: boolean })
+  | null
+> {
   const user = await rawPrisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -24,6 +27,7 @@ export async function findAccessContext(
       role: true,
       personId: true,
       disabledAt: true,
+      mustChangePassword: true,
       organization: { select: { name: true } },
     },
   });
@@ -35,6 +39,7 @@ export async function findAccessContext(
     role: user.role,
     personId: user.personId,
     organizationName: user.organization.name,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 

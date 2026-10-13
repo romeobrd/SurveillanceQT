@@ -19,7 +19,7 @@ export default function Home() {
       </Suspense>
       <Link
         href="/login"
-        className="rounded-md bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+        className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 rounded-md px-4 py-2 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {fr.auth.submit}
       </Link>

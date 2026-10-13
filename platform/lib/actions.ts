@@ -14,6 +14,7 @@ import {
   NotFoundError,
   ReassignmentRequiredError,
   StaleLayoutError,
+  WrongPasswordError,
   type Repositories,
 } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
@@ -33,6 +34,7 @@ export function actionErrorMessage(error: unknown): string | null {
     return `${fr.errors.reassignment} (${error.blockers.join(", ")})`;
   if (error instanceof InvalidLayoutError) return fr.errors.invalidLayout;
   if (error instanceof StaleLayoutError) return fr.errors.stale;
+  if (error instanceof WrongPasswordError) return fr.errors.wrongPassword;
   return null;
 }
 

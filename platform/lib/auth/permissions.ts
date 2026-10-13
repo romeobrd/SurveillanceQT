@@ -21,6 +21,8 @@ export const PERMISSIONS = {
   "privacy:manageRequests": ["ADMIN"],
   /** « Mes données » : chacun consulte, exporte et demande la rectification ou l'effacement de SES données. */
   "privacy:self": ["ADMIN", "MANAGER", "EMPLOYEE"],
+  /** Son propre compte : changer son mot de passe. */
+  "account:self": ["ADMIN", "MANAGER", "EMPLOYEE"],
   /** Présence déclarative : saisie par le salarié lui-même, jamais par un tiers. */
   "presence:declare": ["ADMIN", "MANAGER", "EMPLOYEE"],
 } as const satisfies Record<string, readonly Role[]>;

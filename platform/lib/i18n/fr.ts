@@ -145,6 +145,7 @@ export const fr = {
     stale:
       "La carte a été modifiée par quelqu'un d'autre depuis l'ouverture de l'éditeur. Rechargez la page.",
     generic: "Une erreur est survenue. Réessayez.",
+    wrongPassword: "Le mot de passe actuel est incorrect.",
   },
   dashboard: {
     title: "Tableau de bord",
@@ -364,6 +365,50 @@ export const fr = {
       ABSENT: "Je suis absent(e)",
     },
     presenceClear: "Effacer ma déclaration",
+  },
+  accounts: {
+    title: "Comptes de connexion",
+    tab: "Comptes",
+    intro:
+      "Chaque compte se connecte avec son e-mail. Un mot de passe provisoire est généré : transmettez-le en main propre ; il devra être changé à la première connexion.",
+    email: "E-mail de connexion",
+    role: "Rôle",
+    person: "Collaborateur rattaché",
+    noPerson: "Aucun",
+    status: "Statut",
+    active: "Actif",
+    disabled: "Désactivé",
+    pending: "Mot de passe provisoire",
+    you: "(vous)",
+    create: "Créer le compte",
+    newAccount: "Nouveau compte",
+    changeRole: "Changer",
+    disable: "Désactiver",
+    enable: "Réactiver",
+    resetPassword: "Nouveau mot de passe provisoire",
+    resetTitle: "Générer un nouveau mot de passe provisoire ?",
+    resetBody:
+      "L'ancien mot de passe ne fonctionnera plus. La personne devra choisir un nouveau mot de passe à sa connexion.",
+    disableTitle: "Désactiver ce compte ?",
+    disableBody:
+      "La personne est déconnectée immédiatement et ne peut plus se connecter. Ses données ne sont pas supprimées.",
+    temporaryTitle: "Mot de passe provisoire",
+    temporaryHelp:
+      "Copiez-le maintenant : il ne sera plus jamais affiché. Transmettez-le à la personne par un canal sûr.",
+    roles: { ADMIN: "Administrateur", MANAGER: "Manager", EMPLOYEE: "Employé" },
+  },
+  myAccount: {
+    title: "Mon compte",
+    link: "Mon compte",
+    mustChange:
+      "Vous utilisez un mot de passe provisoire. Choisissez votre propre mot de passe pour accéder à l'application.",
+    changeTitle: "Changer mon mot de passe",
+    current: "Mot de passe actuel",
+    next: "Nouveau mot de passe (12 caractères minimum)",
+    confirm: "Confirmer le nouveau mot de passe",
+    submit: "Changer le mot de passe",
+    done: "Mot de passe changé.",
+    help: "Choisissez une phrase facile à retenir pour vous, difficile à deviner pour les autres. Ne la réutilisez pas ailleurs.",
   },
   admin: {
     title: "Administration",

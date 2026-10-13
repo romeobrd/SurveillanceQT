@@ -11,7 +11,13 @@ import {
   type Permission,
 } from "./permissions";
 
-export type SessionInfo = AccessContext & { organizationName: string };
+export type SessionInfo = AccessContext & {
+  organizationName: string;
+  /** Mot de passe provisoire : tant qu'il n'est pas changé, seule la page « Mon compte » est accessible. */
+  mustChangePassword: boolean;
+};
+
+export const ACCOUNT_PAGE = "/mon-compte";
 
 /** Lecture de la session sans `connection()` : pour les route handlers (toujours dynamiques). */
 export async function readSession(): Promise<SessionInfo | null> {
@@ -28,10 +34,20 @@ export const getSessionInfo = cache(async (): Promise<SessionInfo | null> => {
   return readSession();
 });
 
-/** Exige une session valide : sinon redirection vers la page de connexion. */
-export async function requireSession(): Promise<SessionInfo> {
+/**
+ * Session valide, même avec un mot de passe provisoire : réservé à la mise en page commune et à « Mon compte ».
+ * Sinon redirection vers la page de connexion.
+ */
+export async function requireSessionAllowingPasswordChange(): Promise<SessionInfo> {
   const info = await getSessionInfo();
   if (!info) redirect("/login");
+  return info;
+}
+
+/** Exige une session valide et un mot de passe définitif (sinon : connexion, ou changement de mot de passe). */
+export async function requireSession(): Promise<SessionInfo> {
+  const info = await requireSessionAllowingPasswordChange();
+  if (info.mustChangePassword) redirect(ACCOUNT_PAGE);
   return info;
 }
 

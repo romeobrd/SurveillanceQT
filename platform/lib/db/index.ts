@@ -1,6 +1,7 @@
 // Point d'entrée de la couche d'accès aux données : tout passe par un contexte vérifié.
 import "server-only";
 import type { AccessContext } from "@/lib/auth/permissions";
+import { accountsRepository } from "./repositories/accounts";
 import { assetsRepository } from "./repositories/assets";
 import { dashboardRepository } from "./repositories/dashboard";
 import {
@@ -37,6 +38,7 @@ export function getRepositories(context: AccessContext) {
     presence: presenceRepository(db, context),
     settings: settingsRepository(db, context),
     audit: auditRepository(db, context),
+    accounts: accountsRepository(db, context),
   };
 }
 
@@ -49,6 +51,7 @@ export {
   InvalidOperationError,
   NotFoundError,
   StaleLayoutError,
+  WrongPasswordError,
 } from "./errors";
 export {
   ReassignmentRequiredError,

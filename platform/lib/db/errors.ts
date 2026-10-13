@@ -64,3 +64,11 @@ export class StaleLayoutError extends Error {
     this.name = "StaleLayoutError";
   }
 }
+
+/** Mot de passe actuel incorrect lors d'un changement de mot de passe. */
+export class WrongPasswordError extends Error {
+  constructor() {
+    super("Mot de passe actuel incorrect");
+    this.name = "WrongPasswordError";
+  }
+}
