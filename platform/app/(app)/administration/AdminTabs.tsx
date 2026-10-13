@@ -4,6 +4,7 @@ import { fr } from "@/lib/i18n/fr";
 const TABS = [
   { href: "/administration", label: fr.admin.sectionSettings },
   { href: "/administration/comptes", label: fr.accounts.tab },
+  { href: "/administration/abonnement", label: fr.billing.tab },
   { href: "/administration/demandes", label: fr.admin.sectionRequests },
   { href: "/administration/journal", label: fr.admin.sectionJournal },
 ] as const;
