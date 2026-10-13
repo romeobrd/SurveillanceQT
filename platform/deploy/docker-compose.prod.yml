@@ -13,6 +13,11 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       # + STRIPE_PRICE_<OFFRE>_<MONTH|YEAR> (voir .env.example)
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
     depends_on: [db]
     ports: ["127.0.0.1:3000:3000"] # exposé uniquement au proxy HTTPS local
   db:

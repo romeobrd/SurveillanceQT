@@ -103,9 +103,16 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - Les entreprises de démonstration (seed) sont en abonnement actif « Business ».
 - Tester Stripe en local : `stripe listen --forward-to localhost:3000/api/stripe/webhook` (CLI Stripe), puis une carte de test `4242 4242 4242 4242`.
 
+## E-mails, import et premiers pas (phase B)
+
+- **E-mails de service** : confirmation d'adresse à l'inscription, **mot de passe oublié** (lien valable 1 h), **invitation** des collègues (lien valable 7 jours : la personne choisit son mot de passe), rappel 3 jours avant la fin de l'essai puis avis de fin d'essai. Liens à usage unique : seule leur empreinte est stockée. Envoi par **SMTP** (Brevo conseillé, variables `SMTP_*` et `EMAIL_FROM` dans `.env.example`).
+- **En développement sans SMTP** : rien ne part ; les e-mails sont écrits dans `.dev-emails/outbox.jsonl` et lisibles sur **http://localhost:3000/dev/emails** (liens cliquables).
+- **Import CSV** (bouton « Importer (CSV) » sur Collaborateurs, Matériel et Stock) : modèle de fichier téléchargeable, séparateur « ; » ou « , », UTF-8 ou format Excel français. Aperçu ligne par ligne, puis import **des seules lignes valides**. Mêmes règles que les formulaires, doublons et limite de l'offre refusés, équipes manquantes créées, chaque élément créé est journalisé. 1 Mo et 2 000 lignes au maximum.
+- **Premiers pas** : sur le tableau de bord de l'administrateur, six étapes cochées automatiquement d'après les données (plan, collaborateurs, postes, collègue invité, stock ou matériel, abonnement) ; masquable.
+
 ## Comptes et mots de passe
 
-- **Administration > Comptes** (admin) : créer un compte (e-mail, rôle, collaborateur rattaché), changer un rôle, désactiver / réactiver, générer un nouveau mot de passe provisoire. Le mot de passe provisoire est affiché **une seule fois** à l'admin, qui le transmet lui-même : aucun e-mail n'est envoyé (pas de service tiers).
+- **Administration > Comptes** (admin) : créer un compte (e-mail, rôle, collaborateur rattaché), changer un rôle, désactiver / réactiver, réinitialiser un mot de passe. **Avec les e-mails configurés**, le nouveau compte reçoit une invitation et la réinitialisation envoie un lien ; **sans e-mails**, un mot de passe provisoire est affiché **une seule fois** à l'admin, qui le transmet lui-même.
 - À la connexion avec un mot de passe provisoire, seule la page **Mon compte** est accessible tant qu'il n'a pas été changé (12 caractères minimum).
 - L'entreprise garde toujours au moins un administrateur actif ; un admin ne modifie pas son propre compte depuis cette page. Toutes ces actions sont journalisées.
 
@@ -145,4 +152,4 @@ La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, 
 
 ## Avancement
 
-Phases 0 à 8 terminées (initialisation, format de carte et générateur, rendu de la carte (PixiJS, remplacé par la 3D Three.js en phase 8), base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions, carte 3D et données sur la carte). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 8 terminées (initialisation, format de carte et générateur, rendu de la carte (PixiJS, remplacé par la 3D Three.js en phase 8), base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions, carte 3D et données sur la carte), puis SaaS : vente en ligne (phase A) et mise en route des clients (phase B : e-mails, import CSV, premiers pas). La carte est sur `/carte` (paramètre `?seed=`).
