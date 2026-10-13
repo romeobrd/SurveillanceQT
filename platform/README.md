@@ -1,6 +1,6 @@
 # Gestion d'entreprise
 
-Plateforme de gestion d'entreprise avec carte isométrique des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
+Plateforme de gestion d'entreprise avec carte 3D des locaux. Voir `SPEC.md` (produit) et `CLAUDE.md` (règles de travail).
 
 ## Démarrage (moins de 10 minutes)
 
@@ -34,7 +34,7 @@ Le seed refuse de s'exécuter en production ou sur une base non vide. Pour repar
 ### Parcours conseillé (10 minutes)
 
 1. Connectez-vous en **manager** sur Atelier Lumière : le **tableau de bord** montre les alertes de stock, le matériel à traiter et l'avancement des projets.
-2. **Carte** : cliquez une pièce (panneau latéral : personnes, matériel, stock, projets), choisissez un projet pour voir sa progression, zoomez et déplacez la carte.
+2. **Carte** : repérez les épingles rouges (pièces à traiter), cliquez une pièce (fiche flottante + panneau latéral : personnes, matériel, stock, projets), tournez la vue (clic droit + glisser), choisissez un projet pour voir sa progression.
 3. **Aménager** : posez un meuble, annulez / rétablissez, enregistrez une nouvelle version, restaurez l'ancienne.
 4. **Collaborateurs**, **Postes**, **Stock**, **Matériel**, **Projets** : recherche, filtres, création, modification ; chaque module renvoie vers la carte.
 5. Reconnectez-vous en **employé** : lecture seule, pas d'e-mails des collègues ; **Mes données** pour consulter et exporter vos données.
@@ -82,6 +82,14 @@ Après connexion, la navigation donne accès à :
 
 Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppression demande une confirmation ; chaque module a un lien « Voir sur la carte ».
 
+## Carte 3D (phase 8)
+
+- **Rendu** : Three.js (WebGL), empaqueté avec l'application (aucun script externe). Modèles générés par le code (`lib/map/models.ts`), ombres douces, socle « maquette ». La caméra et les modèles sont du code pur testé (`lib/map/camera3d.ts`, `lib/map/models.ts`) ; le moteur est dans `lib/map-renderer-3d/`.
+- **Navigation** : glisser pour déplacer, molette ou pincement pour zoomer, **clic droit + glisser** (ou **Alt + glisser**) pour tourner et incliner, boutons ⟲ ⟳ ou touches **Q / E** pour tourner, **0** ou ⌂ pour recentrer, flèches pour se déplacer.
+- **Données sur la carte** : indicateurs (collaborateurs, postes occupés, alertes de stock, matériel en panne) qui mènent aux modules ; **épingles rouges** sur les pièces à traiter ; **fiche flottante** de la pièce choisie (inventaire avec badges « Stock bas » / « En stock », bouton **Voir le manquant**). Les figurines représentent l'affectation d'un poste, jamais une présence réelle.
+- **Performances** : objets identiques regroupés (instanciation) ; si l'ordinateur est trop lent, le moteur passe seul en qualité basse (sans ombres).
+- **Couleur de la marque** : définie une seule fois dans `app/globals.css` (classes `brand-*`).
+
 ## Mode Aménager
 
 Sur `/carte`, les administrateurs et managers basculent de **Vue** à **Aménager** :
@@ -114,4 +122,4 @@ La logique d'édition est du code pur dans `lib/map/edit` et `features/editor`, 
 
 ## Avancement
 
-Phases 0 à 7 terminées (initialisation, format de carte et générateur, rendu PixiJS, base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions). La carte est sur `/carte` (paramètre `?seed=`).
+Phases 0 à 8 terminées (initialisation, format de carte et générateur, rendu de la carte (PixiJS, remplacé par la 3D Three.js en phase 8), base de données / authentification / isolation multi-tenant, modules de gestion et tableau de bord, mode Aménager, RGPD complet, seed de démonstration et finitions, carte 3D et données sur la carte). La carte est sur `/carte` (paramètre `?seed=`).
