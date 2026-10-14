@@ -57,8 +57,10 @@ jobs:
           Copy-Item -Recurse "desktop/dist/win-unpacked" $app
           New-Item -ItemType Directory $logs | Out-Null
           icacls $app /grant "Users:(OI)(CI)RX" | Out-Null
-          $password = "Sp!" + [guid]::NewGuid().ToString("N") + "aA1"
-          net user spacoratest $password /add | Out-Null
+          # 14 caractères au plus : au-delà, « net user » demande une confirmation
+          $password = "Sp1!" + [guid]::NewGuid().ToString("N").Substring(0, 10)
+          net user spacoratest $password /add
+          if ($LASTEXITCODE -ne 0) { throw "Utilisateur de test non créé" }
           $credential = New-Object System.Management.Automation.PSCredential("spacoratest", (ConvertTo-SecureString $password -AsPlainText -Force))
           $process = Start-Process -FilePath "$app\Spacora.exe" -ArgumentList "--smoke-test" `
             -Credential $credential -LoadUserProfile -WorkingDirectory $app -PassThru `
