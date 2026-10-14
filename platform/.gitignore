@@ -54,10 +54,7 @@ next-env.d.ts
 /deploy/logs
 
 # Construction du site vitrine (le résultat, vitrine/, est versionné)
-/.next-vitrine/
-/.next-boutique/
-/.next-desktop/
-/.next-saas/
+/.next-*/
 
 # Application de bureau : dépendances, ressources assemblées et installateurs
 /desktop/node_modules/
