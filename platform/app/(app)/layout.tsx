@@ -28,7 +28,19 @@ async function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-2">
-        <span className="font-semibold">{fr.app.name}</span>
+        {/* Retour au site vitrine (sur son propre domaine en production : SITE_URL) */}
+        <a
+          href={process.env.SITE_URL ?? "/"}
+          aria-label={fr.app.homeLink}
+          title={fr.app.homeLink}
+          className="focus-visible:outline-brand-600 flex items-center gap-2 rounded-md font-semibold focus-visible:outline-2"
+        >
+          <span
+            aria-hidden="true"
+            className="bg-brand-600 inline-block h-4 w-4 rotate-45 rounded-sm"
+          />
+          {fr.app.name}
+        </a>
         {!session.mustChangePassword && (
           <AppNav isAdmin={session.role === "ADMIN"} />
         )}

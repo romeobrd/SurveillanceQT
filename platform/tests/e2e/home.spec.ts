@@ -21,8 +21,8 @@ test("connecté, la page d'accueil reste affichée et propose « Mon espace »",
     .getByRole("link", { name: "Mon espace" })
     .click();
   await expect(page).toHaveURL(/\/tableau-de-bord/);
-  // Pas de redirection automatique : l'accueil reste consultable
-  await page.goto("/");
+  // Depuis le service, le logo ramène à l'accueil (pas de redirection automatique)
+  await page.getByRole("link", { name: "Spacora — page d'accueil" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Vos locaux en 3D",
   );
