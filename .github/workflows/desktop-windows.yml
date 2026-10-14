@@ -71,7 +71,10 @@ jobs:
           path: platform/desktop/dist/Spacora-Setup.exe
           retention-days: 30
 
+      # Publication seulement sur demande (Actions → Run workflow) : un simple envoi de code ne remplace
+      # jamais l'installateur que téléchargent les clients
       - name: Publication (version de démonstration)
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
