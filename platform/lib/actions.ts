@@ -18,6 +18,8 @@ import {
   SubscriptionRequiredError,
   PlanLimitError,
   EmailNotVerifiedError,
+  TooManyRequestsError,
+  InviteNeedsVerifiedEmailError,
   type Repositories,
 } from "@/lib/db";
 import { fr } from "@/lib/i18n/fr";
@@ -49,6 +51,9 @@ export function actionErrorMessage(error: unknown): string | null {
   if (error instanceof SubscriptionRequiredError) return fr.errors.subscription;
   if (error instanceof EmailNotVerifiedError)
     return fr.email.verifyRequiredForBilling;
+  if (error instanceof TooManyRequestsError) return fr.errors.tooMany;
+  if (error instanceof InviteNeedsVerifiedEmailError)
+    return fr.errors.inviteNeedsVerifiedEmail;
   if (error instanceof PlanLimitError)
     return fr.errors.planLimit.replace("{limit}", String(error.limit));
   return null;

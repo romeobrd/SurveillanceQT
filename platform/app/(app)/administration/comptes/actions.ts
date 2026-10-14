@@ -8,6 +8,8 @@ import {
   guardedValue,
   type ActionState,
 } from "@/lib/actions";
+import { companyEmailRefused } from "@/lib/auth/abuse-limits";
+import { InviteNeedsVerifiedEmailError, TooManyRequestsError } from "@/lib/db";
 import { appBaseUrl, emailAvailable, sendEmail } from "@/lib/email/send";
 import { inviteTemplate, resetPasswordTemplate } from "@/lib/email/templates";
 import { fr } from "@/lib/i18n/fr";
@@ -31,6 +33,12 @@ export async function createAccountAction(
     .trim()
     .toLowerCase();
   const result = await guardedValue("users:manage", async (repos, session) => {
+    // Invitation par e-mail : adresse de l'administrateur confirmée, nombre d'envois limité
+    if (invite) {
+      if (!session.emailVerified) throw new InviteNeedsVerifiedEmailError();
+      if (companyEmailRefused(session.organizationId))
+        throw new TooManyRequestsError();
+    }
     const created = await repos.accounts.create(formObject(formData), {
       invite,
     });
@@ -56,7 +64,9 @@ export async function resetPasswordAction(
   formData: FormData,
 ): Promise<PasswordActionState> {
   const byEmail = emailAvailable();
-  const result = await guardedValue("users:manage", async (repos) => {
+  const result = await guardedValue("users:manage", async (repos, session) => {
+    if (byEmail && companyEmailRefused(session.organizationId))
+      throw new TooManyRequestsError();
     const reset = await repos.accounts.resetPassword(
       IdSchema.parse(formData.get("id")),
       { byEmail },

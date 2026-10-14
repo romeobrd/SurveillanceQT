@@ -96,3 +96,19 @@ export class EmailNotVerifiedError extends Error {
     this.name = "EmailNotVerifiedError";
   }
 }
+
+/** Trop d'essais rapprochés (envois d'e-mails, inscriptions) : réessayer plus tard. */
+export class TooManyRequestsError extends Error {
+  constructor() {
+    super("Trop de demandes");
+    this.name = "TooManyRequestsError";
+  }
+}
+
+/** Inviter des collègues par e-mail exige une adresse confirmée (pas d'envoi au nom d'une adresse inconnue). */
+export class InviteNeedsVerifiedEmailError extends Error {
+  constructor() {
+    super("Adresse e-mail non confirmée pour inviter");
+    this.name = "InviteNeedsVerifiedEmailError";
+  }
+}

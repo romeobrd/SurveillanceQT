@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { SignupSchema } from "@/features/signup/schemas";
 import { signIn } from "@/lib/auth/config";
-import { isEmailLocked } from "@/lib/auth/lockout";
+import { signupRefused } from "@/lib/auth/abuse-limits";
+import { isEmailLocked, requestIp } from "@/lib/auth/lockout";
 import { DuplicateError } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/db/email-flows";
 import { createOrganizationWithAdmin } from "@/lib/db/signup";
@@ -46,8 +47,11 @@ export async function signupAction(
     );
     return { error: termsMissing ? "terms" : "invalid", values };
   }
-  // Même verrou que la connexion (empreinte de l'e-mail, aucune adresse IP conservée)
-  if (await isEmailLocked(parsed.data.email))
+  // Même verrou que la connexion, et 5 inscriptions par heure au plus depuis une même adresse IP (en mémoire)
+  if (
+    (await isEmailLocked(parsed.data.email)) ||
+    signupRefused(await requestIp())
+  )
     return { error: "locked", values };
   let userId: string;
   try {

@@ -59,6 +59,8 @@ export {
   SubscriptionRequiredError,
   PlanLimitError,
   EmailNotVerifiedError,
+  TooManyRequestsError,
+  InviteNeedsVerifiedEmailError,
 } from "./errors";
 export {
   ReassignmentRequiredError,

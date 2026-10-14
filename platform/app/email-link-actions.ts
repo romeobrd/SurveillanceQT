@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { NewPasswordSchema } from "@/features/accounts/schemas";
+import { resetRequestRefused } from "@/lib/auth/abuse-limits";
 import { signIn } from "@/lib/auth/config";
+import { requestIp } from "@/lib/auth/lockout";
 import {
   requestPasswordReset,
   setPasswordWithToken,
@@ -21,7 +23,9 @@ export async function forgotPasswordAction(
   formData: FormData,
 ): Promise<LinkState> {
   const email = EmailSchema.safeParse(formData.get("email"));
-  if (email.success) await requestPasswordReset(email.data);
+  // Trop de demandes depuis cette adresse : même réponse, aucun e-mail envoyé
+  if (email.success && !resetRequestRefused(await requestIp()))
+    await requestPasswordReset(email.data);
   return { status: "done" };
 }
 

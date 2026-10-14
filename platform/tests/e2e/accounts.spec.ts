@@ -18,7 +18,10 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Se connecter" }).click();
 }
 
-/** Inscrit une nouvelle entreprise ; la page reste connectée avec son administrateur. */
+/**
+ * Inscrit une nouvelle entreprise et confirme l'adresse de l'administrateur (exigée pour inviter par e-mail) ;
+ * la page reste connectée avec son administrateur.
+ */
 async function signUpCompany(page: Page): Promise<string> {
   const email = `admin.${uniqueId()}@horizon.example`;
   await page.goto("/inscription");
@@ -30,6 +33,9 @@ async function signUpCompany(page: Page): Promise<string> {
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Démarrer l'essai gratuit" }).click();
   await expect(page).toHaveURL(/\/carte/);
+  await page.goto(await lastLinkTo(email, /Confirmez votre adresse/));
+  await page.getByRole("button", { name: "Confirmer mon adresse" }).click();
+  await expect(page.getByText("Adresse confirmée, merci !")).toBeVisible();
   return email;
 }
 
