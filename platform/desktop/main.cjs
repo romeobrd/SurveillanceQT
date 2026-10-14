@@ -27,7 +27,7 @@ const dataDir = app.getPath("userData");
 const resourcesDir = app.isPackaged
   ? path.join(process.resourcesPath, "spacora")
   : path.join(__dirname, "resources");
-const icon = path.join(__dirname, "build-assets", "icon.png");
+const icon = path.join(__dirname, "icons", "icon.png");
 const logFile = path.join(dataDir, "spacora.log");
 
 function log(message) {
