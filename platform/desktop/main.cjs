@@ -180,8 +180,11 @@ async function restoreData() {
 function buildMenu() {
   const run = (task) => () =>
     task().catch((error) => {
-      log(`Erreur : ${error.stack ?? error}`);
-      dialog.showErrorBox("Spacora", `L'opération a échoué : ${error.message}`);
+      log(`Erreur : ${error?.stack ?? String(error)}`);
+      dialog.showErrorBox(
+        "Spacora",
+        `L'opération a échoué : ${error?.message ?? String(error)}`,
+      );
     });
   return Menu.buildFromTemplate([
     {
@@ -231,7 +234,9 @@ async function runSmokeTest() {
     await stopEngine();
     app.exit(0);
   } catch (error) {
-    console.error(`TEST DE DÉMARRAGE ÉCHOUÉ : ${error.stack ?? error}`);
+    console.error(
+      `TEST DE DÉMARRAGE ÉCHOUÉ : ${error?.stack ?? String(error)}`,
+    );
     await stopEngine().catch(() => {});
     app.exit(1);
   }
@@ -249,10 +254,10 @@ async function launch() {
   try {
     await startEngine();
   } catch (error) {
-    log(`Échec du démarrage : ${error.stack ?? error}`);
+    log(`Échec du démarrage : ${error?.stack ?? String(error)}`);
     dialog.showErrorBox(
       "Spacora n'a pas pu démarrer",
-      `${error.message}\n\nJournal : ${logFile}`,
+      `${error?.message ?? String(error)}\n\nJournal : ${logFile}`,
     );
     app.exit(1);
     return;

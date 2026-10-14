@@ -37,20 +37,49 @@ function loadConfig(dataDir) {
 
 async function startDatabase({ databaseDir, port, password, log }) {
   const { default: EmbeddedPostgres } = await import("embedded-postgres");
+  // Derniers messages de la base : ils expliquent un échec de démarrage
+  const recent = [];
+  const remember = (message) => {
+    recent.push(String(message).trim());
+    if (recent.length > 30) recent.shift();
+  };
   const database = new EmbeddedPostgres({
     databaseDir,
     user: "spacora",
     password,
     port,
     persistent: true,
-    onLog: () => {},
-    onError: (message) => log(`[base] ${message}`),
+    onLog: remember,
+    onError: (message) => {
+      remember(message);
+      log(`[base] ${message}`);
+    },
   });
+  const failure = (step, error) => {
+    const details = recent.join("\n");
+    log(`[base] ${details}`);
+    // PostgreSQL refuse de tourner avec des droits d'administrateur Windows
+    if (/administrative permissions|administrateur/i.test(details))
+      return new Error(
+        "Spacora ne peut pas être lancé « en tant qu'administrateur ». Fermez-le, puis lancez-le normalement (double-clic sur l'icône).",
+      );
+    return new Error(
+      `La base de données n'a pas pu ${step}. ${error instanceof Error ? error.message : ""}\n${details}`.trim(),
+    );
+  };
   if (!fs.existsSync(path.join(databaseDir, "PG_VERSION"))) {
     log("Création de la base de données…");
-    await database.initialise();
+    try {
+      await database.initialise();
+    } catch (error) {
+      throw failure("être créée", error);
+    }
   }
-  await database.start();
+  try {
+    await database.start();
+  } catch (error) {
+    throw failure("démarrer", error);
+  }
   const client = database.getPgClient();
   await client.connect();
   const exists = await client.query(
