@@ -143,7 +143,8 @@ export function fromStripeStatus(status: string): SubscriptionStatus {
  */
 export function hasPaidAccess(state: SubscriptionState, now: Date): boolean {
   return (
-    state.subscriptionStatus !== "TRIALING" && accessLevel(state, now) === "full"
+    state.subscriptionStatus !== "TRIALING" &&
+    accessLevel(state, now) === "full"
   );
 }
 
