@@ -20,7 +20,7 @@ OVH envoie un e-mail quand la base est prête.
 
 Ouvrir la base commandée (Web Cloud → Web Cloud Databases → votre base).
 
-1. Onglet **Informations générales** : noter le **nom d'hôte** (se termine en général par `.ovh.net`) et le **port** (un nombre à 5 chiffres). Si un **certificat** (CA) est proposé au téléchargement, le télécharger.
+1. Onglet **Informations générales** : noter le **nom d'hôte** (se termine en général par `.ovh.net`) et le **port** (un nombre à 5 chiffres).
 2. Onglet **Utilisateurs et droits** → **Ajouter un utilisateur** :
    - nom : `spacora` ;
    - mot de passe : **lettres et chiffres uniquement**, au moins 20 caractères (les symboles compliquent l'adresse de connexion). Le garder dans un gestionnaire de mots de passe.
@@ -39,13 +39,23 @@ Sur votre PC, ouvrir `C:\Users\moreo\SurveillanceQT\platform\.env` avec le Bloc-
 DATABASE_URL="postgresql://spacora:MOTDEPASSE@HOTE:PORT/spacora?sslmode=require"
 ```
 
-3. Si vous avez téléchargé un certificat à l'étape 2, le copier dans le dossier `platform` sous le nom `ovh-ca.pem`, et ajouter :
+Enregistrer le fichier.
+
+3. OVH protège la connexion avec un certificat **auto-signé**, que le site refuse tant qu'on ne lui a pas fait connaître. Récupérer ce certificat (aucun mot de passe n'est envoyé) :
+
+```powershell
+npm run db:certificat
+```
+
+La commande crée `ovh-ca.pem` dans le dossier `platform` (non envoyé sur GitHub) et affiche la ligne à ajouter au fichier `.env` :
 
 ```
 DATABASE_SSL_CA="C:/Users/moreo/SurveillanceQT/platform/ovh-ca.pem"
 ```
 
-Enregistrer le fichier. La ligne `DATABASE_URL_TEST` (base des tests) ne change pas : elle reste sur votre PC.
+Le site n'accepte ensuite **que ce certificat précis** : un serveur qui se ferait passer pour la base serait refusé. Si OVH renouvelle son certificat (message `self-signed certificate` qui revient), relancer `npm run db:certificat`.
+
+La ligne `DATABASE_URL_TEST` (base des tests) ne change pas : elle reste sur votre PC.
 
 ## 4. Créer les tables
 
@@ -75,12 +85,12 @@ La table **Organization** affiche l'entreprise que vous venez de créer : elle e
 
 ## Si ça ne marche pas
 
-| Message                                                              | Cause probable                                    | Solution                                                              |
-| -------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
-| `Can't reach database server` / délai dépassé                        | Votre IP n'est pas autorisée                      | Étape 2.4                                                             |
-| `password authentication failed`                                     | Mot de passe ou utilisateur incorrect dans `.env` | Étapes 2.2 et 3                                                       |
-| `self-signed certificate` / `unable to verify the first certificate` | Le certificat d'OVH n'est pas renseigné           | Étape 3.3 (télécharger le certificat dans « Informations générales ») |
-| `Hostname/IP does not match certificate`                             | Le nom d'hôte de l'adresse diffère du certificat  | M'envoyer le message exact                                            |
+| Message                                                              | Cause probable                                    | Solution                            |
+| -------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------- |
+| `Can't reach database server` / délai dépassé                        | Votre IP n'est pas autorisée                      | Étape 2.4                           |
+| `password authentication failed`                                     | Mot de passe ou utilisateur incorrect dans `.env` | Étapes 2.2 et 3                     |
+| `self-signed certificate` / `unable to verify the first certificate` | Le certificat d'OVH n'est pas renseigné           | Étape 3.3 (`npm run db:certificat`) |
+| `Hostname/IP does not match certificate`                             | Le nom d'hôte de l'adresse diffère du certificat  | M'envoyer le message exact          |
 
 Revenir à la base locale : remettre la ligne `DATABASE_URL` d'origine (enlever le `#`) et mettre un `#` devant la nouvelle.
 

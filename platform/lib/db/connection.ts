@@ -1,11 +1,20 @@
 // Paramètres de connexion à PostgreSQL : code pur, testé.
 // Une même adresse (DATABASE_URL) sert à l'application (pilote pg) et aux migrations (Prisma) : les options de
 // chiffrement de l'adresse (sslmode=require…) sont lues ici et traduites pour pg, qui les comprend autrement.
+import { X509Certificate } from "node:crypto";
+import { checkServerIdentity, type PeerCertificate } from "node:tls";
 
 export interface PgConnection {
   connectionString: string;
   /** Connexion chiffrée, certificat du serveur vérifié (autorité fournie par l'hébergeur si besoin). */
-  ssl?: { rejectUnauthorized: true; ca?: string };
+  ssl?: {
+    rejectUnauthorized: true;
+    ca?: string;
+    checkServerIdentity?: (
+      host: string,
+      cert: PeerCertificate,
+    ) => Error | undefined;
+  };
 }
 
 const SSL_PARAMS = [
@@ -17,6 +26,31 @@ const SSL_PARAMS = [
   "sslpassword",
 ];
 const SSL_REQUIRED = new Set(["require", "verify-ca", "verify-full", "prefer"]);
+
+/** Empreintes SHA-256 des certificats d'un fichier PEM. */
+function fingerprints(pem: string): Set<string> {
+  const blocks =
+    pem.match(
+      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g,
+    ) ?? [];
+  return new Set(
+    blocks.map((block) => new X509Certificate(block).fingerprint256),
+  );
+}
+
+/**
+ * Contrôle du nom du serveur. Certains hébergeurs (OVH Web Cloud Databases) présentent un certificat
+ * auto-signé dont le nom diffère de l'adresse de connexion : il est alors accepté uniquement s'il est
+ * exactement l'un des certificats du fichier fourni (épinglage), jamais un autre.
+ */
+export function pinnedIdentity(ca: string) {
+  const pinned = fingerprints(ca);
+  return (host: string, cert: PeerCertificate): Error | undefined => {
+    const error = checkServerIdentity(host, cert);
+    if (!error || pinned.has(cert.fingerprint256)) return undefined;
+    return error;
+  };
+}
 
 /**
  * @param url adresse DATABASE_URL
@@ -31,6 +65,9 @@ export function pgConnection(url: string, ca?: string): PgConnection {
     return { connectionString };
   return {
     connectionString,
-    ssl: { rejectUnauthorized: true, ...(ca ? { ca } : {}) },
+    ssl: {
+      rejectUnauthorized: true,
+      ...(ca ? { ca, checkServerIdentity: pinnedIdentity(ca) } : {}),
+    },
   };
 }

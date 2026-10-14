@@ -23,7 +23,8 @@
     "e2e:tools": "tsx --conditions=react-server prisma/e2e-tools.ts",
     "purge": "tsx --conditions=react-server prisma/purge.ts",
     "export:vitrine": "node scripts/export-vitrine.mjs",
-    "demo:site": "node scripts/edition.mjs boutique dev"
+    "demo:site": "node scripts/edition.mjs boutique dev",
+    "db:certificat": "node scripts/certificat-base.mjs"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",

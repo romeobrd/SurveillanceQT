@@ -1,6 +1,21 @@
 // Connexion à une base en ligne : chiffrement et certificat de l'hébergeur traduits pour le pilote pg.
 import { describe, expect, it } from "vitest";
-import { pgConnection } from "@/lib/db/connection";
+import { X509Certificate } from "node:crypto";
+import type { PeerCertificate } from "node:tls";
+import { pgConnection, pinnedIdentity } from "@/lib/db/connection";
+import { OTHER_PEM, PINNED_PEM } from "./fixtures/certificates";
+
+const PINNED = new X509Certificate(PINNED_PEM);
+const OTHER = new X509Certificate(OTHER_PEM);
+
+/** Certificat tel que présenté par le serveur lors de la poignée de main. */
+function peer(cert: X509Certificate): PeerCertificate {
+  return {
+    subject: { CN: "clouddb.interne" },
+    subjectaltname: "DNS:clouddb.interne",
+    fingerprint256: cert.fingerprint256,
+  } as unknown as PeerCertificate;
+}
 
 const base = "postgresql://spacora:secret@db.exemple.net:35123/spacora";
 
@@ -17,18 +32,29 @@ describe("pgConnection", () => {
       connectionString: base,
       ssl: { rejectUnauthorized: true },
     });
-    expect(
-      pgConnection(`${base}?sslmode=require&sslaccept=strict`, "CA-PEM"),
-    ).toEqual({
-      connectionString: base,
-      ssl: { rejectUnauthorized: true, ca: "CA-PEM" },
+    const pinned = pgConnection(
+      `${base}?sslmode=require&sslaccept=strict`,
+      PINNED.toString(),
+    );
+    expect(pinned.connectionString).toBe(base);
+    expect(pinned.ssl).toMatchObject({
+      rejectUnauthorized: true,
+      ca: PINNED.toString(),
     });
   });
 
   it("le certificat de l'hébergeur suffit à activer le chiffrement", () => {
-    expect(pgConnection(base, "CA-PEM").ssl).toEqual({
+    expect(pgConnection(base, PINNED.toString()).ssl).toMatchObject({
       rejectUnauthorized: true,
-      ca: "CA-PEM",
     });
+  });
+});
+
+describe("pinnedIdentity", () => {
+  const check = pinnedIdentity(PINNED.toString());
+
+  it("nom différent de l'adresse : accepté seulement pour le certificat épinglé", () => {
+    expect(check("db.exemple.net", peer(PINNED))).toBeUndefined();
+    expect(check("db.exemple.net", peer(OTHER))).toBeInstanceOf(Error);
   });
 });
