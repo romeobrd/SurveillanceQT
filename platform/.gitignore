@@ -63,3 +63,6 @@ next-env.d.ts
 /desktop/node_modules/
 /desktop/resources/
 /desktop/dist/
+
+# Certificats de connexion (base en ligne)
+*.pem
