@@ -35,13 +35,14 @@ const eslintConfig = defineConfig([
   // Les accès pré-authentification et la portée multi-tenant ne sont utilisables que par lib/auth et les tests
   {
     files: ["**/*.{ts,tsx,mts}"],
-    // Exceptions : tâches planifiées, webhook Stripe et inscription (sans session, donc sans contexte d'entreprise)
+    // Exceptions : tâches planifiées, webhook Stripe, licences de l'application de bureau et inscription (sans session, donc sans contexte d'entreprise)
     ignores: [
       ...outsideDb,
       "lib/auth/**",
       "tests/**",
       "app/api/cron/**",
       "app/api/stripe/**",
+      "app/api/desktop/**",
       "app/inscription/**",
     ],
     rules: {
@@ -71,6 +72,7 @@ const eslintConfig = defineConfig([
                 "@/lib/db/privacy-core",
                 "@/lib/db/billing-core",
                 "@/lib/db/signup",
+                "@/lib/db/desktop-licence",
               ],
               message: "Utiliser getRepositories(contexte) depuis @/lib/db.",
             },

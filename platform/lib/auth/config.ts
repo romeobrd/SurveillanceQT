@@ -4,14 +4,7 @@ import "server-only";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
-import {
-  clearAttempts,
-  findUserForLogin,
-  getAttemptState,
-  registerFailure,
-} from "@/lib/db/auth-store";
-import { verifyAgainstDummy, verifyPassword } from "./password";
-import { attemptKey, isLocked } from "./rate-limit";
+import { checkCredentials } from "./credentials";
 
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
@@ -37,24 +30,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(raw) {
         const parsed = CredentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
-        const { email, password } = parsed.data;
-        const key = attemptKey(email);
-
-        if (isLocked(await getAttemptState(key), new Date())) return null;
-
-        const found = await findUserForLogin(email);
-        // Un compte désactivé est traité comme un compte inconnu : même réponse, même durée
-        const user = found && !found.disabledAt ? found : null;
-        const valid = user
-          ? await verifyPassword(user.passwordHash, password)
-          : false;
-        if (!user) await verifyAgainstDummy(password);
-        if (!user || !valid) {
-          await registerFailure(key);
-          return null;
-        }
-        await clearAttempts(key);
-        return { id: user.id };
+        const result = await checkCredentials(
+          parsed.data.email,
+          parsed.data.password,
+        );
+        return result.ok ? { id: result.userId } : null;
       },
     }),
   ],
