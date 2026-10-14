@@ -103,6 +103,17 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - Les entreprises de démonstration (seed) sont en abonnement actif « Business ».
 - Tester Stripe en local : `stripe listen --forward-to localhost:3000/api/stripe/webhook` (CLI Stripe), puis une carte de test `4242 4242 4242 4242`.
 
+## Site + application de bureau Windows (démo)
+
+Modèle de vente : **le site** (présentation, compte client, abonnement, téléchargement) et **l'application Spacora pour Windows** (`Spacora-Setup.exe`), dont les données restent sur le PC du client.
+
+- **Démo pas à pas : [`docs/demo.md`](docs/demo.md).** En bref : `npm run demo:site` → http://localhost:3000 → créer un compte → payer (simulé sans Stripe) → télécharger le .exe → l'installer → l'activer avec le compte client.
+- **Éditions** (`SPACORA_EDITION`) : `saas` (par défaut : service complet dans le navigateur), `boutique` (site + espace client : `npm run demo:site`), `desktop` (l'application de bureau).
+- **Licence** : l'application s'active avec l'e-mail et le mot de passe d'un administrateur dont l'abonnement est payé (`POST /api/desktop/activation`, jeton signé), puis se revérifie toutes les 12 h (`/api/desktop/verification`) ; sans Internet, elle fonctionne 14 jours ; abonnement arrêté = application bloquée au contrôle suivant.
+- **Application de bureau** (`desktop/`) : Electron + base PostgreSQL intégrée (dans `%APPDATA%\Spacora`) + serveur Spacora local (127.0.0.1). Menu Fichier : sauvegarder / restaurer les données. Purge RGPD quotidienne comme en ligne.
+- **Installateur** : construit et testé automatiquement sur Windows par GitHub Actions (`.github/workflows/desktop-windows.yml`), publié dans la version GitHub `desktop-demo` ; l'espace client y renvoie (`DESKTOP_DOWNLOAD_URL` pour une autre adresse). Non signé : avertissement Windows à l'installation (certificat de signature à prévoir pour la vente).
+- Construire localement : `npm ci` dans `desktop/`, puis `node desktop/build.mjs --package` (installateur pour le système en cours).
+
 ## Site vitrine et service : www et app
 
 - **En local** (ou sur un seul domaine) : `http://localhost:3000` est le site vitrine ; le service est derrière **Connexion** / **Mon espace**. Un client connecté peut toujours revenir sur l'accueil.

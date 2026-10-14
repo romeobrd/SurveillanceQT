@@ -48,11 +48,19 @@ jobs:
 
       - name: Test de démarrage de l'application installée
         shell: pwsh
+        timeout-minutes: 10
         run: |
+          # Attente du seul programme (et non de tous les processus qu'il lance), 3 minutes au plus
           $process = Start-Process -FilePath "desktop/dist/win-unpacked/Spacora.exe" `
-            -ArgumentList "--smoke-test" -Wait -PassThru `
+            -ArgumentList "--smoke-test" -PassThru `
             -RedirectStandardOutput "smoke.log" -RedirectStandardError "smoke-errors.log"
-          Get-Content "smoke.log", "smoke-errors.log"
+          $finished = $process.WaitForExit(180000)
+          Start-Sleep -Seconds 2
+          Get-Content "smoke.log", "smoke-errors.log" -ErrorAction SilentlyContinue
+          if (-not $finished) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Le test de démarrage n'a pas répondu en 3 minutes"
+          }
           if ($process.ExitCode -ne 0) { throw "Le test de démarrage a échoué (code $($process.ExitCode))" }
           if (-not (Select-String -Path "smoke.log" -Pattern "TEST DE DÉMARRAGE RÉUSSI" -Quiet)) { throw "Message de réussite absent" }
 
