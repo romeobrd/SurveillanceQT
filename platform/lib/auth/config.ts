@@ -5,6 +5,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { checkCredentials } from "./credentials";
+import { requestIp } from "./lockout";
 
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
@@ -36,6 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const result = await checkCredentials(
           parsed.data.email,
           parsed.data.password,
+          await requestIp(),
         );
         return result.ok ? { id: result.userId } : null;
       },

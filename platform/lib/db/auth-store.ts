@@ -71,7 +71,13 @@ export async function getAttemptState(
   const row = await rawPrisma.loginAttempt.findUnique({
     where: { emailKey: key },
   });
-  return row ? { failures: row.failures, lockedUntil: row.lockedUntil } : null;
+  return row
+    ? {
+        failures: row.failures,
+        lockedUntil: row.lockedUntil,
+        updatedAt: row.updatedAt,
+      }
+    : null;
 }
 
 export async function registerFailure(
@@ -81,7 +87,13 @@ export async function registerFailure(
   return rawPrisma.$transaction(async (tx) => {
     const row = await tx.loginAttempt.findUnique({ where: { emailKey: key } });
     const next = stateAfterFailure(
-      row ? { failures: row.failures, lockedUntil: row.lockedUntil } : null,
+      row
+        ? {
+            failures: row.failures,
+            lockedUntil: row.lockedUntil,
+            updatedAt: row.updatedAt,
+          }
+        : null,
       now,
     );
     await tx.loginAttempt.upsert({

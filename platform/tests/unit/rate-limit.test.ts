@@ -5,6 +5,7 @@ import {
   LOCK_MINUTES,
   MAX_FAILURES,
   stateAfterFailure,
+  WINDOW_MINUTES,
   type AttemptState,
 } from "@/lib/auth/rate-limit";
 
@@ -39,6 +40,18 @@ describe("limitation des tentatives", () => {
     const later = new Date(now.getTime() + 61_000);
     expect(isLocked(locked, later)).toBe(false);
     expect(stateAfterFailure(locked, later)).toEqual({
+      failures: 1,
+      lockedUntil: null,
+    });
+  });
+
+  it("oublie les échecs plus anciens que la fenêtre", () => {
+    const old = {
+      failures: MAX_FAILURES - 1,
+      lockedUntil: null,
+      updatedAt: new Date(now.getTime() - (WINDOW_MINUTES + 1) * 60_000),
+    };
+    expect(stateAfterFailure(old, now)).toEqual({
       failures: 1,
       lockedUntil: null,
     });
