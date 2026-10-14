@@ -5,10 +5,16 @@ import { Suspense } from "react";
 import LoginForm from "@/components/LoginForm";
 import { getSessionInfo } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
+import {
+  installableAppMetadata,
+  installableAppViewport,
+} from "@/lib/site/app-metadata";
 
 export const metadata: Metadata = {
+  ...installableAppMetadata,
   title: `${fr.auth.loginTitle} — ${fr.app.name}`,
 };
+export const viewport = installableAppViewport;
 
 async function RedirectIfSignedIn() {
   if (await getSessionInfo()) redirect("/tableau-de-bord");

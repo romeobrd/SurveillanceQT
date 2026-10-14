@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Spacora",
+  "short_name": "Spacora",
+  "description": "Vos locaux en 3D : postes, stock, matériel et projets au même endroit.",
+  "lang": "fr",
+  "start_url": "/tableau-de-bord",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "/icons/spacora-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/spacora-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/spacora-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,11 +1,19 @@
 import { Suspense, type ReactNode } from "react";
 import { logoutAction } from "@/app/login/actions";
 import AppNav from "@/components/AppNav";
+import InstallAppButton from "@/components/InstallAppButton";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { emailAvailable } from "@/lib/email/send";
 import Link from "next/link";
 import { requireSessionAllowingPasswordChange } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
+import {
+  installableAppMetadata,
+  installableAppViewport,
+} from "@/lib/site/app-metadata";
+
+export const metadata = installableAppMetadata;
+export const viewport = installableAppViewport;
 
 const ROLE_LABELS = {
   ADMIN: "admin",
@@ -25,6 +33,7 @@ async function AppShell({ children }: { children: ReactNode }) {
           <AppNav isAdmin={session.role === "ADMIN"} />
         )}
         <div className="ml-auto flex items-center gap-3 text-sm">
+          <InstallAppButton />
           <span>
             {session.organizationName} ·{" "}
             <span data-testid="role">

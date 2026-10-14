@@ -108,6 +108,10 @@ Chaque liste a recherche, filtres et tri dans l'URL (partageable) ; chaque suppr
 - **En local** (ou sur un seul domaine) : `http://localhost:3000` est le site vitrine ; le service est derrière **Connexion** / **Mon espace**. Un client connecté peut toujours revenir sur l'accueil.
 - **En production sur deux domaines** (voir `docs/deploiement-ovh.md`, qui configure tout) : renseigner `SITE_URL` (ex. `https://www.spacora.tech`) et `AUTH_URL` (ex. `https://app.spacora.tech`), et faire pointer les deux domaines vers le même conteneur. `proxy.ts` aiguille chaque requête **avant tout affichage** : www sert l'accueil et les pages légales, et envoie connexion, inscription et service vers app ; sur app, l'accueil mène directement au tableau de bord (ou à la connexion). Les e-mails pointent vers app.
 
+## Application installable (icône sur le bureau)
+
+Dans Chrome ou Edge, le service propose **« Installer l'application »** (bouton en haut à droite, ou icône dans la barre d'adresse) : Spacora obtient une icône sur le bureau et dans le menu Démarrer, et s'ouvre dans sa propre fenêtre. Fiche d'application : `public/manifest.webmanifest`, icônes dans `public/icons/`. Le site vitrine n'est pas installable (seulement le service). Sur un vrai domaine, HTTPS est obligatoire pour l'installation (déjà le cas avec le déploiement prévu) ; `localhost` suffit en local.
+
 ## E-mails, import et premiers pas (phase B)
 
 - **E-mails de service** : confirmation d'adresse à l'inscription, **mot de passe oublié** (lien valable 1 h), **invitation** des collègues (lien valable 7 jours : la personne choisit son mot de passe), rappel 3 jours avant la fin de l'essai puis avis de fin d'essai. Liens à usage unique : seule leur empreinte est stockée. Envoi par **SMTP** (Brevo conseillé, variables `SMTP_*` et `EMAIL_FROM` dans `.env.example`).
