@@ -33,3 +33,10 @@ Thumbs.db
 # Debug/Release folders
 debug/
 release/
+
+# Certificats MQTT : jamais dans le dépôt (à fournir localement dans certs/)
+certs/
+*.key
+
+# Copies de travail temporaires des agents
+.claude/worktrees/
