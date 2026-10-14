@@ -43,6 +43,9 @@ const eslintConfig = defineConfig([
       "app/api/cron/**",
       "app/api/stripe/**",
       "app/api/desktop/**",
+      "app/activation/**",
+      "app/demarrage/**",
+      "lib/desktop/**",
       "app/inscription/**",
     ],
     rules: {
@@ -73,6 +76,7 @@ const eslintConfig = defineConfig([
                 "@/lib/db/billing-core",
                 "@/lib/db/signup",
                 "@/lib/db/desktop-licence",
+                "@/lib/db/desktop-local",
               ],
               message: "Utiliser getRepositories(contexte) depuis @/lib/db.",
             },
@@ -81,7 +85,15 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Application de bureau : processus principal Electron en CommonJS (require est la norme)
+  {
+    files: ["desktop/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   globalIgnores([
+    "desktop/node_modules/**",
+    "desktop/dist/**",
+    "desktop/resources/**",
     ".next/**",
     ".next-vitrine/**",
     ".next-boutique/**",

@@ -2,18 +2,10 @@
 // Ne renvoie que le strict nécessaire pour préparer l'application : entreprise, offre, administrateur.
 import "server-only";
 import { getPlan, hasPaidAccess } from "@/features/billing/plans";
+import type { DesktopLicence } from "@/lib/desktop/licence-types";
 import { rawPrisma } from "./client";
 
-export interface DesktopLicence {
-  organizationId: string;
-  organizationName: string;
-  plan: string;
-  planName: string;
-  maxPeople: number;
-  /** Fin de la période payée (null si inconnue). */
-  validUntil: string | null;
-  admin: { email: string; firstName: string; lastName: string };
-}
+export type { DesktopLicence };
 
 export type LicenceLookup =
   | { status: "active"; licence: DesktopLicence }

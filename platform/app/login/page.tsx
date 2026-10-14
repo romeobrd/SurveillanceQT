@@ -9,7 +9,8 @@ import {
   installableAppMetadata,
   installableAppViewport,
 } from "@/lib/site/app-metadata";
-import { homeAfterLogin } from "@/lib/edition";
+import { desktopGate } from "@/lib/desktop/gate";
+import { edition, homeAfterLogin } from "@/lib/edition";
 
 export const metadata: Metadata = {
   ...installableAppMetadata,
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
 export const viewport = installableAppViewport;
 
 async function RedirectIfSignedIn() {
+  // Application de bureau : activation puis création de l'entreprise avant la première connexion
+  const step = await desktopGate();
+  if (step) redirect(step);
   if (await getSessionInfo()) redirect(homeAfterLogin());
   return null;
 }
@@ -48,22 +52,26 @@ function DemoAccounts() {
 }
 
 export default function LoginPage() {
+  const desktop = edition() === "desktop";
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       <h1 className="text-2xl font-semibold">{fr.auth.loginTitle}</h1>
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
-      <LoginForm />
-      <p className="text-sm text-slate-600">
-        {fr.signup.noAccount}{" "}
-        <Link
-          href="/inscription"
-          className="font-medium text-slate-900 underline"
-        >
-          {fr.signup.startTrial}
-        </Link>
-      </p>
+      {/* Application de bureau : ni e-mails ni inscription (le compte client se crée sur le site) */}
+      <LoginForm showForgotLink={!desktop} />
+      {!desktop && (
+        <p className="text-sm text-slate-600">
+          {fr.signup.noAccount}{" "}
+          <Link
+            href="/inscription"
+            className="font-medium text-slate-900 underline"
+          >
+            {fr.signup.startTrial}
+          </Link>
+        </p>
+      )}
       <DemoAccounts />
     </main>
   );

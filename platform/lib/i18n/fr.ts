@@ -429,6 +429,53 @@ export const fr = {
       "Copiez-le maintenant : il ne sera plus jamais affiché. Transmettez-le à la personne par un canal sûr.",
     roles: { ADMIN: "Administrateur", MANAGER: "Manager", EMPLOYEE: "Employé" },
   },
+  desktop: {
+    activationTitle: "Activer Spacora",
+    activationIntro:
+      "Connectez-vous avec votre compte client, celui créé sur le site Spacora pour choisir votre offre.",
+    email: "E-mail du compte client",
+    password: "Mot de passe du compte client",
+    activate: "Activer Spacora",
+    activating: "Vérification de l'abonnement…",
+    server: "Serveur des comptes : {url}",
+    advanced: "Paramètres avancés",
+    accountUrl: "Adresse du site Spacora",
+    errors: {
+      invalid: "E-mail ou mot de passe incorrect.",
+      locked: "Trop de tentatives. Réessayez dans quelques minutes.",
+      no_subscription:
+        "Aucun abonnement actif pour ce compte administrateur. Choisissez une offre dans votre espace client sur le site Spacora, puis réessayez.",
+      offline:
+        "Impossible de joindre le serveur Spacora. Vérifiez votre connexion Internet, puis réessayez.",
+    },
+    reasons: {
+      no_subscription:
+        "Votre abonnement n'est plus actif : renouvelez-le dans votre espace client, puis reconnectez-vous ici.",
+      revoked:
+        "Ce compte client n'a plus accès à Spacora : connectez-vous avec un compte administrateur abonné.",
+      offline_expired:
+        "Spacora n'a pas pu vérifier votre abonnement depuis plus de 14 jours : connectez-vous à Internet, puis reconnectez-vous ici.",
+    },
+    setupTitle: "Créer votre entreprise",
+    setupIntro:
+      "Dernière étape : votre compte administrateur sur ce PC. Vos données (plan, collaborateurs, stock…) restent sur cet ordinateur.",
+    plan: "Offre {plan} : jusqu'à {max} collaborateurs.",
+    company: "Nom de l'entreprise",
+    firstName: "Votre prénom",
+    lastName: "Votre nom",
+    loginEmail: "E-mail de connexion à Spacora",
+    newPassword: "Mot de passe (12 caractères minimum)",
+    confirm: "Confirmer le mot de passe",
+    create: "Créer et ouvrir Spacora",
+    creating: "Création…",
+    setupErrors: {
+      invalid:
+        "Vérifiez les champs : tous sont obligatoires, et le mot de passe fait au moins 12 caractères.",
+      mismatch: "Les deux mots de passe ne correspondent pas.",
+    },
+    offlineSoon:
+      "Spacora n'a pas pu vérifier votre abonnement récemment : connectez-vous à Internet d'ici {days} jour(s).",
+  },
   clientArea: {
     title: "Mon espace client",
     hello: "Bonjour {name}",

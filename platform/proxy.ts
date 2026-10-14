@@ -1,8 +1,19 @@
 // Aiguillage www / app avant tout rendu (aucune page ne s'affiche puis ne saute ailleurs).
 import { NextResponse, type NextRequest } from "next/server";
-import { hostRedirect, isSessionCookieName } from "@/lib/routing/hosts";
+import {
+  desktopRedirect,
+  hostRedirect,
+  isSessionCookieName,
+} from "@/lib/routing/hosts";
 
 export function proxy(request: NextRequest) {
+  // Application de bureau : ni accueil ni inscription, on arrive toujours sur la connexion
+  if (process.env.SPACORA_EDITION === "desktop") {
+    const page = desktopRedirect(request.nextUrl.pathname);
+    return page
+      ? NextResponse.redirect(new URL(page, request.url), 307)
+      : NextResponse.next();
+  }
   const target = hostRedirect(
     {
       host: request.headers.get("host"),

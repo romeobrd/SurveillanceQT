@@ -8,6 +8,7 @@ import { PLANS } from "@/features/billing/plans";
 import { getAppContext } from "@/lib/app-context";
 import { can } from "@/lib/auth/permissions";
 import { getBillingProvider } from "@/lib/billing/stripe";
+import { edition } from "@/lib/edition";
 import { fr } from "@/lib/i18n/fr";
 
 export const metadata: Metadata = {
@@ -22,6 +23,8 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Application de bureau : l'abonnement se gère dans l'espace client du site
+  if (edition() === "desktop") redirect("/administration");
   const { session, repos } = await getAppContext();
   if (!can(session.role, "billing:manage")) redirect("/tableau-de-bord");
   const billing = await repos.billing.get();

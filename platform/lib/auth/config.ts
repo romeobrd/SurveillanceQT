@@ -13,7 +13,10 @@ export const CredentialsSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
-const secure = process.env.NODE_ENV === "production";
+// Application de bureau : servie en http sur 127.0.0.1 (jamais exposée au réseau), cookie non « Secure »
+const secure =
+  process.env.NODE_ENV === "production" &&
+  process.env.SPACORA_EDITION !== "desktop";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },

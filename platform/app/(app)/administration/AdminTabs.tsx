@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { edition } from "@/lib/edition";
 import { fr } from "@/lib/i18n/fr";
 
 const TABS = [
@@ -13,7 +14,11 @@ const TABS = [
 export default function AdminTabs({ current }: { current: string }) {
   return (
     <nav aria-label={fr.admin.title} className="mb-4 flex flex-wrap gap-1">
-      {TABS.map((tab) => (
+      {TABS.filter(
+        // Application de bureau : l'abonnement se gère dans l'espace client du site
+        (tab) =>
+          edition() !== "desktop" || tab.href !== "/administration/abonnement",
+      ).map((tab) => (
         <Link
           key={tab.href}
           href={tab.href}

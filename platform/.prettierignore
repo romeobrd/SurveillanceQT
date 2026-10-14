@@ -1,2 +1,5 @@
-# Site vitrine exporté (fichiers générés)
+# Fichiers générés : site vitrine exporté, application de bureau
 vitrine/
+desktop/node_modules/
+desktop/resources/
+desktop/dist/

@@ -1,6 +1,10 @@
 // Séparation www / app : redirections décidées avant le rendu.
 import { describe, expect, it } from "vitest";
-import { hostRedirect, isSessionCookieName } from "@/lib/routing/hosts";
+import {
+  desktopRedirect,
+  hostRedirect,
+  isSessionCookieName,
+} from "@/lib/routing/hosts";
 
 const config = {
   siteUrl: "https://www.spacora.tech",
@@ -78,5 +82,15 @@ describe("hostRedirect", () => {
     expect(isSessionCookieName("__Secure-authjs.session-token")).toBe(true);
     expect(isSessionCookieName("__Secure-authjs.session-token.1")).toBe(true);
     expect(isSessionCookieName("authjs.csrf-token")).toBe(false);
+  });
+});
+
+describe("desktopRedirect", () => {
+  it("renvoie les pages du site vers la connexion, laisse passer l'application", () => {
+    expect(desktopRedirect("/")).toBe("/login");
+    expect(desktopRedirect("/inscription")).toBe("/login");
+    expect(desktopRedirect("/espace-client")).toBe("/login");
+    expect(desktopRedirect("/carte")).toBeNull();
+    expect(desktopRedirect("/activation")).toBeNull();
   });
 });

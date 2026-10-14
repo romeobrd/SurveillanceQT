@@ -10,9 +10,14 @@
 export interface CspOptions {
   /** Mode développement : React utilise eval pour reconstituer les piles d'erreur. */
   dev?: boolean;
+  /** Application de bureau, servie en http sur 127.0.0.1 : pas de passage forcé en https. */
+  local?: boolean;
 }
 
-export function buildCsp({ dev = false }: CspOptions = {}): string {
+export function buildCsp({
+  dev = false,
+  local = false,
+}: CspOptions = {}): string {
   const directives: Array<[string, string[]]> = [
     ["default-src", ["'self'"]],
     [
@@ -28,7 +33,9 @@ export function buildCsp({ dev = false }: CspOptions = {}): string {
     ["base-uri", ["'self'"]],
     ["form-action", ["'self'"]],
     ["frame-ancestors", ["'none'"]],
-    ...(dev ? [] : [["upgrade-insecure-requests", []] as [string, string[]]]),
+    ...(dev || local
+      ? []
+      : [["upgrade-insecure-requests", []] as [string, string[]]]),
   ];
   return directives
     .map(([name, values]) => [name, ...values].join(" "))

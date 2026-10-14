@@ -9,7 +9,11 @@ const initial: LoginState = { error: null, email: "" };
 const fieldClass =
   "w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600";
 
-export default function LoginForm() {
+export default function LoginForm({
+  showForgotLink = true,
+}: {
+  showForgotLink?: boolean;
+}) {
   const [state, action, pending] = useActionState(loginAction, initial);
   return (
     <form
@@ -53,12 +57,14 @@ export default function LoginForm() {
           {fr.auth[state.error]}
         </p>
       )}
-      <Link
-        href="/mot-de-passe-oublie"
-        className="-mt-2 self-end text-sm text-slate-700 underline"
-      >
-        {fr.email.forgotLink}
-      </Link>
+      {showForgotLink && (
+        <Link
+          href="/mot-de-passe-oublie"
+          className="-mt-2 self-end text-sm text-slate-700 underline"
+        >
+          {fr.email.forgotLink}
+        </Link>
+      )}
       <button
         type="submit"
         disabled={pending}

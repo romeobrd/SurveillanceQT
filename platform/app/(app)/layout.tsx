@@ -6,6 +6,7 @@ import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { emailAvailable } from "@/lib/email/send";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { desktopGate } from "@/lib/desktop/gate";
 import { edition, siteHomeHref } from "@/lib/edition";
 import { requireSessionAllowingPasswordChange } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
@@ -29,6 +30,9 @@ async function AppShell({ children }: { children: ReactNode }) {
   const session = await requireSessionAllowingPasswordChange();
   // Site + espace client (boutique) : l'application elle-même est l'application de bureau
   if (edition() === "boutique") redirect("/espace-client");
+  // Application de bureau : licence vérifiée (contrôle en ligne toutes les 12 h, 14 jours hors ligne)
+  const step = await desktopGate();
+  if (step) redirect(step);
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-2">

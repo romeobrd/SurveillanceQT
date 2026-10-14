@@ -58,3 +58,8 @@ next-env.d.ts
 /.next-boutique/
 /.next-desktop/
 /.next-saas/
+
+# Application de bureau : dépendances, ressources assemblées et installateurs
+/desktop/node_modules/
+/desktop/resources/
+/desktop/dist/

@@ -63,3 +63,15 @@ export function hostRedirect(
 export function isSessionCookieName(name: string): boolean {
   return /^(__Secure-)?authjs\.session-token(\.\d+)?$/.test(name);
 }
+
+/** Pages du site absentes de l'application de bureau (édition « desktop ») : renvoyées à la connexion. */
+const SITE_ONLY_IN_DESKTOP = new Set([
+  "/",
+  "/inscription",
+  "/espace-client",
+  "/mot-de-passe-oublie",
+]);
+
+export function desktopRedirect(pathname: string): string | null {
+  return SITE_ONLY_IN_DESKTOP.has(pathname) ? "/login" : null;
+}
