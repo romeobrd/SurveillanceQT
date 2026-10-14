@@ -18,5 +18,63 @@
   "devDependencies": {
     "electron": "44.4.5",
     "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "tech.spacora.desktop",
+    "productName": "Spacora",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build-assets"
+    },
+    "files": [
+      "main.cjs",
+      "runtime.cjs",
+      "splash.html",
+      "build-assets/icon.png",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "spacora"
+      }
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-assets/icon.png",
+      "artifactName": "Spacora-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Spacora",
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "language": "1036"
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build-assets/icon.png",
+      "category": "Office"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/romeobrd/SurveillanceQT.git"
   }
 }

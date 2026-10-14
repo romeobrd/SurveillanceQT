@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'"
+    />
+    <title>Spacora</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #ffffff;
+        color: #0f172a;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        border: 1px solid #e2e8f0;
+        box-sizing: border-box;
+      }
+      .logo {
+        width: 34px;
+        height: 34px;
+        background: #ea580c;
+        border-radius: 7px;
+        transform: rotate(45deg);
+        margin-bottom: 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      p {
+        margin: 0;
+        font-size: 13px;
+        color: #475569;
+        text-align: center;
+        padding: 0 24px;
+      }
+      .bar {
+        width: 180px;
+        height: 4px;
+        border-radius: 4px;
+        background: #fed7aa;
+        overflow: hidden;
+      }
+      .bar::after {
+        content: "";
+        display: block;
+        width: 40%;
+        height: 100%;
+        background: #ea580c;
+        animation: move 1.2s ease-in-out infinite;
+      }
+      @keyframes move {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo"></div>
+    <h1>Spacora</h1>
+    <div class="bar"></div>
+    <p>
+      Démarrage… La première ouverture prépare la base de données sur ce PC
+      (environ 30 secondes).
+    </p>
+  </body>
+</html>

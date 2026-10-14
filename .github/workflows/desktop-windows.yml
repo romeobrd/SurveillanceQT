@@ -1,0 +1,77 @@
+# Construit l'installateur Windows de Spacora (Spacora-Setup.exe) sur une vraie machine Windows,
+# vérifie que l'application démarre (base intégrée, serveur local, page d'activation), puis le publie
+# dans la version GitHub « desktop-demo » (lien de téléchargement de l'espace client).
+name: Application de bureau Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, claude/new-session-683qai]
+    paths:
+      - "platform/**"
+      - ".github/workflows/desktop-windows.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            platform/package-lock.json
+            platform/desktop/package-lock.json
+
+      - name: Dépendances de Spacora
+        run: npm ci
+
+      - name: Dépendances de l'application de bureau
+        run: npm ci
+        working-directory: platform/desktop
+
+      - name: Construction de Spacora et de l'installateur
+        run: node desktop/build.mjs --package
+
+      - name: Test de démarrage de l'application installée
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath "desktop/dist/win-unpacked/Spacora.exe" `
+            -ArgumentList "--smoke-test" -Wait -PassThru `
+            -RedirectStandardOutput "smoke.log" -RedirectStandardError "smoke-errors.log"
+          Get-Content "smoke.log", "smoke-errors.log"
+          if ($process.ExitCode -ne 0) { throw "Le test de démarrage a échoué (code $($process.ExitCode))" }
+          if (-not (Select-String -Path "smoke.log" -Pattern "TEST DE DÉMARRAGE RÉUSSI" -Quiet)) { throw "Message de réussite absent" }
+
+      - name: Installateur (artefact de la construction)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Spacora-Setup
+          path: platform/desktop/dist/Spacora-Setup.exe
+          retention-days: 30
+
+      - name: Publication (version de démonstration)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release view desktop-demo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create desktop-demo --prerelease --target "${{ github.sha }}" `
+              --title "Spacora pour Windows (démonstration)" `
+              --notes "Installateur de démonstration de Spacora pour Windows, construit automatiquement. Non signé : Windows affiche « Windows a protégé votre ordinateur » → « Informations complémentaires » → « Exécuter quand même »."
+          }
+          gh release upload desktop-demo "desktop/dist/Spacora-Setup.exe" --clobber
