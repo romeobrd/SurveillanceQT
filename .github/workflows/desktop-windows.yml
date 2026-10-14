@@ -46,35 +46,23 @@ jobs:
       - name: Construction de Spacora et de l'installateur
         run: node desktop/build.mjs --package
 
-      - name: Test de démarrage de l'application (utilisateur Windows standard)
+      - name: Test de démarrage de l'application
         shell: pwsh
         timeout-minutes: 10
         run: |
-          # Comme chez un client : utilisateur sans droits d'administrateur (PostgreSQL refuse ces droits ;
-          # les machines GitHub, elles, exécutent tout en administrateur)
-          $app = "C:\SpacoraTest"
-          $logs = "C:\SpacoraLogs"
-          Copy-Item -Recurse "desktop/dist/win-unpacked" $app
-          New-Item -ItemType Directory $logs | Out-Null
-          icacls $app /grant "Users:(OI)(CI)RX" | Out-Null
-          # 14 caractères au plus : au-delà, « net user » demande une confirmation
-          $password = "Sp1!" + [guid]::NewGuid().ToString("N").Substring(0, 10)
-          net user spacoratest $password /add
-          if ($LASTEXITCODE -ne 0) { throw "Utilisateur de test non créé" }
-          $credential = New-Object System.Management.Automation.PSCredential("spacoratest", (ConvertTo-SecureString $password -AsPlainText -Force))
-          $process = Start-Process -FilePath "$app\Spacora.exe" -ArgumentList "--smoke-test" `
-            -Credential $credential -LoadUserProfile -WorkingDirectory $app -PassThru `
-            -RedirectStandardOutput "$logs\smoke.log" -RedirectStandardError "$logs\smoke-errors.log"
+          $process = Start-Process -FilePath "desktop/dist/win-unpacked/Spacora.exe" `
+            -ArgumentList "--smoke-test" -PassThru `
+            -RedirectStandardOutput "smoke.log" -RedirectStandardError "smoke-errors.log"
           # Attente du seul programme (et non de tous les processus qu'il lance), 3 minutes au plus
           $finished = $process.WaitForExit(180000)
           Start-Sleep -Seconds 2
-          Get-Content "$logs\smoke.log", "$logs\smoke-errors.log" -ErrorAction SilentlyContinue
+          Get-Content "smoke.log", "smoke-errors.log" -ErrorAction SilentlyContinue
           if (-not $finished) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
             throw "Le test de démarrage n'a pas répondu en 3 minutes"
           }
           if ($process.ExitCode -ne 0) { throw "Le test de démarrage a échoué (code $($process.ExitCode))" }
-          if (-not (Select-String -Path "$logs\smoke.log" -Pattern "TEST DE DÉMARRAGE RÉUSSI" -Quiet)) { throw "Message de réussite absent" }
+          if (-not (Select-String -Path "smoke.log" -Pattern "TEST DE DÉMARRAGE RÉUSSI" -Quiet)) { throw "Message de réussite absent" }
 
       - name: Installateur (artefact de la construction)
         uses: actions/upload-artifact@v4

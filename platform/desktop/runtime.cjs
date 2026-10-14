@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
-const { fork } = require("node:child_process");
+const { execFile, fork } = require("node:child_process");
 
 /** Port libre sur la boucle locale (jamais exposé au réseau). */
 function freePort() {
@@ -35,59 +35,143 @@ function loadConfig(dataDir) {
   return config;
 }
 
-async function startDatabase({ databaseDir, port, password, log }) {
-  const { default: EmbeddedPostgres } = await import("embedded-postgres");
-  // Derniers messages de la base : ils expliquent un échec de démarrage
-  const recent = [];
-  const remember = (message) => {
-    recent.push(String(message).trim());
-    if (recent.length > 30) recent.shift();
-  };
-  const database = new EmbeddedPostgres({
-    databaseDir,
-    user: "spacora",
-    password,
-    port,
-    persistent: true,
-    onLog: remember,
-    onError: (message) => {
-      remember(message);
-      log(`[base] ${message}`);
-    },
-  });
-  const failure = (step, error) => {
-    const details = recent.join("\n");
-    log(`[base] ${details}`);
-    // PostgreSQL refuse de tourner avec des droits d'administrateur Windows
-    if (/administrative permissions|administrateur/i.test(details))
-      return new Error(
-        "Spacora ne peut pas être lancé « en tant qu'administrateur ». Fermez-le, puis lancez-le normalement (double-clic sur l'icône).",
-      );
-    return new Error(
-      `La base de données n'a pas pu ${step}. ${error instanceof Error ? error.message : ""}\n${details}`.trim(),
+/** Binaires PostgreSQL fournis avec l'application (paquet @embedded-postgres de la plateforme). */
+function postgresBin(name) {
+  const platformPackage = {
+    win32: "windows-x64",
+    linux: "linux-x64",
+    darwin: process.arch === "arm64" ? "darwin-arm64" : "darwin-x64",
+  }[process.platform];
+  const file = process.platform === "win32" ? `${name}.exe` : name;
+  return path.join(
+    __dirname,
+    "node_modules",
+    "@embedded-postgres",
+    platformPackage,
+    "native",
+    "bin",
+    file,
+  );
+}
+
+function runTool(name, args, log) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      postgresBin(name),
+      args,
+      { windowsHide: true, timeout: 120_000 },
+      (error, stdout, stderr) => {
+        const output = `${stdout}${stderr}`.trim();
+        if (error) reject(new Error(`${name} : ${output || error.message}`));
+        else {
+          if (output) log(`[base] ${output.split("\n").slice(-3).join(" | ")}`);
+          resolve(output);
+        }
+      },
     );
-  };
+  });
+}
+
+/**
+ * Base PostgreSQL du PC, pilotée par pg_ctl : arrêt propre, et sous Windows lancement possible même
+ * « en tant qu'administrateur » (pg_ctl abaisse lui-même ses droits, ce que postgres seul refuse).
+ */
+async function startDatabase({ databaseDir, port, password, log }) {
+  const logFile = path.join(path.dirname(databaseDir), "database.log");
   if (!fs.existsSync(path.join(databaseDir, "PG_VERSION"))) {
     log("Création de la base de données…");
+    fs.rmSync(databaseDir, { recursive: true, force: true });
+    const passwordFile = path.join(
+      path.dirname(databaseDir),
+      `.pg-${crypto.randomBytes(6).toString("hex")}`,
+    );
+    fs.writeFileSync(passwordFile, `${password}\n`, { mode: 0o600 });
     try {
-      await database.initialise();
+      await runTool(
+        "initdb",
+        [
+          `--pgdata=${databaseDir}`,
+          "--username=spacora",
+          `--pwfile=${passwordFile}`,
+          "--auth=scram-sha-256",
+          "--encoding=UTF8",
+          "--no-locale",
+        ],
+        log,
+      );
     } catch (error) {
-      throw failure("être créée", error);
+      throw new Error(
+        `La base de données n'a pas pu être créée. ${error.message}`,
+      );
+    } finally {
+      fs.rmSync(passwordFile, { force: true });
     }
   }
+  const start = () =>
+    runTool(
+      "pg_ctl",
+      [
+        "start",
+        "-D",
+        databaseDir,
+        "-w",
+        "-t",
+        "60",
+        "-l",
+        logFile,
+        "-o",
+        `-p ${port} -h 127.0.0.1`,
+      ],
+      log,
+    );
   try {
-    await database.start();
+    await start();
   } catch (error) {
-    throw failure("démarrer", error);
+    // Fermeture brutale précédente (coupure, plantage) : verrou périmé, on le retire si aucune base ne tourne
+    const lock = path.join(databaseDir, "postmaster.pid");
+    const running = await runTool(
+      "pg_ctl",
+      ["status", "-D", databaseDir],
+      log,
+    ).then(
+      () => true,
+      () => false,
+    );
+    if (!running && fs.existsSync(lock)) {
+      log("Verrou de base périmé retiré");
+      fs.rmSync(lock, { force: true });
+      await start();
+    } else {
+      const details = fs.existsSync(logFile)
+        ? fs.readFileSync(logFile, "utf8").split("\n").slice(-15).join("\n")
+        : "";
+      throw new Error(
+        `La base de données n'a pas pu démarrer. ${error.message}\n${details}`,
+      );
+    }
   }
-  const client = database.getPgClient();
+  const { Client } = require("pg");
+  const client = new Client({
+    host: "127.0.0.1",
+    port,
+    user: "spacora",
+    password,
+    database: "postgres",
+  });
   await client.connect();
   const exists = await client.query(
     "SELECT 1 FROM pg_database WHERE datname = 'spacora'",
   );
   if (exists.rowCount === 0) await client.query("CREATE DATABASE spacora");
   await client.end();
-  return database;
+  return {
+    stop: () =>
+      runTool(
+        "pg_ctl",
+        ["stop", "-D", databaseDir, "-m", "fast", "-w", "-t", "60"],
+        log,
+      ).catch((error) => log(`[base] ${error.message}`)),
+  };
 }
 
 /** Applique dans l'ordre les migrations Prisma pas encore appliquées (mêmes fichiers SQL que le serveur). */
