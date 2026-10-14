@@ -3,11 +3,15 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { localOrganizationExists } from "@/lib/db/desktop-local";
-import { accountServerUrl, activateLicence } from "@/lib/desktop/licence-store";
+import {
+  accountServerUrl,
+  activateLicence,
+  type ActivationResult,
+} from "@/lib/desktop/licence-store";
 import { edition } from "@/lib/edition";
 
 export type ActivationState = {
-  error: "invalid" | "locked" | "no_subscription" | "offline" | null;
+  error: Exclude<ActivationResult, "active"> | null;
   email: string;
 };
 

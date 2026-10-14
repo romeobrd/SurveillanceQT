@@ -13,12 +13,12 @@ export interface DesktopLicence {
 
 /** Licence conservée sur le PC (fichier licence.json du dossier de données de l'application). */
 export interface StoredLicence {
-  token: string;
-  licence: DesktopLicence;
+  /** Attestation signée par le site : seule source de vérité (offre, entreprise, validité hors ligne). */
+  grant: string;
   /** Dernière réponse du serveur : abonnement actif ou non. */
   status: "active" | "no_subscription" | "revoked";
-  /** Dernier contrôle réussi auprès du serveur (ISO). */
-  lastVerifiedAt: string;
+  /** Date la plus récente constatée sur ce PC (ISO) : une horloge qui recule est détectée. */
+  seenAt: string;
   /** Site Spacora qui a délivré la licence (contrôles suivants). */
   accountUrl?: string;
 }

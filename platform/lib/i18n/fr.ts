@@ -162,6 +162,10 @@ export const fr = {
       "Votre essai ou votre abonnement est terminé : les données restent consultables, mais plus modifiables. Choisissez une offre dans Administration > Abonnement.",
     planLimit:
       "Votre offre est limitée à {limit} collaborateurs actifs. Passez à l'offre supérieure dans Administration > Abonnement.",
+    tooMany:
+      "Trop de demandes rapprochées. Réessayez dans quelques heures, ou contactez le support.",
+    inviteNeedsVerifiedEmail:
+      "Confirmez d'abord votre adresse e-mail (lien reçu à l'inscription) pour inviter des collègues.",
   },
   dashboard: {
     title: "Tableau de bord",
@@ -447,6 +451,14 @@ export const fr = {
         "Aucun abonnement actif pour ce compte administrateur. Choisissez une offre dans votre espace client sur le site Spacora, puis réessayez.",
       offline:
         "Impossible de joindre le serveur Spacora. Vérifiez votre connexion Internet, puis réessayez.",
+      unconfigured:
+        "Cette version de Spacora ne peut pas encore être activée. Téléchargez la dernière version depuis votre espace client.",
+      forged:
+        "Le serveur contacté n'est pas le site Spacora : sa réponse n'est pas signée. Vérifiez l'adresse dans les paramètres avancés.",
+      other_organization:
+        "Ce PC contient déjà les données d'une autre entreprise : connectez-vous avec un compte administrateur de cette entreprise.",
+      clock:
+        "La date de ce PC est antérieure à celle de votre licence : remettez Windows à l'heure, puis réessayez.",
     },
     reasons: {
       no_subscription:
@@ -455,6 +467,12 @@ export const fr = {
         "Ce compte client n'a plus accès à Spacora : connectez-vous avec un compte administrateur abonné.",
       offline_expired:
         "Spacora n'a pas pu vérifier votre abonnement depuis plus de 14 jours : connectez-vous à Internet, puis reconnectez-vous ici.",
+      clock:
+        "La date de ce PC a été remise en arrière : remettez Windows à l'heure, puis reconnectez-vous ici.",
+      invalid:
+        "La licence enregistrée sur ce PC n'est pas valide : reconnectez-vous avec votre compte client.",
+      unconfigured:
+        "Cette version de Spacora ne peut pas encore être activée. Téléchargez la dernière version depuis votre espace client.",
     },
     setupTitle: "Créer votre entreprise",
     setupIntro:

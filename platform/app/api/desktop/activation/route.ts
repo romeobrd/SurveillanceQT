@@ -1,13 +1,15 @@
 // Activation de l'application de bureau : e-mail et mot de passe du compte client, abonnement payé requis.
-// Réponse : jeton de licence signé + informations pour préparer l'application. Journalisé.
+// Réponse : attestation de licence signée par le site (offre, entreprise, validité hors ligne). Journalisé.
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { clientIp } from "@/lib/auth/client-ip";
 import { checkCredentials } from "@/lib/auth/credentials";
 import {
   lookupDesktopLicence,
   recordDesktopActivation,
 } from "@/lib/db/desktop-licence";
-import { signLicence } from "@/lib/desktop/licence-token";
+import { issueGrant } from "@/lib/desktop/licence-issue";
+import { siteSigningKey } from "@/lib/desktop/licence-keys";
 
 const ActivationSchema = z.object({
   email: z.string().trim().max(200).pipe(z.email()),
@@ -15,8 +17,7 @@ const ActivationSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret)
+  if (!siteSigningKey())
     return NextResponse.json({ status: "unavailable" }, { status: 503 });
   const parsed = ActivationSchema.safeParse(
     await request.json().catch(() => null),
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
   const credentials = await checkCredentials(
     parsed.data.email,
     parsed.data.password,
+    clientIp(request.headers),
     now,
   );
   if (!credentials.ok)
@@ -42,17 +44,8 @@ export async function POST(request: Request) {
     lookup.licence.organizationId,
     credentials.userId,
   );
-  const token = signLicence(
-    {
-      userId: credentials.userId,
-      organizationId: lookup.licence.organizationId,
-      issuedAt: Math.floor(now.getTime() / 1000),
-    },
-    secret,
-  );
   return NextResponse.json({
     status: "active",
-    token,
-    licence: lookup.licence,
+    grant: issueGrant(credentials.userId, lookup.licence, now),
   });
 }

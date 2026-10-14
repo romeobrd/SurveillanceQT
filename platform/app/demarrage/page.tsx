@@ -20,7 +20,7 @@ async function Content() {
   const licence = await currentLicence();
   if (licence.state !== "valid") redirect("/activation");
   if (await localOrganizationExists()) redirect("/login");
-  const { licence: info } = licence.stored;
+  const { licence: info } = licence.grant;
   return (
     <>
       <p className="text-sm text-slate-700" data-testid="setup-plan">

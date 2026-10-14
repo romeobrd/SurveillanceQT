@@ -13,7 +13,14 @@ export const metadata: Metadata = {
 };
 
 const t = fr.desktop;
-const REASONS = ["no_subscription", "revoked", "offline_expired"] as const;
+const REASONS = [
+  "no_subscription",
+  "revoked",
+  "offline_expired",
+  "clock",
+  "invalid",
+  "unconfigured",
+] as const;
 
 async function Content({
   searchParams,

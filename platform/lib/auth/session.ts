@@ -4,6 +4,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { findAccessContext } from "@/lib/db/auth-store";
+import { desktopGate } from "@/lib/desktop/gate";
+import { edition } from "@/lib/edition";
 import { auth } from "./config";
 import {
   assertPermission,
@@ -29,6 +31,8 @@ export async function readSession(): Promise<SessionInfo | null> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return null;
+  // Application de bureau : sans licence valide, aucune session (pages, actions et exports compris)
+  if (edition() === "desktop" && (await desktopGate()) !== null) return null;
   return findAccessContext(userId);
 }
 

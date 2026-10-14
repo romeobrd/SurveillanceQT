@@ -49,7 +49,7 @@ export async function setupAction(
     website: "",
   });
   if (!parsed.success) return { error: "invalid", values };
-  await createLocalOrganization(parsed.data, licence.stored.licence.plan);
+  await createLocalOrganization(parsed.data, licence.grant.licence.plan);
   await signIn("credentials", {
     email: parsed.data.email,
     password: parsed.data.password,
