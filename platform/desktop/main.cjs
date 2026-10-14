@@ -15,6 +15,9 @@ const path = require("node:path");
 const { startSpacora } = require("./runtime.cjs");
 
 const SITE_URL = "https://www.spacora.tech";
+// Carte 3D : sans carte graphique utilisable (machine virtuelle, bureau à distance, pilote bloqué),
+// rendu WebGL logiciel au lieu d'une carte vide. Sans risque ici : la fenêtre n'affiche que Spacora.
+app.commandLine.appendSwitch("enable-unsafe-swiftshader");
 const smokeTest = process.argv.includes("--smoke-test");
 // Test de démarrage (construction automatique) : dossier de données jetable
 if (smokeTest)

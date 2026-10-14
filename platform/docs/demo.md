@@ -38,7 +38,7 @@ Attendre le message `Ready`, **laisser cette fenêtre ouverte**, puis ouvrir **h
 1. Sur l'accueil, cliquer sur **« Créer mon compte »**.
 2. Remplir le formulaire (entreprise, prénom, nom, e-mail, mot de passe de 12 caractères minimum), cocher les CGU, **« Créer mon compte »**.
 3. Vous arrivez dans **« Mon espace client »** : aucun abonnement, téléchargement verrouillé.
-4. Sur l'offre **Pro**, cliquer sur **« Choisir Pro — Payer (paiement simulé — démonstration) »**.
+4. Sur l'offre **Pro**, cliquer sur **« Choisir Pro (paiement simulé) »**.
    L'abonnement devient actif et le bouton **« Télécharger Spacora (.exe) »** apparaît.
 
 > Paiement par carte (vrai écran Stripe, en mode test) : voir l'annexe en bas de page. Sans clés Stripe, le paiement est simulé : idéal pour une démo.

@@ -176,7 +176,7 @@ export default async function ClientAreaPage({
                     {!stripe && simulated && (
                       <ActionForm
                         action={simulatePaymentAction}
-                        submitLabel={`${b.choose.replace("{plan}", plan.name)} — ${t.simulate}`}
+                        submitLabel={`${b.choose.replace("{plan}", plan.name)} (${t.simulate})`}
                         className="flex flex-col gap-1"
                       >
                         <input type="hidden" name="plan" value={plan.key} />

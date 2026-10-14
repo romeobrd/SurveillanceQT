@@ -489,7 +489,7 @@ export const fr = {
       "Le dernier paiement a échoué : mettez à jour votre moyen de paiement.",
     offers: "Choisir une offre",
     change: "Changer d'offre",
-    simulate: "Payer (paiement simulé — démonstration)",
+    simulate: "paiement simulé",
     simulateNote:
       "Démonstration : aucun paiement réel. Le paiement par carte (Stripe) s'active dès que les clés Stripe sont configurées.",
     paid: "Merci ! Votre abonnement est actif : vous pouvez télécharger Spacora.",
