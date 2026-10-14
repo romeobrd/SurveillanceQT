@@ -5,6 +5,8 @@ import InstallAppButton from "@/components/InstallAppButton";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { emailAvailable } from "@/lib/email/send";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { edition, siteHomeHref } from "@/lib/edition";
 import { requireSessionAllowingPasswordChange } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
 import {
@@ -25,12 +27,16 @@ async function AppShell({ children }: { children: ReactNode }) {
   // Session exigée pour toutes les pages de l'application, vérifiée côté serveur à chaque requête
   // Mot de passe provisoire : la mise en page s'affiche, mais seules « Mon compte » et la déconnexion sont proposées
   const session = await requireSessionAllowingPasswordChange();
+  // Site + espace client (boutique) : l'application elle-même est l'application de bureau
+  if (edition() === "boutique") redirect("/espace-client");
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-2">
         {/* Retour au site vitrine (sur son propre domaine en production : SITE_URL) */}
         <a
-          href={process.env.SITE_URL ?? "/"}
+          href={siteHomeHref()}
+          target={edition() === "desktop" ? "_blank" : undefined}
+          rel={edition() === "desktop" ? "noopener" : undefined}
           aria-label={fr.app.homeLink}
           title={fr.app.homeLink}
           className="focus-visible:outline-brand-600 flex items-center gap-2 rounded-md font-semibold focus-visible:outline-2"

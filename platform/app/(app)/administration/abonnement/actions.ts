@@ -7,12 +7,20 @@ import { PLAN_KEYS } from "@/features/billing/plans";
 import { guardedValue, type ActionState } from "@/lib/actions";
 import { getBillingProvider } from "@/lib/billing/stripe";
 import { EmailNotVerifiedError } from "@/lib/db";
+import { edition } from "@/lib/edition";
 import { fr } from "@/lib/i18n/fr";
 
 const CheckoutSchema = z.object({
   plan: z.enum(PLAN_KEYS),
   interval: z.enum(["MONTH", "YEAR"]),
 });
+
+/** Page de retour après Stripe : l'espace client sur le site (édition boutique), sinon la page Abonnement. */
+function billingPage(): string {
+  return edition() === "boutique"
+    ? "/espace-client"
+    : "/administration/abonnement";
+}
 
 /** Adresse publique de l'application, pour les retours depuis Stripe. */
 async function appOrigin(): Promise<string> {
@@ -45,8 +53,8 @@ export async function checkoutAction(
         customerId,
         plan,
         interval,
-        successUrl: `${origin}/administration/abonnement?paiement=ok`,
-        cancelUrl: `${origin}/administration/abonnement`,
+        successUrl: `${origin}${billingPage()}?paiement=ok`,
+        cancelUrl: `${origin}${billingPage()}`,
       });
     },
   );
@@ -63,7 +71,7 @@ export async function portalAction(): Promise<ActionState> {
     if (!customerId) return null;
     return provider.createPortal({
       customerId,
-      returnUrl: `${origin}/administration/abonnement`,
+      returnUrl: `${origin}${billingPage()}`,
     });
   });
   if (result.error) return { error: result.error };

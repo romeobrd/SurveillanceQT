@@ -136,3 +136,21 @@ export function fromStripeStatus(status: string): SubscriptionStatus {
       return "CANCELED";
   }
 }
+
+/**
+ * Abonnement payé et en cours : condition pour télécharger et activer l'application de bureau.
+ * L'essai gratuit ne suffit pas ; un abonnement résilié reste valable jusqu'à la fin de la période payée.
+ */
+export function hasPaidAccess(state: SubscriptionState, now: Date): boolean {
+  return (
+    state.subscriptionStatus !== "TRIALING" && accessLevel(state, now) === "full"
+  );
+}
+
+/** Fin de la période payée d'un abonnement souscrit maintenant. */
+export function periodEnd(now: Date, interval: Interval): Date {
+  const end = new Date(now);
+  if (interval === "YEAR") end.setFullYear(end.getFullYear() + 1);
+  else end.setMonth(end.getMonth() + 1);
+  return end;
+}

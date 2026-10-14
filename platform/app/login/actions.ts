@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { CredentialsSchema, signIn, signOut } from "@/lib/auth/config";
 import { isEmailLocked } from "@/lib/auth/lockout";
+import { homeAfterLogin } from "@/lib/edition";
 
 export type LoginState = {
   error: "invalid" | "locked" | "invalidForm" | null;
@@ -32,7 +33,7 @@ export async function loginAction(
     if (error instanceof AuthError) return { error: "invalid", email };
     throw error;
   }
-  redirect("/tableau-de-bord");
+  redirect(homeAfterLogin());
 }
 
 export async function logoutAction(): Promise<void> {

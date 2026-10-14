@@ -7,6 +7,7 @@ import { isEmailLocked } from "@/lib/auth/lockout";
 import { DuplicateError } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/db/email-flows";
 import { createOrganizationWithAdmin } from "@/lib/db/signup";
+import { edition } from "@/lib/edition";
 import { emailAvailable } from "@/lib/email/send";
 
 export type SignupState = {
@@ -64,6 +65,6 @@ export async function signupAction(
     password: parsed.data.password,
     redirect: false,
   });
-  // Premier écran : la carte vide propose de générer ses locaux ou de partir de zéro
-  redirect("/carte");
+  // Site (boutique) : l'espace client propose les offres ; service en ligne : la carte vide à aménager
+  redirect(edition() === "boutique" ? "/espace-client" : "/carte");
 }

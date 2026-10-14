@@ -2,7 +2,13 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { fr } from "@/lib/i18n/fr";
-import { contactEmail, signupHref, staticSite } from "@/lib/site/mode";
+import { homeAfterLogin } from "@/lib/edition";
+import {
+  contactEmail,
+  landingTexts,
+  signupHref,
+  staticSite,
+} from "@/lib/site/mode";
 
 const t = fr.landing;
 const navLink =
@@ -13,7 +19,7 @@ export const ctaClass =
 /** Déjà connecté : accès direct à son espace ; sinon lien de connexion. Lu à la requête (cookie de session). */
 async function AccountLink() {
   return (await getSessionInfo()) ? (
-    <Link href="/tableau-de-bord" className={navLink}>
+    <Link href={homeAfterLogin()} className={navLink}>
       {t.nav.mySpace}
     </Link>
   ) : (
@@ -70,7 +76,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
               href={signupHref(t.static.mailSubject)}
               className={`${ctaClass} px-4 py-2 text-sm`}
             >
-              {staticSite ? t.static.cta : t.cta}
+              {landingTexts().cta}
             </a>
           </div>
         </div>

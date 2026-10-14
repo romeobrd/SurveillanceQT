@@ -30,7 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next-vitrine/types/**/*.ts",
-    ".next-vitrine/dev/types/**/*.ts"
+    ".next-vitrine/dev/types/**/*.ts",
+    ".next-boutique/types/**/*.ts",
+    ".next-boutique/dev/types/**/*.ts",
+    ".next-desktop/types/**/*.ts",
+    ".next-desktop/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

@@ -3,6 +3,7 @@ import { defineConfig } from "@playwright/test";
 // E2E_PROD=1 : teste la version de production (npm run build d'abord), port 3100 ; sinon serveur de développement
 const prod = Boolean(process.env.E2E_PROD);
 const port = prod ? 3100 : 3000;
+const boutiquePort = 3001;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -10,7 +11,6 @@ export default defineConfig({
   // dessinent la carte 3D en rendu logiciel : 10 s par vérification au lieu de 5
   expect: { timeout: 10_000 },
   use: {
-    baseURL: `http://localhost:${port}`,
     launchOptions: {
       // CHROMIUM_PATH : navigateur déjà installé (environnements sans téléchargement)
       executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -23,11 +23,41 @@ export default defineConfig({
       ],
     },
   },
-  webServer: {
-    command: prod ? `npx next start -p ${port}` : "npm run dev",
-    url: `http://localhost:${port}`,
-    reuseExistingServer: true,
-    // En production Auth.js exige l'URL publique de l'application
-    env: prod ? { AUTH_URL: `http://localhost:${port}` } : {},
-  },
+  projects: [
+    // Service en ligne complet (édition saas)
+    {
+      name: "service",
+      testIgnore: /boutique\.spec\.ts/,
+      use: { baseURL: `http://localhost:${port}` },
+    },
+    // Site + espace client (édition boutique) : serveur à part, en développement seulement
+    ...(prod
+      ? []
+      : [
+          {
+            name: "boutique",
+            testMatch: /boutique\.spec\.ts/,
+            use: { baseURL: `http://localhost:${boutiquePort}` },
+          },
+        ]),
+  ],
+  webServer: [
+    {
+      command: prod ? `npx next start -p ${port}` : "npm run dev",
+      url: `http://localhost:${port}`,
+      reuseExistingServer: true,
+      // En production Auth.js exige l'URL publique de l'application
+      env: prod ? { AUTH_URL: `http://localhost:${port}` } : {},
+    },
+    ...(prod
+      ? []
+      : [
+          {
+            command: `node scripts/edition.mjs boutique dev --port ${boutiquePort}`,
+            url: `http://localhost:${boutiquePort}/login`,
+            reuseExistingServer: true,
+            timeout: 180_000,
+          },
+        ]),
+  ],
 });

@@ -9,6 +9,7 @@ import {
   setPasswordWithToken,
   verifyEmail,
 } from "@/lib/db/email-flows";
+import { homeAfterLogin } from "@/lib/edition";
 
 export type LinkState = { status: "idle" | "done" | "invalid" | "badPassword" };
 
@@ -49,7 +50,7 @@ async function setPassword(
     password: parsed.data.password,
     redirect: false,
   });
-  redirect("/tableau-de-bord");
+  redirect(homeAfterLogin());
 }
 
 export async function resetPasswordAction(

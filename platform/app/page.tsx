@@ -6,7 +6,7 @@ import zoom from "@/public/landing/carte-zoom.png";
 import SiteChrome, { ctaClass } from "@/components/site/SiteChrome";
 import { PLANS } from "@/features/billing/plans";
 import { fr } from "@/lib/i18n/fr";
-import { signupHref, staticSite } from "@/lib/site/mode";
+import { landingTexts, signupHref, staticSite } from "@/lib/site/mode";
 
 export const metadata: Metadata = {
   title: `${fr.app.name} — ${fr.app.homeTitle}`,
@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 const t = fr.landing;
 // Site vitrine statique : boutons vers un e-mail de contact au lieu de l'inscription
 const signup = signupHref(t.static.mailSubject);
-const cta = staticSite ? t.static.cta : t.cta;
-const ctaNote = staticSite ? t.static.ctaNote : t.ctaNote;
+const texts = landingTexts();
+const cta = texts.cta;
+const ctaNote = texts.ctaNote;
 
 export default function Home() {
   return (
@@ -105,7 +106,7 @@ export default function Home() {
             {t.pricingTitle}
           </h2>
           <p className="mb-10 text-center text-sm text-slate-600">
-            {staticSite ? t.static.pricingNote : t.pricingNote}
+            {texts.pricingNote}
           </p>
           <div className="grid gap-5 md:grid-cols-3">
             {Object.values(PLANS).map((plan) => (
@@ -135,7 +136,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <a href={signup} className={`${ctaClass} mt-auto`}>
-                  {staticSite ? t.static.choose : t.choose}
+                  {texts.choose}
                 </a>
               </section>
             ))}

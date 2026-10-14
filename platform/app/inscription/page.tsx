@@ -8,6 +8,7 @@ import {
   installableAppMetadata,
   installableAppViewport,
 } from "@/lib/site/app-metadata";
+import { edition, homeAfterLogin } from "@/lib/edition";
 
 export const metadata: Metadata = {
   ...installableAppMetadata,
@@ -16,21 +17,29 @@ export const metadata: Metadata = {
 export const viewport = installableAppViewport;
 
 async function RedirectIfSignedIn() {
-  if (await getSessionInfo()) redirect("/tableau-de-bord");
+  if (await getSessionInfo()) redirect(homeAfterLogin());
   return null;
 }
 
 export default function SignupPage() {
+  const texts =
+    edition() === "boutique"
+      ? fr.signup.boutique
+      : {
+          title: fr.signup.title,
+          subtitle: fr.signup.subtitle,
+          submit: fr.signup.submit,
+        };
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       <div className="text-center">
-        <h1 className="text-2xl font-semibold">{fr.signup.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">{fr.signup.subtitle}</p>
+        <h1 className="text-2xl font-semibold">{texts.title}</h1>
+        <p className="mt-1 text-sm text-slate-600">{texts.subtitle}</p>
       </div>
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
-      <SignupForm />
+      <SignupForm submitLabel={texts.submit} />
     </main>
   );
 }

@@ -31,7 +31,11 @@ function Field({
   );
 }
 
-export default function SignupForm() {
+export default function SignupForm({
+  submitLabel = t.submit,
+}: {
+  submitLabel?: string;
+}) {
   const [state, action, pending] = useActionState(signupAction, initial);
   return (
     <form
@@ -119,7 +123,7 @@ export default function SignupForm() {
         disabled={pending}
         className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-600 rounded-md px-4 py-2.5 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
       >
-        {pending ? t.submitting : t.submit}
+        {pending ? t.submitting : submitLabel}
       </button>
       <p className="text-center text-sm text-slate-600">
         {t.haveAccount}{" "}

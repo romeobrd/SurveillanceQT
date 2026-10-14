@@ -9,6 +9,7 @@ import {
   installableAppMetadata,
   installableAppViewport,
 } from "@/lib/site/app-metadata";
+import { homeAfterLogin } from "@/lib/edition";
 
 export const metadata: Metadata = {
   ...installableAppMetadata,
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export const viewport = installableAppViewport;
 
 async function RedirectIfSignedIn() {
-  if (await getSessionInfo()) redirect("/tableau-de-bord");
+  if (await getSessionInfo()) redirect(homeAfterLogin());
   return null;
 }
 

@@ -2,6 +2,9 @@
 import {
   accessLevel,
   getPlan,
+  hasPaidAccess,
+  periodEnd,
+  type PlanKey,
   trialDaysLeft,
   type Interval,
   type SubscriptionStatus,
@@ -19,6 +22,8 @@ export interface BillingView {
   trialDaysLeft: number;
   currentPeriodEnd: Date | null;
   access: "full" | "readonly";
+  /** Abonnement payé en cours : téléchargement et activation de l'application de bureau. */
+  paid: boolean;
   hasCustomer: boolean;
   activePeople: number;
 }
@@ -56,6 +61,7 @@ export function billingRepository(db: TenantDb, context: AccessContext) {
         trialDaysLeft: trialDaysLeft(organization, now),
         currentPeriodEnd: organization.currentPeriodEnd,
         access: accessLevel(organization, now),
+        paid: hasPaidAccess(organization, now),
         hasCustomer: organization.stripeCustomerId !== null,
         activePeople,
       };
@@ -85,6 +91,45 @@ export function billingRepository(db: TenantDb, context: AccessContext) {
         resourceId: context.organizationId,
       });
       return customerId;
+    },
+
+    /**
+     * Démonstration sans Stripe : l'abonnement choisi devient actif comme après un paiement.
+     * N'est proposé que lorsque le paiement simulé est autorisé (voir lib/billing/demo.ts).
+     */
+    async simulateSubscription(
+      plan: PlanKey,
+      interval: Interval,
+      now: Date = new Date(),
+    ): Promise<void> {
+      assertPermission(context, "billing:manage");
+      await db.organization.update({
+        where: { id: context.organizationId },
+        data: {
+          plan,
+          billingInterval: interval,
+          subscriptionStatus: "ACTIVE",
+          trialEndsAt: null,
+          currentPeriodEnd: periodEnd(now, interval),
+        },
+      });
+      await recordAudit(db, context, {
+        action: "billing.simulated",
+        resourceType: "Organization",
+        resourceId: context.organizationId,
+      });
+    },
+
+    /** Téléchargement de l'application de bureau : réservé à un abonnement payé, journalisé. */
+    async recordDesktopDownload(now: Date = new Date()): Promise<boolean> {
+      assertPermission(context, "billing:manage");
+      if (!hasPaidAccess(await load(), now)) return false;
+      await recordAudit(db, context, {
+        action: "desktop.download",
+        resourceType: "Organization",
+        resourceId: context.organizationId,
+      });
+      return true;
     },
 
     async customerId(): Promise<string | null> {

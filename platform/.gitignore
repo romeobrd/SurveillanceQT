@@ -55,3 +55,6 @@ next-env.d.ts
 
 # Construction du site vitrine (le résultat, vitrine/, est versionné)
 /.next-vitrine/
+/.next-boutique/
+/.next-desktop/
+/.next-saas/

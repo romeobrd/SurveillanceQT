@@ -429,6 +429,37 @@ export const fr = {
       "Copiez-le maintenant : il ne sera plus jamais affiché. Transmettez-le à la personne par un canal sûr.",
     roles: { ADMIN: "Administrateur", MANAGER: "Manager", EMPLOYEE: "Employé" },
   },
+  clientArea: {
+    title: "Mon espace client",
+    hello: "Bonjour {name}",
+    company: "Entreprise : {name}",
+    subscription: "Votre abonnement",
+    none: "Aucun abonnement pour l'instant : choisissez une offre pour télécharger Spacora.",
+    active: "Abonnement {plan} actif",
+    until: "Valable jusqu'au {date}, renouvelé automatiquement.",
+    canceledUntil: "Résilié : valable jusqu'au {date}.",
+    pastDue:
+      "Le dernier paiement a échoué : mettez à jour votre moyen de paiement.",
+    offers: "Choisir une offre",
+    change: "Changer d'offre",
+    simulate: "Payer (paiement simulé — démonstration)",
+    simulateNote:
+      "Démonstration : aucun paiement réel. Le paiement par carte (Stripe) s'active dès que les clés Stripe sont configurées.",
+    paid: "Merci ! Votre abonnement est actif : vous pouvez télécharger Spacora.",
+    downloadTitle: "Télécharger Spacora pour Windows",
+    download: "Télécharger Spacora (.exe)",
+    downloadSteps: [
+      "Téléchargez puis lancez le fichier Spacora-Setup.exe.",
+      "Si Windows affiche « Windows a protégé votre ordinateur » : cliquez sur « Informations complémentaires », puis « Exécuter quand même ».",
+      "Au premier lancement, connectez-vous avec l'e-mail et le mot de passe de ce compte client : Spacora vérifie votre abonnement.",
+      "Vos données (plan, collaborateurs, stock…) restent sur votre ordinateur.",
+    ],
+    downloadLocked:
+      "Le téléchargement est disponible dès que votre abonnement est actif.",
+    verifyFirst:
+      "Confirmez d'abord votre adresse e-mail (lien reçu à l'inscription) pour payer par carte.",
+    logout: "Se déconnecter",
+  },
   billing: {
     title: "Abonnement",
     tab: "Abonnement",
@@ -523,6 +554,13 @@ export const fr = {
     choose: "Commencer l'essai",
     popular: "Le plus choisi",
     finalTitle: "Prêt à voir vos locaux autrement ?",
+    /** Site + espace client (édition boutique) : on crée son compte, on choisit une offre, on télécharge Spacora. */
+    boutique: {
+      cta: "Créer mon compte",
+      ctaNote: "Choisissez votre offre, puis téléchargez Spacora pour Windows",
+      choose: "Choisir cette offre",
+      pricingNote: "Prix HT. Annuel : deux mois offerts.",
+    },
     /** Site vitrine statique : le service n'est pas encore en ligne, les demandes passent par e-mail. */
     static: {
       cta: "Demander un accès",
@@ -565,6 +603,13 @@ export const fr = {
     haveAccount: "Déjà un compte ?",
     noAccount: "Pas encore de compte ?",
     startTrial: "Essai gratuit",
+    /** Site + espace client (édition boutique) : pas d'essai, on achète puis on télécharge. */
+    boutique: {
+      title: "Créer votre compte client",
+      subtitle:
+        "Ensuite, choisissez votre offre et téléchargez Spacora pour Windows.",
+      submit: "Créer mon compte",
+    },
     errors: {
       invalid:
         "Vérifiez les champs : tous sont obligatoires, et le mot de passe fait au moins 12 caractères.",

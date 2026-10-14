@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasPaidAccess,
+  periodEnd,
   accessLevel,
   canAddPerson,
   fromStripeStatus,
@@ -123,5 +125,58 @@ describe("niveau d'accès", () => {
     expect(fromStripeStatus("unpaid")).toBe("PAST_DUE");
     expect(fromStripeStatus("canceled")).toBe("CANCELED");
     expect(fromStripeStatus("incomplete_expired")).toBe("CANCELED");
+  });
+});
+
+describe("application de bureau : abonnement payé", () => {
+  const now = new Date("2026-10-14T10:00:00Z");
+  const base = { plan: "pro", trialEndsAt: null, currentPeriodEnd: null };
+
+  it("exige un abonnement payé en cours (l'essai ne suffit pas)", () => {
+    expect(hasPaidAccess({ ...base, subscriptionStatus: "ACTIVE" }, now)).toBe(
+      true,
+    );
+    expect(
+      hasPaidAccess({ ...base, subscriptionStatus: "PAST_DUE" }, now),
+    ).toBe(true);
+    expect(
+      hasPaidAccess(
+        {
+          ...base,
+          subscriptionStatus: "TRIALING",
+          trialEndsAt: new Date("2026-10-20"),
+        },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      hasPaidAccess(
+        {
+          ...base,
+          subscriptionStatus: "CANCELED",
+          currentPeriodEnd: new Date("2026-11-01"),
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      hasPaidAccess(
+        {
+          ...base,
+          subscriptionStatus: "CANCELED",
+          currentPeriodEnd: new Date("2026-10-01"),
+        },
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it("calcule la fin de période mensuelle ou annuelle", () => {
+    expect(periodEnd(now, "MONTH").toISOString()).toBe(
+      "2026-11-14T10:00:00.000Z",
+    );
+    expect(periodEnd(now, "YEAR").toISOString()).toBe(
+      "2027-10-14T10:00:00.000Z",
+    );
   });
 });
